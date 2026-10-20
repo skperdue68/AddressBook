@@ -1,0 +1,21 @@
+# Version control and local development state
+.git
+.worktrees
+.superpowers
+node_modules
+
+# Local credentials and runtime data
+.env
+.env.*
+!.env.example
+secrets
+data
+*.sqlite
+*.sqlite-*
+*.migration-complete
+*.log
+
+# Locally packaged releases and operating-system metadata
+AddressBook-v*.zip
+.DS_Store
+Thumbs.db

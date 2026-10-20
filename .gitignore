@@ -1,8 +1,23 @@
+# Installed dependencies and local development state
 node_modules/
 .worktrees/
+.superpowers/
+
+# Local configuration and credentials
 .env
+.env.*
+!.env.example
 secrets/
-data/*.sqlite
-data/*.sqlite-*
+
+# Generated databases, journals, and migration completion markers
+*.sqlite
+*.sqlite-*
+*.migration-complete
+
+# Locally packaged releases belong in GitHub Releases
+/AddressBook-v*.zip
+
+# Logs and operating-system metadata
 *.log
 .DS_Store
+Thumbs.db
