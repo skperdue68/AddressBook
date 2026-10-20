@@ -184,3 +184,46 @@ for(const [name,customId] of [
     }
   }finally{await closeDatabase(db);}
 });
+
+
+for(const target of ['channel','thread','link','send-failure','record-failure'])test(`House Share Pass destination flow: ${target}`,async()=>{
+  const {db,houses}=await fixture();
+  try{
+    await db.query("INSERT INTO guild_settings(guild_id,eso_server) VALUES('g1','pc_na')");
+    const house=await houses.createPrivate({esoServer:'pc_na',originGuildId:'g1',userId:'owner',houseId:62,esoOwner:'HouseOwner',createdBy:'owner'});
+    let sent=0,response;
+    const parent={id:'parent',name:'Housing',guildId:'g1',type:0,isThread:()=>false,permissionsFor:()=>({has:()=>true}),send:async()=>{sent++;if(target==='send-failure')throw new Error('Missing Access');return {id:'message'};}};
+    const thread={...parent,id:'thread',name:'Open houses',type:11,parentId:'parent',isThread:()=>true};
+    parent.threads={fetchActive:async()=>({threads:new Map([['thread',thread]])})};
+    const channels=new Map([['parent',parent],['thread',thread]]);
+    const handlers=createHandlers(db);
+    const interaction=(customId,values=[])=>({customId,values,guildId:'g1',user:{id:'owner',username:'Owner'},member:{roles:{cache:{has:()=>false}}},guild:{id:'g1',name:'Test',members:{fetch:async()=>({id:'owner',displayName:'Owner'}),fetchMe:async()=>({id:'bot'})},channels:{fetch:async id=>id?channels.get(id):channels}},deferUpdate:async()=>{},editReply:async p=>{response=p;}});
+    await handlers.button(interaction(`hu:pass:house:share:${house.id}`));
+    assert.ok(response.components.flatMap(r=>r.toJSON().components).some(c=>c.custom_id===`hu:pass:house:channel:${house.id}`));
+    if(target==='link'){
+      const i=interaction(`hu:modal:housedestination:${house.id}`);
+      i.fields={getTextInputValue:()=> '123'};channels.set('123',parent);
+      await handlers.modal(i);
+    }else await handlers.select(interaction(`hu:pass:house:channel:${house.id}`,['parent']));
+    assert.equal(sent,0);
+    assert.equal((await one(db,'SELECT count(*) c FROM house_share_passes')).c,0);
+    const action=target==='thread'?'thread':'confirm',dest=target==='thread'?'thread':'parent';
+    await handlers[target==='thread'?'select':'button'](interaction(`hu:pass:house:${action}:${house.id}:parent`,target==='thread'?['thread']:[]));
+    assert.equal(sent,0);
+    assert.ok(response.components.flatMap(r=>r.toJSON().components).some(c=>c.custom_id===`hu:pass:house:post:${house.id}:${dest}`));
+    if(target==='record-failure'){
+      const query=db.query.bind(db);
+      db.query=(sql,...args)=>sql.startsWith('UPDATE house_share_passes SET origin_guild_id')?Promise.reject(new Error('Write failed')):query(sql,...args);
+    }
+    await handlers.button(interaction(`hu:pass:house:post:${house.id}:${dest}`));
+    assert.equal(sent,1);
+    const pass=await one(db,'SELECT * FROM house_share_passes');
+    assert.equal(pass.channel_id,dest);
+    if(target==='send-failure'){
+      assert.equal(pass.status,'revoked');assert.match(response.content,/Missing Access/);
+      assert.ok(response.components.flatMap(r=>r.toJSON().components).some(c=>c.label==='Back to Channels'));
+    }else if(target==='record-failure'){
+      assert.equal(pass.status,'active');assert.equal(pass.message_id,null);assert.match(response.content,/Please do not repost/);
+    }else{assert.equal(pass.message_id,'message');assert.equal(pass.status,'active');assert.match(response.content,/House Share Pass posted/);}
+  }finally{await closeDatabase(db);}
+});
