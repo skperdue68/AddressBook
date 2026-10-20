@@ -45,7 +45,7 @@ import {
   houseScopePayload, personalActionsPayload, savedSearchNameModal, savedSearchListPayload, savedSearchDetailPayload, savedSearchConflictPayload, savedSearchDeleteConfirmPayload, globalModeratorRequestModal, globalModeratorPayload, environmentSetupPayload, environmentChangeChoicePayload, environmentChangePreviewPayload, legacyAssignmentPayload,
   globalModeratorRequestsPayload, globalModeratorRequestReviewPayload, globalModeratorListPayload, globalModeratorRevokePayload, adminHealthPayload, adminSharePassesPayload, auditLogPayload, maintenancePayload, legacyTourRecoveryPayload, adminSettingsPayload
 } from './housing-ui.js';
-import { houseCopyMetadataModal, houseCopyVisibilityPayload, houseShareCardPayload, houseShareChannelPayload, sharedPrivateHousePayload, tourCopyPreviewPayload, tourPassInformationPayload, tourShareCardPayload } from './share-pass-ui.js';
+import { houseCopyMetadataModal, houseCopyVisibilityPayload, sharedPrivateHousePayload, tourCopyPreviewPayload, tourPassInformationPayload, tourShareCardPayload } from './share-pass-ui.js';
 import { reportExplanationModal, reportProblemTypePayload, reportQueuePayload, reportReviewPayload } from './report-ui.js';
 import { eventCardPayload, eventListPayload, eventStartPreflightPayload, featuredPayload, progressCompletedPayload, progressHistoryPayload, progressPayload, progressRunPayload } from './engagement-ui.js';
 import { TourEventService } from '../services/tour-event-service.js';
@@ -761,7 +761,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
   async function button(i){
     if(!await prepareInteraction(i))return;
     const id=i.customId;
-    if(isTourShareDestination(id))return handleTourShareDestination(i,{sharePasses,tours,guilds});
+    if(isTourShareDestination(id))return handleTourShareDestination(i,{sharePasses,tours,guilds,loadHouse:async(i,id)=>(await loadSavedReference(i,id)).record});
     if(isDiscordAdminInteraction(id))return i.reply({content:webOnlyAdminNotice(),flags:MessageFlags.Ephemeral});
     if(id.startsWith('tour:'))return handleTourRuntimeButton(i,id);
     if(id==='hu:tours:events'){
@@ -1163,7 +1163,6 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     }
     if(id==='hu:find')return startAdvanced(i,'all');
     if(id==='hu:register')return i.update(registrationTypePayload());
-    if(id.startsWith('hu:pass:house:share:'))return i.update(houseShareChannelPayload(Number(id.split(':')[4])));
     if(id.startsWith('hu:pass:house:comments:')){
       const passToken=id.split(':').slice(4).join(':');
       try{
@@ -1505,7 +1504,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
   async function select(i){
     if(!await prepareInteraction(i))return;
     const id=i.customId;
-    if(isTourShareDestination(id))return handleTourShareDestination(i,{sharePasses,tours,guilds});
+    if(isTourShareDestination(id))return handleTourShareDestination(i,{sharePasses,tours,guilds,loadHouse:async(i,id)=>(await loadSavedReference(i,id)).record});
     if(isDiscordAdminInteraction(id))return i.reply({content:webOnlyAdminNotice(),flags:MessageFlags.Ephemeral});
     if(id.startsWith('hu:savedsearch:list:')){
       const payload=await savedSearchDetail(i,Number(i.values?.[0]));
@@ -1554,20 +1553,6 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       return i.showModal(reportExplanationModal({kind,token:targetToken,problemType}));
     }
     if(id==='hu:register:type'){ const type=i.values?.[0],scope=registrationScopeFromType(type); if(!scope)return i.reply({content:'Choose Global, Server, or Private before continuing.',flags:MessageFlags.Ephemeral}); return i.showModal(destinationInputModal(type)); }
-    if(id.startsWith('hu:pass:house:channel:')){
-      const savedHouseId=Number(id.split(':')[4]),channelId=String(i.values?.[0]||'');
-      try{
-        const channel=await i.guild?.channels.fetch(channelId);
-        if(!channel?.isTextBased?.())throw new Error('Choose a Discord text channel.');
-        const permissions=channel.permissionsFor?.(i.client.user);
-        const required=[PermissionFlagsBits.ViewChannel,PermissionFlagsBits.SendMessages,PermissionFlagsBits.EmbedLinks,PermissionFlagsBits.ReadMessageHistory];
-        if(permissions&&required.some(permission=>!permissions.has(permission)))throw new Error('AddressBook needs View Channel, Send Messages, Embed Links, and Read Message History in that channel.');
-        const created=await sharePasses.createHousePass({savedHouseId,createdBy:i.user.id,originGuildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId),channelId,names:{createdByGlobalName:i.user.globalName||i.user.username,createdByDisplayName:i.member?.displayName,originGuildName:i.guild?.name,channelName:channel.name}});
-        const house=(await loadSavedReference(i,savedHouseId)).record,message=await channel.send(houseShareCardPayload(house,{token:created.token,sharerName:i.member?.displayName||i.user.globalName||i.user.username}));
-        await sharePasses.markHousePassPosted(created.pass.id,{guildId:i.guildId,channelId,messageId:message.id,channelName:channel.name});
-        return i.update({content:`House Share Pass posted in <#${channelId}>. It remains active until you revoke it.`,embeds:[],components:buttonRows([{customId:'hu:home',label:'Back to AddressBook',style:'secondary'}])});
-      }catch(error){return i.reply({content:`Could not post that Share Pass: ${error.message}`,flags:MessageFlags.Ephemeral});}
-    }
     if(id==='hu:globalmod:requestpick'||id.startsWith('hu:globalmod:requestpick:')){
       if(!globalMods.isApprover(i.user.id))return i.reply({content:'Only a configured Global Moderator approver can review requests.',flags:MessageFlags.Ephemeral});
       const requestId=Number(i.values?.[0]),req=(await globalMods.listPending()).find(r=>Number(r.id)===requestId);
@@ -1728,7 +1713,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
   async function modal(i){
     if(!await prepareInteraction(i))return;
     const id=i.customId;
-    if(isTourShareDestination(id))return handleTourShareDestination(i,{sharePasses,tours,guilds});
+    if(isTourShareDestination(id))return handleTourShareDestination(i,{sharePasses,tours,guilds,loadHouse:async(i,id)=>(await loadSavedReference(i,id)).record});
     if(id.startsWith('hu:modal:savedsearch:')){
       const parts=id.split(':'),mode=parts[3],target=parts[4],name=text(i.fields.getTextInputValue('name'));
       try{

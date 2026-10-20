@@ -24,6 +24,33 @@ test('empty destination picker offers a link and valid nonempty rows',()=>{
 import { ChannelType, PermissionFlagsBits as P } from 'discord.js';
 import { handleTourShareDestination, parseTourDestination, validateTourDestination } from '../src/ui/tour-share-destination.js';
 import { tourShareThreadPayload } from '../src/ui/share-pass-ui.js';
+
+
+test('House Share Pass channel selection offers optional threads without posting',async()=>{
+ const parent=channel('parent');
+ parent.send=async()=>assert.fail('channel selection must not post');
+ parent.threads={fetchActive:async()=>({threads:new Map([['thread',channel('thread',{type:ChannelType.PublicThread,parentId:'parent'})]])})};
+ const i=interaction('hu:pass:house:channel:1',new Map([['parent',parent]]),{values:['parent']});
+ await handleTourShareDestination(i,{});
+ const controls=components(i.updates[0]);
+ assert.equal(controls.find(c=>c.type===3)?.options[0].value,'thread');
+ assert.ok(controls.some(c=>c.custom_id==='hu:pass:house:confirm:1:parent'));
+});
+
+test('direct Tour channel choice opens confirmation before sending',async()=>{
+ const parent=channel('parent');parent.send=async()=>assert.fail('must confirm first');
+ const i=interaction('hu:pass:tour:confirm:1:parent',new Map([['parent',parent]]));
+ await handleTourShareDestination(i,{});
+ assert.ok(components(i.updates[0]).some(c=>c.custom_id==='hu:pass:tour:post:1:parent'));
+});
+
+test('pasting a channel link still offers its active threads',async()=>{
+ const parent=channel('123');
+ parent.threads={fetchActive:async()=>({threads:new Map([['thread',channel('thread',{type:ChannelType.PublicThread,parentId:'123'})]])})};
+ const i=interaction('hu:modal:tourdestination:1',new Map([['123',parent]]),{destination:'123'});
+ await handleTourShareDestination(i,{});
+ assert.equal(components(i.updates[0]).find(c=>c.type===3)?.options[0].value,'thread');
+});
 const actors={user:{id:'u1',displayName:'Visitor'},bot:{id:'bot'}};
 const all=[P.ViewChannel,P.SendMessages,P.SendMessagesInThreads,P.EmbedLinks,P.ReadMessageHistory];
 function channel(id,{type=ChannelType.GuildText,permissions=all,parentId=null,locked=false,member=true}={}){

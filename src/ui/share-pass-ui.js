@@ -1,4 +1,4 @@
-import { ActionRowBuilder, StringSelectMenuBuilder, ChannelSelectMenuBuilder, ChannelType, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } from 'discord.js';
+import { ActionRowBuilder, StringSelectMenuBuilder, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } from 'discord.js';
 import { cleanDestinationEmbed, buttonRows } from './housing-ui.js';
 import { destinationLabel } from '../utils/labels.js';
 import { discordDescription, discordTitle } from '../utils/text-limits.js';
@@ -20,10 +20,6 @@ export function sharedPrivateHousePayload(house,{token,passId,canCopy=false,back
   return {embeds:[embed],components:buttonRows(actions)};
 }
 
-export function houseShareChannelPayload(savedHouseId){
-  const select=new ChannelSelectMenuBuilder().setCustomId(`hu:pass:house:channel:${Number(savedHouseId)}`).setPlaceholder('Choose a channel for the Share Pass').setChannelTypes(ChannelType.GuildText,ChannelType.GuildAnnouncement).setMinValues(1).setMaxValues(1);
-  return {content:'Choose the channel where AddressBook should post this revocable House Share Pass.',embeds:[],components:[new ActionRowBuilder().addComponents(select),...buttonRows([{customId:'hu:home',label:'Cancel',style:'secondary'}])]};
-}
 
 function destinationPage(rows,page){
   const pages=Math.max(1,Math.ceil(rows.length/25));
@@ -35,26 +31,26 @@ function destinationSelect(customId,placeholder,items){
   const select=new StringSelectMenuBuilder().setCustomId(customId).setPlaceholder(placeholder).setMinValues(1).setMaxValues(1).addOptions(items.map(c=>({label:String(c.name||c.id).slice(0,100),value:String(c.id),description:String(c.parent?.name||'No category').slice(0,100)})));
   return [new ActionRowBuilder().addComponents(select)];
 }
-export function tourShareChannelPayload(tourId,{channels=[],page=0}={}){
+export function tourShareChannelPayload(tourId,{channels=[],page=0,kind='tour'}={}){
   const view=destinationPage(channels,page),actions=[];
-  if(view.page>0)actions.push({customId:`hu:pass:tour:share:${tourId}:${view.page-1}`,label:'Previous Channels',style:'secondary'});
-  if(view.page<view.pages-1)actions.push({customId:`hu:pass:tour:share:${tourId}:${view.page+1}`,label:'Next Channels',style:'secondary'});
-  actions.push({customId:`hu:pass:tour:link:${tourId}`,label:'Use Channel / Thread Link',style:'primary'},{customId:'hu:tours',label:'Cancel',style:'secondary'});
-  return {content:`**Share Tour Pass — Choose a channel**\nPage ${view.page+1} of ${view.pages} • ${channels.length} visible channels.\nChoose a channel, then post there or select an existing thread / forum post. Only channels visible to both you and AddressBook are listed. Posting permissions are checked before sending.${channels.length?'':'\nNo channels are available. Check AddressBook’s channel permissions.'}`,embeds:[],components:[...destinationSelect(`hu:pass:tour:channel:${tourId}`,'Choose a channel',view.items),...buttonRows(actions)]};
+  if(view.page>0)actions.push({customId:`hu:pass:${kind}:share:${tourId}:${view.page-1}`,label:'Previous Channels',style:'secondary'});
+  if(view.page<view.pages-1)actions.push({customId:`hu:pass:${kind}:share:${tourId}:${view.page+1}`,label:'Next Channels',style:'secondary'});
+  actions.push({customId:`hu:pass:${kind}:link:${tourId}`,label:'Use Channel / Thread Link',style:'primary'},{customId:kind==='tour'?'hu:tours':'hu:home',label:'Cancel',style:'secondary'});
+  return {content:`**Share ${kind==='tour'?'Tour':'House'} Pass — Choose a channel**\nPage ${view.page+1} of ${view.pages} • ${channels.length} visible channels.\nChoose a channel, then post there or select an existing thread / forum post. Only channels visible to both you and AddressBook are listed. Posting permissions are checked before sending.${channels.length?'':'\nNo channels are available. Check AddressBook’s channel permissions.'}`,embeds:[],components:[...destinationSelect(`hu:pass:${kind}:channel:${tourId}`,'Choose a channel',view.items),...buttonRows(actions)]};
 }
-export function tourShareThreadPayload(tourId,channel,{threads=[],page=0,canPost=false,warning=''}={}){
+export function tourShareThreadPayload(tourId,channel,{threads=[],page=0,canPost=false,warning='',kind='tour'}={}){
   const view=destinationPage(threads,page),actions=[];
-  if(canPost)actions.push({customId:`hu:pass:tour:post:${tourId}:${channel.id}`,label:'Post in This Channel',style:'success'});
-  if(view.page>0)actions.push({customId:`hu:pass:tour:threads:${tourId}:${channel.id}:${view.page-1}`,label:'Previous Threads',style:'secondary'});
-  if(view.page<view.pages-1)actions.push({customId:`hu:pass:tour:threads:${tourId}:${channel.id}:${view.page+1}`,label:'Next Threads',style:'secondary'});
-  actions.push({customId:`hu:pass:tour:link:${tourId}`,label:'Use Channel / Thread Link',style:'primary'},{customId:`hu:pass:tour:share:${tourId}`,label:'Back to Channels',style:'secondary'},{customId:'hu:tours',label:'Cancel',style:'secondary'});
-  return {content:`**Share Tour Pass — <#${channel.id}>**\n${canPost?'Post here, or select a thread below.':'Select an existing thread or forum post below.'}\nActive threads: ${threads.length} • Page ${view.page+1} of ${view.pages}. Selecting a thread opens a confirmation.\nFor an older thread, use its link or ID. Private threads require access for both you and AddressBook.${warning?'\n'+warning:''}`,embeds:[],components:[...destinationSelect(`hu:pass:tour:thread:${tourId}:${channel.id}`,'Choose an active thread / forum post',view.items),...buttonRows(actions)]};
+  if(canPost)actions.push({customId:`hu:pass:${kind}:confirm:${tourId}:${channel.id}`,label:'Post in This Channel',style:'success'});
+  if(view.page>0)actions.push({customId:`hu:pass:${kind}:threads:${tourId}:${channel.id}:${view.page-1}`,label:'Previous Threads',style:'secondary'});
+  if(view.page<view.pages-1)actions.push({customId:`hu:pass:${kind}:threads:${tourId}:${channel.id}:${view.page+1}`,label:'Next Threads',style:'secondary'});
+  actions.push({customId:`hu:pass:${kind}:link:${tourId}`,label:'Use Channel / Thread Link',style:'primary'},{customId:`hu:pass:${kind}:share:${tourId}`,label:'Back to Channels',style:'secondary'},{customId:kind==='tour'?'hu:tours':'hu:home',label:'Cancel',style:'secondary'});
+  return {content:`**Share ${kind==='tour'?'Tour':'House'} Pass — <#${channel.id}>**\n${canPost?'Post here, or select a thread below.':'Select an existing thread or forum post below.'}\nActive threads: ${threads.length} • Page ${view.page+1} of ${view.pages}. Selecting a thread opens a confirmation.\nFor an older thread, use its link or ID. Private threads require access for both you and AddressBook.${warning?'\n'+warning:''}`,embeds:[],components:[...destinationSelect(`hu:pass:${kind}:thread:${tourId}:${channel.id}`,'Choose an active thread / forum post',view.items),...buttonRows(actions)]};
 }
-export function tourShareDestinationPayload(tourId,channel){
-  return {content:`Post this reusable Tour Pass in <#${channel.id}>?${channel.archived?' This archived thread will reopen when the message is sent.':''}`,embeds:[],components:buttonRows([{customId:`hu:pass:tour:post:${tourId}:${channel.id}`,label:'Post Tour Pass',style:'success'},{customId:`hu:pass:tour:share:${tourId}`,label:'Back to Channels',style:'secondary'},{customId:'hu:tours',label:'Cancel',style:'secondary'}])};
+export function tourShareDestinationPayload(tourId,channel,kind='tour'){
+  return {content:`Post this ${kind==='tour'?'reusable Tour':'revocable House'} Pass in <#${channel.id}>?${channel.archived?' This archived thread will reopen when the message is sent.':''}`,embeds:[],components:buttonRows([{customId:`hu:pass:${kind}:post:${tourId}:${channel.id}`,label:kind==='tour'?'Post Tour Pass':'Post House Pass',style:'success'},{customId:`hu:pass:${kind}:share:${tourId}`,label:'Back to Channels',style:'secondary'},{customId:kind==='tour'?'hu:tours':'hu:home',label:'Cancel',style:'secondary'}])};
 }
-export function tourShareLinkModal(tourId){
-  return new ModalBuilder().setCustomId(`hu:modal:tourdestination:${tourId}`).setTitle('Choose Channel or Thread').addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('destination').setLabel('Channel / thread link, mention, or ID').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(250)));
+export function tourShareLinkModal(tourId,kind='tour'){
+  return new ModalBuilder().setCustomId(`hu:modal:${kind}destination:${tourId}`).setTitle('Choose Channel or Thread').addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('destination').setLabel('Channel / thread link, mention, or ID').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(250)));
 }
 
 export function houseShareCardPayload(house,{token,sharerName='A housing visitor'}={}){
