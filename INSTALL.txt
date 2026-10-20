@@ -1,0 +1,23 @@
+AddressBook v1.0.56 shared-tour repair
+
+Built from your uploaded AddressBook-v1.0.56-safety-and-timeout-fixes(1).zip.
+This supersedes the incompatible v1.0.58 hotfix.
+
+1. Stop AddressBook.
+2. Extract this ZIP to a temporary folder.
+3. Copy src/ui/housing-menu.js into:
+   D:\Users\skper\Desktop\AddressBook\src\ui\housing-menu.js
+   Replace the existing file, including if it is the incompatible v1.0.58 file.
+4. Run npm start from your AddressBook folder.
+5. Start a Shared tour and confirm its first house appears publicly.
+
+Only housing-menu.js is required to install. The test file is included for developers.
+No changes to .env, databases, dependencies, or slash-command registration are needed.
+Version remains 1.0.56.
+
+The production file differs from your original v1.0.56 file by one line:
+.then(()=>i.channel.send(payload));
+becomes:
+.then(()=>i.followUp({...payload,flags:0}));
+
+Verified: reproduced the original null-channel failure at line 428; regression passes after repair; housing-menu imports successfully with v1.0.56 services; all 430 tests pass. Live Discord verification remains to be performed after installation.

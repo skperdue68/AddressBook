@@ -1,0 +1,106 @@
+import { one, withTransaction } from '../db/database.js';
+import { requireEsoServer } from '../utils/eso-server.js';
+
+const asDate = (db, value) => db.type === 'mariadb' ? value : value instanceof Date ? value.toISOString() : value;
+
+export class FeaturedContentService {
+  constructor(db) { this.db = db; }
+
+  async #target({ targetKind, targetId, guildId, esoServer }, conn = this.db) {
+    const server = requireEsoServer(esoServer);
+    if (targetKind === 'house') {
+      const row = await one(conn, 'SELECT s.*,h.name target_name FROM saved_houses s JOIN houses h ON h.house_id=s.house_id WHERE s.id=? AND s.status=\'active\'', [Number(targetId)]);
+      if (!row) throw new Error('House not found.');
+      if (row.eso_server !== server) throw new Error('Featured content must use the guild ESO environment.');
+      if (!['public', 'global'].includes(row.scope)) throw new Error('Private houses cannot be Featured.');
+      if (!String(row.eso_owner || '').trim() || row.destination_id == null) throw new Error('Only saved player houses can be Featured.');
+      if (row.scope === 'public' && String(row.guild_id) !== String(guildId)) throw new Error('The house is not from this Discord server.');
+      return { row, name: row.target_name };
+    }
+    if (targetKind === 'tour') {
+      const row = await one(conn, 'SELECT t.*,t.name target_name FROM tours t WHERE t.id=?', [Number(targetId)]);
+      if (!row) throw new Error('Tour not found.');
+      if (row.eso_server !== server) throw new Error('Featured content must use the guild ESO environment.');
+      if (!['public', 'global'].includes(row.visibility)) throw new Error('Private tours cannot be Featured.');
+      if (row.visibility === 'public' && String(row.guild_id) !== String(guildId)) throw new Error('The tour is not from this Discord server.');
+      return { row, name: row.target_name };
+    }
+    throw new Error('Featured target must be a house or tour.');
+  }
+
+  async set({ guildId, esoServer, targetKind, targetId, position = null, expiresAt = undefined, actorId, isModerator = false, actorGlobalName = null, actorDisplayName = null } = {}) {
+    if (!isModerator) throw new Error('Only a Housing Moderator can manage Featured content.');
+    const target = await this.#target({ targetKind, targetId, guildId, esoServer });
+    return withTransaction(this.db, async conn => {
+      const rows = await conn.query('SELECT * FROM featured_items WHERE guild_id=? AND target_kind=? ORDER BY position,id', [String(guildId), targetKind]);
+      const current=rows.find(row=>Number(row.target_id)===Number(targetId));
+      const without = rows.filter(row => Number(row.target_id) !== Number(targetId));
+      if (without.length >= 5) throw new Error(`A guild may have at most five Featured ${targetKind}s.`);
+      const requested = position == null ? Number(current?.position)||without.length+1 : Math.max(1, Math.min(5, Number(position)));
+      const effectiveExpiry=expiresAt===undefined?current?.expires_at||null:expiresAt?asDate(this.db,expiresAt instanceof Date?expiresAt:new Date(expiresAt)):null;
+      without.splice(Math.min(requested - 1, without.length), 0, { target_id: Number(targetId), target_name: target.name, expires_at: effectiveExpiry, selected_by: actorId, selected_by_global_name: actorGlobalName, selected_by_display_name: actorDisplayName, isNew: true });
+      await conn.query('DELETE FROM featured_items WHERE guild_id=? AND target_kind=?', [String(guildId), targetKind]);
+      for (let index = 0; index < without.length; index++) {
+        const row = without[index];
+        if (row.isNew) {
+          await conn.query('INSERT INTO featured_items(guild_id,guild_name,target_kind,target_id,target_name,position,expires_at,selected_by,selected_by_global_name,selected_by_display_name) VALUES(?,?,?,?,?,?,?,?,?,?)', [String(guildId), null, targetKind, Number(targetId), target.name, index + 1, effectiveExpiry, String(actorId), actorGlobalName, actorDisplayName]);
+        } else await conn.query('INSERT INTO featured_items(guild_id,guild_name,target_kind,target_id,target_name,position,expires_at,selected_by,selected_by_global_name,selected_by_display_name) VALUES(?,?,?,?,?,?,?,?,?,?)', [String(guildId), row.guild_name || null, targetKind, Number(row.target_id), row.target_name || null, index + 1, row.expires_at || null, row.selected_by, row.selected_by_global_name || null, row.selected_by_display_name || null]);
+      }
+      return one(conn, 'SELECT * FROM featured_items WHERE guild_id=? AND target_kind=? AND target_id=?', [String(guildId), targetKind, Number(targetId)]);
+    });
+  }
+
+  async list({ guildId, esoServer, targetKind = null } = {}, conn = this.db) {
+    const server = requireEsoServer(esoServer); const clauses = ['f.guild_id=?', '(f.expires_at IS NULL OR f.expires_at>?)']; const args = [String(guildId), asDate(this.db, new Date())];
+    if (targetKind) { clauses.push('f.target_kind=?'); args.push(targetKind); }
+    const rows = await conn.query(`SELECT f.*,h.house_id,h.eso_owner,h.display_name house_display_name,h.scope house_visibility FROM featured_items f LEFT JOIN saved_houses h ON f.target_kind='house' AND h.id=f.target_id LEFT JOIN tours t ON f.target_kind='tour' AND t.id=f.target_id WHERE ${clauses.join(' AND ')} AND ((f.target_kind='house' AND h.status='active' AND h.scope IN ('public','global') AND h.eso_server=? AND h.destination_id IS NOT NULL AND h.eso_owner IS NOT NULL AND trim(h.eso_owner)<>'' AND (h.scope='global' OR h.guild_id=f.guild_id)) OR (f.target_kind='tour' AND t.visibility IN ('public','global') AND t.eso_server=? AND (t.visibility='global' OR t.guild_id=f.guild_id))) ORDER BY f.target_kind,f.position`, [...args, server, server]);
+    return rows;
+  }
+
+  async autoSelectEmpty({ guildId, esoServer, actorId = 'system:auto-featured', random = Math.random } = {}) {
+    return withTransaction(this.db, async conn => {
+    const existing = await this.list({ guildId, esoServer, targetKind: 'house' }, conn);
+    if (existing.length) return [];
+    await conn.query("DELETE FROM featured_items WHERE guild_id=? AND target_kind='house'", [String(guildId)]);
+    const server = requireEsoServer(esoServer);
+    const candidates = await conn.query(`SELECT s.id
+      FROM saved_houses s
+      WHERE s.status='active' AND s.eso_server=? AND s.scope IN ('public','global')
+        AND s.destination_id IS NOT NULL AND s.eso_owner IS NOT NULL AND trim(s.eso_owner)<>''
+        AND (s.scope='global' OR s.guild_id=?) ORDER BY s.id`, [server, String(guildId)]);
+    for (let index = candidates.length - 1; index > 0; index--) {
+      const next = Math.max(0, Math.min(index, Math.floor(Number(random()) * (index + 1))));
+      [candidates[index], candidates[next]] = [candidates[next], candidates[index]];
+    }
+    const selected = [];
+    for (const candidate of candidates.slice(0, 5)) {
+      const target = await this.#target({ guildId, esoServer: server, targetKind: 'house', targetId: candidate.id }, conn);
+      const result = await conn.query('INSERT INTO featured_items(guild_id,target_kind,target_id,target_name,position,selected_by) VALUES(?,?,?,?,?,?)', [String(guildId), 'house', Number(candidate.id), target.name, selected.length + 1, String(actorId)]);
+      selected.push(await one(conn, 'SELECT * FROM featured_items WHERE id=?', [result.insertId]));
+    }
+    return selected;
+    });
+  }
+
+  async autoSelectEmptyAll({ actorId = 'system:auto-featured', random = Math.random } = {}) {
+    const guilds = await this.db.query("SELECT guild_id,eso_server FROM guild_settings WHERE eso_server IS NOT NULL AND eso_server<>'' ORDER BY guild_id");
+    const selected = [];
+    for (const guild of guilds) {
+      const rows = await this.autoSelectEmpty({ guildId: guild.guild_id, esoServer: guild.eso_server, actorId, random });
+      selected.push(...rows.map(row => ({ ...row, guild_id: guild.guild_id })));
+    }
+    return selected;
+  }
+
+  async remove({ guildId, targetKind, targetId, actorId, isModerator = false } = {}) {
+    if (!isModerator) throw new Error('Only a Housing Moderator can manage Featured content.');
+    await this.db.query('DELETE FROM featured_items WHERE guild_id=? AND target_kind=? AND target_id=?', [String(guildId), targetKind, Number(targetId)]);
+    return true;
+  }
+
+  async reorder({ guildId, esoServer, targetKind, targetId, position, actorId, isModerator = false } = {}) {
+    return this.set({ guildId, esoServer, targetKind, targetId, position, actorId, isModerator });
+  }
+
+  async expireDue({ now = new Date() } = {}) { const result = await this.db.query('DELETE FROM featured_items WHERE expires_at IS NOT NULL AND expires_at<=?', [asDate(this.db, now)]); return Number(result.affectedRows || 0); }
+}

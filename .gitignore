@@ -1,0 +1,8 @@
+node_modules/
+.worktrees/
+.env
+secrets/
+data/*.sqlite
+data/*.sqlite-*
+*.log
+.DS_Store

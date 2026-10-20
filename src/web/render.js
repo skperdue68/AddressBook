@@ -1,0 +1,10 @@
+const escape = value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
+
+export function page(title, body, user = null, context = null, { moderation = false } = {}) {
+  const identity = user ? `Signed in as ${escape(user.username || user.id)}` : 'AddressBook Administration';
+  const contextLine = context ? `${escape(context.guildName || context.guildId)} · ${escape(context.esoServer)}` : '';
+  const badge = moderation ? 'moderation actions enabled' : 'read-only administration';
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(title)} · AddressBook</title><style>body{font-family:system-ui,sans-serif;max-width:1100px;margin:2rem auto;padding:0 1rem;color:#18212b;background:#f5f7fa}header,main,nav{background:#fff;border:1px solid #dfe5ec;border-radius:12px;padding:1rem;margin-bottom:1rem}nav a{margin-right:1rem;color:#175ea8;text-decoration:none}.badge{background:#eef3f8;padding:.25rem .5rem;border-radius:999px;font-size:.85rem}table{width:100%;border-collapse:collapse}td,th{text-align:left;border-bottom:1px solid #e7ebef;padding:.55rem}small{color:#5c6875}form{display:inline}button{padding:.35rem .6rem;margin:.1rem;border:1px solid #b8c5d2;border-radius:6px;background:#fff;cursor:pointer}button.approve{color:#176b3a;border-color:#70b98d}button.deny{color:#9b2525;border-color:#d18a8a}</style></head><body><header><strong>AddressBook</strong> <span class="badge">${badge}</span><p>${identity}${contextLine ? ` · ${contextLine}` : ''}</p></header>${context ? `<nav><a href="/admin">Overview</a><a href="/admin/audit">Audit Log</a><a href="/admin/maintenance">Maintenance</a><a href="/admin/pending">Pending Review</a><a href="/admin/reports">Problem Reports</a><a href="/admin/backup">Backup &amp; Export</a><a href="/admin?choose=1">Change Server</a><a href="/auth/logout">Sign out</a></nav>` : ''}<main><h1>${escape(title)}</h1>${body}</main></body></html>`;
+}
+
+export { escape };

@@ -1,0 +1,47 @@
+AddressBook v1.0.59 — Tour Share Pass channels and threads
+
+This is the complete application, based on v1.0.58, including the shared-tour
+hotfix and its matching service files. It is not a single-file patch.
+
+UPGRADE
+1. Stop AddressBook.
+2. Back up your current AddressBook folder, .env, and database.
+3. Copy the contents of the AddressBook-v1.0.59 folder in this ZIP over your
+   application folder. Keep your existing .env and database/data files.
+4. Run npm ci from the application folder, then npm start.
+5. Run /housing and confirm Version 1.0.59 appears.
+
+No new .env settings, database schema changes, or slash-command deployment
+are required for this update. Do not copy only housing-menu.js: all matching
+source files must be installed together.
+
+TO SHARE A TOUR PASS
+1. Open a tour and choose Share Tour Pass.
+2. Browse channels with Previous Channels / Next Channels (25 per page).
+   The list is fetched from Discord and includes channels visible to you
+   and AddressBook: text, announcement, forum, media, and voice/stage chat.
+3. Select the channel. Choose Post in This Channel, or choose an active
+   thread / forum post, then confirm with Post Tour Pass.
+4. For a destination you cannot find, choose Use Channel / Thread Link.
+   Paste its Discord link, channel mention, or numeric ID. A message link
+   also works and selects the channel/thread containing that message.
+5. An older archived but unlocked thread can be selected by link/ID;
+   posting may reopen it. Locked threads are rejected. This update posts
+   to existing threads / forum posts; it does not create new ones.
+
+PERMISSIONS
+Both you and AddressBook need View Channel and the relevant sending permission:
+Send Messages for a channel; Send Messages in Threads for a thread.
+AddressBook also needs Embed Links and Read Message History.
+Private threads require membership/access for both you and AddressBook.
+Hidden/inaccessible channels are not included. Categories cannot receive posts.
+Forum/media channels require choosing an existing post within that channel.
+
+VALIDATION
+Automated tests cover channel/thread pagination, Discord component limits,
+thread sending permissions, inaccessible/private/locked threads, link parsing,
+posting records, and failure cleanup. Discord requests are simulated in tests;
+a live Discord check with your server permissions is still needed.
+
+The included v1.0.58 Word guide remains useful for general operation;
+this file documents the changes introduced in v1.0.59.
