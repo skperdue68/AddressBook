@@ -68,6 +68,10 @@ Every accessible player or Non-Player house includes **Personal Actions**. A mem
 
 ## Tours
 
+Tour dropdowns list names alphabetically without separating uppercase and lowercase names. Sorting happens before pagination.
+
+Tour creators can edit their own accessible tours. AddressBook's configured Server Housing Moderators can also edit Server tours belonging to their Discord server. Approved Global Housing Moderators can use **Housing Tours → Edit Tour** to edit anyone's Global, Server, or Private tours within their authorized ESO environment, including Server tours belonging to other Discord servers. This administrative editing access does not add other users' Private tours to normal browsing or grant Share Pass creation or tour playback access. Discord's Administrator permission does not grant AddressBook tour-editing rights.
+
 - A **Global Tour** is available only in the same ESO environment and contains Global houses from that environment.
 - A **Server Tour** contains Global houses from the same environment and Server houses from the current Discord server.
 - A **Private Tour** contains accessible Global and Server houses plus the creator's Private houses, all in one environment. Stop insertion enforces the creator's ownership of Private houses and the tour's source guild for Server houses. Search-result bulk actions recheck selected houses before creating or extending a tour; changed results require a fresh search.

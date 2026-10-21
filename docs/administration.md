@@ -9,6 +9,8 @@ Administration can be exposed in Discord, in the companion web console, or in bo
 
 ## Moderation and permissions
 
+Tour editing uses AddressBook's permissions. A configured Server Housing Moderator can edit other creators' Server tours only in that tour's own Discord server. An approved Global Housing Moderator can edit all tour visibility levels, including Private tours and other servers' Server tours, within the ESO environment covered by their grant. Use **Housing Tours → Edit Tour** to find these administrative editing targets. Private tour browsing, Share Pass authorization, and tour playback retain their existing access rules. Global permissions are refreshed on each interaction, including saving an edit form, so revocation blocks previously opened editors.
+
 Guild administrative functions accept up to 25 configured roles through Discord's searchable native role picker. Holding any configured role grants that function.
 
 - **Housing Moderator** manages Server content, pending review, server settings, reports, and guild-level tour privileges.
