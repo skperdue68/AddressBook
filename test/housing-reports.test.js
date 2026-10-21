@@ -110,3 +110,28 @@ test('readiness blocks a Server house that no longer belongs to the tour source 
     assert.ok(result.blocking.some(item=>item.code==='ineligible_context'));
   }finally{await closeDatabase(db);}
 });
+
+
+test('moderating a Server house does not reveal another owners Private tour through its report',async()=>{
+ const {db,houses,tours,reports}=await fixture();try{
+  const house=await houses.createPublic({esoServer:'pc_na',guildId:'g1',houseId:62,esoOwner:'PublicOwner',createdBy:'submitter'});
+  const tour=await tours.create({creatorId:'private-owner',guildId:'g1',esoServer:'pc_na',visibility:'private',name:'Secret private route'});
+  await reports.submit({esoServer:'pc_na',destinationId:house.destination_id,savedHouseId:house.id,tourId:tour.id,reporterId:'private-owner',guildId:'g1',problemType:'other',explanation:'Secret private route stop issue'});
+  const rows=await reports.listForModerator({viewerId:'mod',guildId:'g1',esoServer:'pc_na',isServerModerator:true});
+  assert.equal(rows.length,1);
+  assert.doesNotMatch(JSON.stringify(rows),/Secret private route/);
+ }finally{await closeDatabase(db);}
+});
+
+
+test('Private pass reports hide destination and creator identifiers from administrators',async()=>{
+ const {db,houses,reports}=await fixture();try{
+  const house=await houses.createPrivate({esoServer:'pc_na',originGuildId:'g1',userId:'owner',houseId:62,esoOwner:'SecretOwner',createdBy:'owner'});
+  const {SharePassService}=await import('../src/services/share-pass-service.js');
+  const pass=await new SharePassService(db).createHousePass({savedHouseId:house.id,createdBy:'owner',originGuildId:'g1',esoServer:'pc_na'});
+  await reports.submit({esoServer:'pc_na',destinationId:house.destination_id,savedHouseId:house.id,passId:pass.pass.id,passType:'house',reporterId:'viewer',guildId:'g1',problemType:'other'});
+  const rows=await reports.listForModerator({viewerId:'mod',guildId:'g1',esoServer:'pc_na',isServerModerator:true});
+  assert.equal(rows.length,1);
+  for(const key of ['destination_id','house_id','house_created_by','saved_house_id','owner_user_id'])assert.equal(rows[0][key],undefined,key);
+ }finally{await closeDatabase(db);}
+});

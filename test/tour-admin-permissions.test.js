@@ -22,7 +22,7 @@ async function fixture(){
  return {db,tours,menu,i,make,response:()=>response,close:async()=>{await closeDatabase(db);fs.rmSync(dir,{recursive:true,force:true});}};
 }
 
-for(const [visibility,guild] of [['global','g1'],['public','g1'],['public','g2'],['private','g2']])test(`Global administrator edits another creator's ${visibility} tour from ${guild}`,async()=>{
+for(const [visibility,guild] of [['global','g1'],['public','g1'],['public','g2']])test(`Global administrator edits another creator's ${visibility} tour from ${guild}`,async()=>{
  const f=await fixture();try{
   const t=await f.make(visibility,guild);
   await f.menu.button(f.i('hu:tours:manage'));
@@ -41,12 +41,14 @@ for(const [label,options,visibility,guild,server,allowed] of [
  ['server staff cannot edit another guild',{user:'staff-user',staff:true},'public','g2','pc_na',false],
  ['server staff cannot edit Global',{user:'staff-user',staff:true},'global','g1','pc_na',false],
  ['server staff cannot edit Private',{user:'staff-user',staff:true},'private','g1','pc_na',false],
+ ['Global staff cannot edit Private',{user:'global'},'private','g1','pc_na',false],
+ ['Global creator keeps Private edit rights',{user:'global'},'private','g1','pc_na',true],
  ['ordinary member cannot edit others',{user:'member'},'public','g1','pc_na',false],
  ['creator keeps Private edit rights',{user:'owner'},'private','g1','pc_na',true],
  ['Global grant does not cross environments',{user:'global',guild:'eu'},'global','eu','pc_eu',false]
 ])test(label,async()=>{
  const f=await fixture();try{
-  const t=await f.make(visibility,guild,server);
+  const t=await f.make(visibility,guild,server,label==='Global creator keeps Private edit rights'?'global':'owner');
   await f.menu.modal(f.i(`hu:modal:tour:edit:${t.id}`,{...options,fields:{name:'Changed'}}));
   assert.equal((await f.tours.get(t.id)).name,allowed?'Changed':'Route');
  }finally{await f.close();}
@@ -54,7 +56,7 @@ for(const [label,options,visibility,guild,server,allowed] of [
 
 test('revoked Global privileges cannot save an already opened edit modal',async()=>{
  const f=await fixture();try{
-  const t=await f.make('private');
+  const t=await f.make('public','g2');
   await f.menu.button(f.i(`hu:tour:edittext:${t.id}`));
   assert.equal(f.response().toJSON?.().custom_id,`hu:modal:tour:edit:${t.id}`);
   await f.db.query("DELETE FROM global_moderators WHERE discord_user_id='global'");
@@ -89,15 +91,23 @@ test('Global administrator visibility editing keeps a foreign Server tour in its
  }finally{await f.close();}
 });
 
-test('Global administrator can add an owners Private house to their Private tour',async()=>{
+test('Global administrator cannot see or edit another creators Private tour or houses',async()=>{
  const f=await fixture();try{
   await f.db.query("INSERT INTO houses(house_id,name,normalized_name) VALUES(62,'Villa','villa')");
-  const house=await new SavedHouseService(f.db).createPrivate({esoServer:'pc_na',originGuildId:'g2',userId:'owner',houseId:62,esoOwner:'HomeOwner',createdBy:'owner'});
-  const t=await f.make('private','g2');
-  await f.menu.button(f.i(`hu:tour:add:${t.id}`));
-  const select=controls(f.response()).find(c=>c.type===3);assert.ok(select);
-  await f.menu.select(f.i(select.custom_id,{values:[select.options[0].value]}));
-  assert.deepEqual((await f.tours.getStops(t.id)).map(s=>s.saved_house_id),[house.id]);
+  const house=await new SavedHouseService(f.db).createPrivate({esoServer:'pc_na',originGuildId:'g2',userId:'owner',houseId:62,esoOwner:'PrivateHomeOwner',createdBy:'owner'});
+  const t=await f.make('private','g2','pc_na','owner','Secret route');
+  const visible=await f.make('global','g1','pc_na','owner','Public route');
+  for(const route of ['hu:tours:browse','hu:tours:manage']){
+   await f.menu.button(f.i(route));
+   const options=controls(f.response()).find(c=>c.type===3).options;
+   assert.deepEqual(options.map(o=>o.label),['Public route (Global Tour)']);
+  }
+  for(const route of [`hu:tour:manage:${t.id}`,`hu:tour:edittext:${t.id}`,`hu:tour:add:${t.id}`,`hu:tour:deleteconfirm:${t.id}`,`hu:context:view:personal:${house.id}`,`hu:personal:edit:${house.id}`]){
+   await f.menu.button(f.i(route));
+   assert.equal(f.response().toJSON?.().custom_id,undefined);
+   assert.doesNotMatch(JSON.stringify(f.response()),/Secret route|PrivateHomeOwner/);
+  }
+  assert.ok(await f.tours.get(t.id));assert.ok(await f.tours.get(visible.id));
  }finally{await f.close();}
 });
 
@@ -133,7 +143,7 @@ test('an empty moderator configuration and Discord Administrator permission do n
 
 for(const navigation of ['next','return'])test(`revoking Global access invalidates cached administrative picker ${navigation}`,async()=>{
  const f=await fixture();try{
-  for(let n=0;n<26;n++)await f.make('private','g2','pc_na','owner',`Private ${String(n).padStart(2,'0')}`);
+  for(let n=0;n<26;n++)await f.make('public','g2','pc_na','owner',`Foreign ${String(n).padStart(2,'0')}`);
   await f.menu.button(f.i('hu:tours:manage'));
   const cs=controls(f.response()),select=cs.find(c=>c.type===3),state=select.custom_id.split(':').pop();
   await f.db.query("DELETE FROM global_moderators WHERE discord_user_id='global'");
@@ -154,12 +164,12 @@ test('administrative tour access does not grant direct playback or Share Pass cr
  }finally{await f.close();}
 });
 
-test('Global administrator can edit, reorder, and remove Private tour stops',async()=>{
+test('Global administrator can edit, reorder, and remove foreign Server tour stops',async()=>{
  const f=await fixture();try{
   await f.db.query("INSERT INTO houses(house_id,name,normalized_name) VALUES(62,'Villa','villa')");
-  const houses=new SavedHouseService(f.db),t=await f.make('private','g2');
+  const houses=new SavedHouseService(f.db),t=await f.make('public','g2');
   for(const owner of ['First','Second']){
-   const h=await houses.createPrivate({esoServer:'pc_na',originGuildId:'g2',userId:'owner',houseId:62,esoOwner:owner,createdBy:'owner'});
+   const h=await houses.createPublic({esoServer:'pc_na',guildId:'g2',houseId:62,esoOwner:owner,createdBy:'owner'});
    await f.tours.addStop(t.id,h.id);
   }
   const original=await f.tours.getStops(t.id),first=original[0].id;
@@ -173,5 +183,26 @@ test('Global administrator can edit, reorder, and remove Private tour stops',asy
   assert.equal((await f.tours.getStops(t.id))[1].id,first);
   await f.menu.button(f.i(`hu:stop:removeconfirm:${t.id}:${first}`));
   assert.deepEqual((await f.tours.getStops(t.id)).map(s=>s.id),[original[1].id]);
+ }finally{await f.close();}
+});
+
+
+test('Global administrators cannot change an owners Private tour visibility or add its stops',async()=>{
+ const f=await fixture();try{
+  const t=await f.make('private','g2');
+  for(const route of [`hu:tour:setvisibility:global:${t.id}`,`hu:tour:setvisibilityconfirm:global:${t.id}`])await f.menu.button(f.i(route));
+  assert.equal((await f.tours.get(t.id)).visibility,'private');
+ }finally{await f.close();}
+});
+
+
+test('making another creators Server tour Private closes the administrative editor',async()=>{
+ const f=await fixture();try{
+  const t=await f.make('public','g1');
+  await f.menu.button(f.i(`hu:tour:setvisibility:personal:${t.id}`,{user:'staff-user',staff:true}));
+  assert.equal((await f.tours.get(t.id)).visibility,'private');
+  assert.equal(controls(f.response()).some(c=>c.custom_id?.startsWith('hu:tour:edit')),false);
+  await f.menu.button(f.i(`hu:tour:manage:${t.id}`,{user:'staff-user',staff:true}));
+  assert.match(f.response().content,/not found/);
  }finally{await f.close();}
 });
