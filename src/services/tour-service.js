@@ -55,8 +55,14 @@ export class TourService{
   }
   async get(id,conn=this.db){const r=await one(conn,'SELECT * FROM tours WHERE id=?',[Number(id)]);return r?{...r,scope:legacyScope(r.visibility)}:null;}
   async remove(id){const r=await this.db.query('DELETE FROM tours WHERE id=?',[Number(id)]);return Number(r.affectedRows||0)>0;}
-  async list({creatorId,guildId,esoServer}){const server=requireEsoServer(esoServer),rows=await this.db.query(`SELECT * FROM tours WHERE eso_server=? AND ((visibility='private' AND creator_id=?) OR (visibility='public' AND guild_id=?) OR visibility='global') ORDER BY name`,[server,creatorId,guildId]);return rows.map(r=>({...r,scope:legacyScope(r.visibility)}));}
-  async searchVisible({creatorId,guildId,esoServer,name}){const server=requireEsoServer(esoServer),q=String(name??'').trim().toLowerCase(),rows=await this.db.query(`SELECT * FROM tours WHERE eso_server=? AND ((visibility='private' AND creator_id=?) OR (visibility='public' AND guild_id=?) OR visibility='global') ${q?'AND lower(name) LIKE ?':''} ORDER BY name`,q?[server,creatorId,guildId,`%${q}%`]:[server,creatorId,guildId]);return rows.map(r=>({...r,scope:legacyScope(r.visibility)}));}
+  async list({creatorId,guildId,esoServer,includeAll=false}){
+    const server=requireEsoServer(esoServer);
+    // Administrative callers must authorize includeAll for this exact environment.
+    const visibility=includeAll?'':"AND ((visibility='private' AND creator_id=?) OR (visibility='public' AND guild_id=?) OR visibility='global')";
+    const rows=await this.db.query(`SELECT * FROM tours WHERE eso_server=? ${visibility} ORDER BY lower(name),name,id`,includeAll?[server]:[server,creatorId,guildId]);
+    return rows.map(r=>({...r,scope:legacyScope(r.visibility)}));
+  }
+  async searchVisible({creatorId,guildId,esoServer,name}){const server=requireEsoServer(esoServer),q=String(name??'').trim().toLowerCase(),rows=await this.db.query(`SELECT * FROM tours WHERE eso_server=? AND ((visibility='private' AND creator_id=?) OR (visibility='public' AND guild_id=?) OR visibility='global') ${q?'AND lower(name) LIKE ?':''} ORDER BY lower(name),name,id`,q?[server,creatorId,guildId,`%${q}%`]:[server,creatorId,guildId]);return rows.map(r=>({...r,scope:legacyScope(r.visibility)}));}
   async visibleForHouse(savedHouseId,{creatorId,guildId,esoServer}){const server=requireEsoServer(esoServer);return this.db.query(`SELECT DISTINCT t.id,t.name,t.visibility
     FROM tour_stops ts JOIN tours t ON t.id=ts.tour_id
     WHERE ts.saved_house_id=? AND t.eso_server=? AND (t.visibility='global' OR (t.visibility='public' AND t.guild_id=?) OR (t.visibility='private' AND t.creator_id=?))
