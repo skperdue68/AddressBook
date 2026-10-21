@@ -12,15 +12,16 @@ test('web audit filters action and record type within the selected guild', async
   const db = openDatabase({ DB_TYPE: 'sqlite', DATABASE_PATH: path.join(dir, 'audit.sqlite') });
   try {
     await migrate(db);
+    await seedAuditHouses(db, [[1,'g1','Match'],[2,'g1','Wrong action'],[3,'g2','Other guild']]);
     for (const [guild, action, type, id] of [
-      ['g1', 'house_updated', 'saved_house', 'match'],
+      ['g1', 'house_updated', 'saved_house', '1'],
       ['g1', 'house_updated', 'tour', 'wrong-type'],
-      ['g1', 'house_created', 'saved_house', 'wrong-action'],
-      ['g2', 'house_updated', 'saved_house', 'wrong-guild']
+      ['g1', 'house_created', 'saved_house', '2'],
+      ['g2', 'house_updated', 'saved_house', '3']
     ]) await db.query('INSERT INTO audit_log(guild_id,actor_id,action,entity_type,entity_id) VALUES(?,?,?,?,?)', [guild, 'moderator', action, type, id]);
     const result = await new WebAdminService(db).listAudit({ guildId: 'g1', page: 1, pageSize: 25, action: 'house_updated', entityType: 'saved_house' });
     assert.equal(result.total, 1);
-    assert.deepEqual(result.rows.map(row => row.entity_id), ['match']);
+    assert.deepEqual(result.rows.map(row => row.entity_id), ['1']);
   } finally { await closeDatabase(db); }
 });
 
@@ -29,18 +30,19 @@ test('web audit Action and Target match partial names and IDs within the guild',
   const db = openDatabase({ DB_TYPE: 'sqlite', DATABASE_PATH: path.join(dir, 'audit.sqlite') });
   try {
     await migrate(db);
+    await seedAuditHouses(db, [[123,'g1','Grand Psijic Villa'],[456,'g1','Seaside Manor'],[789,'g2','Grand Psijic Villa']]);
     for (const [guild, action, id, name] of [
-      ['g1','house_updated','house-123','Grand Psijic Villa'],
-      ['g1','house_created','tour-456','Seaside Manor'],
-      ['g2','house_updated','house-789','Grand Psijic Villa']
+      ['g1','house_updated','123','Grand Psijic Villa'],
+      ['g1','house_created','456','Seaside Manor'],
+      ['g2','house_updated','789','Grand Psijic Villa']
     ]) await db.query('INSERT INTO audit_log(guild_id,actor_id,action,entity_type,entity_id,entity_name) VALUES(?,?,?,?,?,?)',[guild,'mod',action,'saved_house',id,name]);
     const service=new WebAdminService(db);
-    assert.deepEqual((await service.listAudit({guildId:'g1',action:'UPDATED'})).rows.map(r=>r.entity_id),['house-123']);
-    assert.deepEqual((await service.listAudit({guildId:'g1',target:'psijic'})).rows.map(r=>r.entity_id),['house-123']);
-    assert.deepEqual((await service.listAudit({guildId:'g1',target:'456'})).rows.map(r=>r.entity_id),['tour-456']);
+    assert.deepEqual((await service.listAudit({guildId:'g1',action:'UPDATED'})).rows.map(r=>r.entity_id),['123']);
+    assert.deepEqual((await service.listAudit({guildId:'g1',target:'psijic'})).rows.map(r=>r.entity_id),['123']);
+    assert.deepEqual((await service.listAudit({guildId:'g1',target:'456'})).rows.map(r=>r.entity_id),['456']);
     const csv=await service.exportAudit({guildId:'g1',action:'created',target:'456'});
-    assert.match(csv,/tour-456/);
-    assert.doesNotMatch(csv,/house-123/);
+    assert.match(csv,/456/);
+    assert.doesNotMatch(csv,/123/);
   } finally { await closeDatabase(db); }
 });
 
@@ -49,13 +51,19 @@ test('web audit search treats SQL wildcard characters as literal text', async ()
   const db = openDatabase({ DB_TYPE: 'sqlite', DATABASE_PATH: path.join(dir, 'audit.sqlite') });
   try {
     await migrate(db);
-    for (const [action,id,name] of [['house_updated','abc_10','100% Complete'],['houseupdated','abcX10','100 Complete']])
+    await seedAuditHouses(db, [[10,'g1','100% Complete abc_10'],[11,'g1','100 Complete abcX10']]);
+    for (const [action,id,name] of [['house_updated','10','100% Complete'],['houseupdated','11','100 Complete']])
       await db.query('INSERT INTO audit_log(guild_id,actor_id,action,entity_type,entity_id,entity_name) VALUES(?,?,?,?,?,?)',['g1','mod',action,'saved_house',id,name]);
     const service=new WebAdminService(db);
-    assert.deepEqual((await service.listAudit({guildId:'g1',action:'house_',target:'%'})).rows.map(r=>r.entity_id),['abc_10']);
-    assert.deepEqual((await service.listAudit({guildId:'g1',target:'abc_'})).rows.map(r=>r.entity_id),['abc_10']);
+    assert.deepEqual((await service.listAudit({guildId:'g1',action:'house_',target:'%'})).rows.map(r=>r.entity_id),['10']);
+    assert.deepEqual((await service.listAudit({guildId:'g1',target:'abc_'})).rows.map(r=>r.entity_id),['10']);
   } finally { await closeDatabase(db); }
 });
+
+async function seedAuditHouses(db, rows) {
+  await db.query("INSERT INTO houses(house_id,name,normalized_name) VALUES(62,'Villa','villa')");
+  for (const [id,guild,name] of rows) await db.query("INSERT INTO saved_houses(id,scope,guild_id,house_id,eso_owner,normalized_owner,display_name,created_by,updated_by) VALUES(?,'public',?,62,?,?,?,?,?)",[id,guild,`Owner${id}`,`owner${id}`,name,'u','u']);
+}
 
 test('web admin authorization requires configured moderator role and exact guild context', async () => {
   const service = new WebAdminService({}, { guilds: { getSettings: () => ({ eso_server: 'pc_na', staff_role_ids: ['mod'] }) } });
@@ -72,7 +80,7 @@ test('web admin export delegates to the existing guild/environment export', asyn
   assert.match(result, /"esoServer":"pc_na"/);
 });
 
-test('web guild export includes its Private entries without another guild’s Private entries', async () => {
+test('web administration export excludes Private entries from every user', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'addressbook-web-export-private-'));
   const db = openDatabase({ DB_TYPE: 'sqlite', DATABASE_PATH: path.join(dir, 'export.sqlite') });
   try {
@@ -82,8 +90,8 @@ test('web guild export includes its Private entries without another guild’s Pr
     const own = await saved.createPrivate({ originGuildId: 'g1', userId: 'u1', esoServer: 'pc_na', houseId: 62, esoOwner: 'Owner', createdBy: 'u1' });
     await saved.createPrivate({ originGuildId: 'g2', userId: 'u2', esoServer: 'pc_na', houseId: 62, esoOwner: 'Other', createdBy: 'u2' });
     const result = JSON.parse(await new WebAdminService(db).exportGuild({ guildId: 'g1', esoServer: 'pc_na' }));
-    assert.deepEqual(result.houses.map(row => row.id), [own.id]);
-    assert.equal(result.includePrivate, true);
+    assert.deepEqual(result.houses, []);
+    assert.equal(result.includePrivate, false);
   } finally { await closeDatabase(db); }
 });
 
@@ -240,7 +248,7 @@ test('web duplicate merge is exact-context, transactional, and audited', async (
   }
 });
 
-test('web maintenance lists and merges Private duplicates only in the originating guild and environment', async () => {
+test('web maintenance cannot list verify or merge Private houses', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'addressbook-web-private-merge-'));
   const db = openDatabase({ DB_TYPE: 'sqlite', DATABASE_PATH: path.join(dir, 'merge.sqlite') });
   try {
@@ -257,20 +265,11 @@ test('web maintenance lists and merges Private duplicates only in the originatin
     const otherDuplicateId = await copy(other.id);
     const service = new WebAdminService(db);
     const maintenance = await service.listMaintenance({ guildId: 'g1', esoServer: 'pc_na' });
-    assert.equal(maintenance.duplicates.length, 1);
-    assert.deepEqual(maintenance.duplicates[0].saved_house_ids.split(',').map(Number), [own.id, ownDuplicateId]);
-    assert.ok(maintenance.stale.some(row => row.saved_house_id === own.id));
-    assert.ok(!maintenance.stale.some(row => row.saved_house_id === other.id));
-    const actor = { id: 'mod', globalName: 'Mod', displayName: 'Moderator' };
-    await assert.rejects(() => service.verifyHouse({ houseId: 62, guildId: 'g1', esoServer: 'pc_eu', actor }), /not available/i);
-    assert.equal((await service.verifyHouse({ houseId: 62, guildId: 'g1', esoServer: 'pc_na', actor })).verified, true);
-    await assert.rejects(() => service.mergeDuplicate({ keepId: other.id, removeId: otherDuplicateId, guildId: 'g1', esoServer: 'pc_na', actor }), /available/i);
-    await assert.rejects(() => service.mergeDuplicate({ keepId: own.id, removeId: otherDuplicateId, guildId: 'g1', esoServer: 'pc_na', actor }), /available|owner context/i);
-    await assert.rejects(() => service.mergeDuplicate({ keepId: own.id, removeId: ownDuplicateId, guildId: 'g1', esoServer: 'pc_eu', actor }), /available/i);
-    const merged = await service.mergeDuplicate({ keepId: own.id, removeId: ownDuplicateId, guildId: 'g1', esoServer: 'pc_na', actor });
-    assert.equal(merged.keepId, own.id);
-    assert.equal((await one(db, 'SELECT status FROM saved_houses WHERE id=?', [ownDuplicateId])).status, 'archived');
-    assert.equal((await one(db, 'SELECT status FROM saved_houses WHERE id=?', [otherDuplicateId])).status, 'active');
-    assert.equal((await one(db, "SELECT guild_id FROM audit_log WHERE action='web_merge_duplicate_house' ORDER BY id DESC")).guild_id, 'g1');
+    assert.deepEqual(maintenance.duplicates,[]);
+    assert.deepEqual(maintenance.stale,[]);
+    const actor={id:'mod'};
+    await assert.rejects(()=>service.verifyHouse({houseId:62,guildId:'g1',esoServer:'pc_na',actor}),/available/i);
+    await assert.rejects(()=>service.mergeDuplicate({keepId:own.id,removeId:ownDuplicateId,guildId:'g1',esoServer:'pc_na',actor}),/available|Private/i);
+    assert.equal((await one(db,'SELECT status FROM saved_houses WHERE id=?',[ownDuplicateId])).status,'active');
   } finally { await closeDatabase(db); }
 });

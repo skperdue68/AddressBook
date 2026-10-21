@@ -73,18 +73,23 @@ export class HousingReportService{
     else if(row.tour_visibility==='public')target=target||(isServerModerator&&same(row.tour_guild_id,guildId));
     else if(row.tour_visibility==='global')target=target||isGlobalModerator;
     const passActivity=isServerModerator&&(same(row.house_pass_guild_id,guildId)||same(row.tour_pass_guild_id,guildId));
-    return {allowed:target||passActivity,target,passActivity,privateOwner:houseOwner||tourOwner};
+    return {allowed:target||passActivity,target,passActivity,privateOwner:houseOwner||tourOwner,houseOwner,tourOwner};
   }
 
   #present(row,authority){
-    const privateTarget=row.house_scope==='private'||row.tour_visibility==='private';
-    const redacted=privateTarget&&!authority.privateOwner&&!authority.target;
+    const hiddenHouse=row.house_scope==='private'&&!authority.houseOwner;
+    const hiddenTour=row.tour_visibility==='private'&&!authority.tourOwner;
+    const redacted=hiddenHouse||hiddenTour;
     let targetSummary;
-    if(redacted)targetSummary=row.tour_share_pass_id?`Private Tour Share Pass #${row.tour_share_pass_id}`:`Private House Share Pass #${row.house_share_pass_id}`;
+    if(redacted)targetSummary=row.tour_share_pass_id?`Private Tour Share Pass #${row.tour_share_pass_id}`:row.house_share_pass_id?`Private House Share Pass #${row.house_share_pass_id}`:'Private report details';
     else if(row.tour_name)targetSummary=`${row.tour_name} — ${row.house_display_name||row.house_name} — @${row.eso_owner}`;
     else targetSummary=`${row.house_display_name||row.house_name} — @${row.eso_owner}`;
     const safe={...row,targetSummary,problemLabel:HOUSING_PROBLEM_TYPES[row.problem_type]||row.problem_type};
-    if(redacted){delete safe.eso_owner;delete safe.house_display_name;delete safe.house_name;delete safe.tour_name;delete safe.explanation;}
+    if(redacted){delete safe.eso_owner;delete safe.house_display_name;delete safe.house_name;delete safe.tour_name;delete safe.explanation;delete safe.tour_id;delete safe.tour_creator_id;delete safe.owner_user_id;delete safe.saved_house_id;}
+    if(hiddenHouse){
+      for(const key of ['destination_id','house_id','house_created_by','house_guild_id','tour_stop_id','stop_id'])delete safe[key];
+    }
+    if(hiddenTour){delete safe.tour_stop_id;delete safe.stop_id;}
     return safe;
   }
 

@@ -435,7 +435,7 @@ test('administration overview renders integrity, freshness, and duplicate health
   } finally { await new Promise(resolve => server.close(resolve)); }
 });
 
-test('export landing page explains Private entries from this guild are included', async () => {
+test('export landing page explains Private entries are excluded', async () => {
   const { server, base } = await running();
   try {
     const { cookie } = await loggedIn(base);
@@ -445,14 +445,14 @@ test('export landing page explains Private entries from this guild are included'
     assert.match(html, /Export Data/);
     assert.match(html, /pc_na/);
     assert.match(html, /current Discord guild/i);
-    assert.match(html, /Private houses and tours originating in this guild/i);
-    assert.match(html, /Private entries from other guilds or environments/i);
+    assert.match(html, /Private houses and tours are excluded/i);
+    assert.doesNotMatch(html, /plus Private houses|Private houses and tours originating in this guild/i);
     assert.match(html, /not a complete database backup/i);
     assert.match(html, /href="\/admin\/export"/);
   } finally { await new Promise(resolve => server.close(resolve)); }
 });
 
-test('backup and export page explains Private inclusion and backend backups', async () => {
+test('backup and export page explains Private exclusion and backend backups', async () => {
   const { server, base } = await running();
   try {
     const { cookie } = await loggedIn(base);
@@ -463,8 +463,8 @@ test('backup and export page explains Private inclusion and backend backups', as
     assert.match(html, /Portable JSON export/i);
     assert.match(html, /SQLite/i);
     assert.match(html, /MariaDB/i);
-    assert.match(html, /Private houses and tours originating in this guild/i);
-    assert.match(html, /Private entries from other guilds or environments/i);
+    assert.match(html, /Private houses and tours are excluded/i);
+    assert.doesNotMatch(html, /plus Private houses|Private houses and tours originating in this guild/i);
     assert.match(html, /not a complete database backup/i);
     assert.match(html, /href="\/admin\/export"/);
   } finally { await new Promise(resolve => server.close(resolve)); }

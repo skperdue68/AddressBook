@@ -53,10 +53,10 @@ export class WebAdminService {
     const row = await one(this.db, `SELECT h.house_id
       FROM houses h JOIN saved_houses sh ON sh.house_id=h.house_id
       WHERE h.house_id=? AND sh.status='active' AND sh.eso_server=?
-        AND (sh.scope='global' OR (sh.scope='public' AND sh.guild_id=?) OR (sh.scope='private' AND sh.origin_guild_id=?))
-      LIMIT 1`, [Number(houseId), String(esoServer), String(guildId), String(guildId)]);
+        AND (sh.scope='global' OR (sh.scope='public' AND sh.guild_id=?))
+      LIMIT 1`, [Number(houseId), String(esoServer), String(guildId)]);
     if (!row) throw new Error('House is not available for this guild and environment.');
-    const updated = await this.maintenance.markVerified({ houseId: Number(houseId), actorId: actor.id, guildId: String(guildId) });
+    const updated = await this.maintenance.markVerified({ houseId: Number(houseId), actorId: actor.id, guildId: String(guildId), esoServer });
     if (!updated) throw new Error('House is not available.');
     return { houseId: Number(houseId), verified: true };
   }
@@ -65,7 +65,7 @@ export class WebAdminService {
     if (!keepId || !removeId || !guildId || !esoServer || !actor.id || Number(keepId) === Number(removeId)) throw new Error('Duplicate entries are not available.');
     return this.maintenance.mergeDuplicate({
       keepId: Number(keepId), removeId: Number(removeId), actorId: actor.id, guildId: String(guildId), esoServer: String(esoServer),
-      allowPrivate: true, actorGlobalName: actor.globalName || null, actorDisplayName: actor.displayName || null, auditAction: 'web_merge_duplicate_house'
+      allowPrivate: false, actorGlobalName: actor.globalName || null, actorDisplayName: actor.displayName || null, auditAction: 'web_merge_duplicate_house'
     });
   }
 
@@ -120,6 +120,6 @@ export class WebAdminService {
   }
 
   exportGuild({ guildId, esoServer } = {}) {
-    return this.dataExport.toJson({ guildId, esoServer, includePrivate: 'guild' });
+    return this.dataExport.toJson({ guildId, esoServer, includePrivate: false });
   }
 }

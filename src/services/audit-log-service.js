@@ -19,22 +19,39 @@ const filters = ({ guildId, action, entityType, target }) => {
   return { clause: where.length ? `WHERE ${where.join(' AND ')}` : '', params };
 };
 
+// Historical names and free-form details can contain Private source records, even
+// when the target is now public. Only expose a current, provably public target.
+// Compare textual IDs exactly: SQL numeric coercion could match "1secret" to 1.
+const visibleAudit = `(
+  SELECT a.id,a.guild_id,a.guild_name,a.actor_id,a.actor_global_name,a.actor_display_name,
+    a.action,a.entity_type,a.entity_id,
+    CASE WHEN a.entity_type='saved_house' THEN h.display_name
+         WHEN a.entity_type='tour' THEN t.name ELSE NULL END AS entity_name,
+    NULL AS details,a.created_at
+  FROM audit_log a
+  LEFT JOIN saved_houses h ON a.entity_type='saved_house' AND a.entity_id=CAST(h.id AS CHAR)
+  LEFT JOIN tours t ON a.entity_type='tour' AND a.entity_id=CAST(t.id AS CHAR)
+  WHERE (a.entity_type='saved_house' AND (h.scope='global' OR (h.scope='public' AND h.guild_id=a.guild_id)))
+     OR (a.entity_type='tour' AND (t.visibility='global' OR (t.visibility='public' AND t.guild_id=a.guild_id)))
+     OR (a.entity_type='guild' AND a.entity_id=a.guild_id)
+) visible_audit`;
+
 export class AuditLogService {
   constructor(db) { this.db = db; }
 
   async list({ guildId = null, page = 1, action = null, entityType = null, target = null, pageSize: requested = 10 } = {}) {
     const size = pageSize(requested); const currentPage = auditPage(page);
     const { clause, params } = filters({ guildId, action, entityType, target });
-    const total = await one(this.db, `SELECT count(*) c FROM audit_log ${clause}`, params);
+    const total = await one(this.db, `SELECT count(*) c FROM ${visibleAudit} ${clause}`, params);
     const rows = await this.db.query(`SELECT id,guild_id,guild_name,actor_id,actor_global_name,actor_display_name,action,entity_type,entity_id,entity_name,details,created_at
-      FROM audit_log ${clause} ORDER BY id DESC LIMIT ? OFFSET ?`, [...params, size, (currentPage - 1) * size]);
+      FROM ${visibleAudit} ${clause} ORDER BY id DESC LIMIT ? OFFSET ?`, [...params, size, (currentPage - 1) * size]);
     return { rows, page: currentPage, pageSize: size, total: Number(total?.c || 0), hasNext: currentPage * size < Number(total?.c || 0) };
   }
 
   async exportCsv({ guildId, action = null, entityType = null, target = null } = {}) {
     if (!guildId) throw new Error('A guild is required to export the audit log.');
     const { clause, params } = filters({ guildId, action, entityType, target });
-    const rows = await this.db.query(`SELECT ${csvColumns.join(',')} FROM audit_log ${clause} ORDER BY id DESC`, params);
+    const rows = await this.db.query(`SELECT ${csvColumns.join(',')} FROM ${visibleAudit} ${clause} ORDER BY id DESC`, params);
     return `${csvColumns.join(',')}\r\n${rows.map(row => csvColumns.map(column => csvCell(row[column], column)).join(',')).join('\r\n')}${rows.length ? '\r\n' : ''}`;
   }
 }

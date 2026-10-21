@@ -25,7 +25,7 @@ test('guild export preserves environment and excludes unrelated private data', a
   } finally { await closeDatabase(db); }
 });
 
-test('guild administration export includes Private houses and tours from its guild and environment', async () => {
+test('guild administration export excludes every other users Private record even with the legacy guild option', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'addressbook-export-private-'));
   const db = openDatabase({ DB_TYPE: 'sqlite', DATABASE_PATH: path.join(dir, 'export.sqlite') });
   try {
@@ -37,11 +37,11 @@ test('guild administration export includes Private houses and tours from its gui
     await db.query("INSERT INTO tour_stops(id,tour_id,position,saved_house_id) VALUES(1,1,1,1),(2,2,1,2),(3,3,1,3),(4,4,1,4)");
     await db.query("INSERT INTO house_comments(saved_house_id,destination_id,discord_user_id,comment_text) VALUES(1,1,'u1','Private note'),(2,1,'u2','Other note')");
     const result = await new DataExportService(db).exportGuild({ guildId: 'g1', esoServer: 'pc_na', includePrivate: 'guild' });
-    assert.deepEqual(result.houses.map(row => row.id), [1]);
-    assert.deepEqual(result.tours.map(row => row.id), [1]);
-    assert.deepEqual(result.stops.map(row => row.id), [1]);
-    assert.deepEqual(result.comments.map(row => row.comment_text), ['Private note']);
-    assert.equal(result.includePrivate, true);
+    assert.deepEqual(result.houses, []);
+    assert.deepEqual(result.tours, []);
+    assert.deepEqual(result.stops, []);
+    assert.deepEqual(result.comments, []);
+    assert.equal(result.includePrivate, false);
   } finally { await closeDatabase(db); }
 });
 
@@ -88,4 +88,17 @@ test('guild export omits tour stops pointing at another owner’s Private house'
     assert.deepEqual(result.houses,[]);
     assert.deepEqual(result.stops,[]);
   }finally{await closeDatabase(db);}
+});
+
+
+test('administrative JSON excludes audit metadata that may refer to Private content',async()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'ab-private-audit-export-'));
+ const db=openDatabase({DB_TYPE:'sqlite',DATABASE_PATH:path.join(dir,'export.sqlite')});
+ try{
+  await migrate(db);
+  await db.query("INSERT INTO audit_log(guild_id,actor_id,action,entity_type,entity_id,entity_name,details) VALUES('g1','owner','delete_house','saved_house','999','Deleted secret house',?)",[JSON.stringify({scope:'private'})]);
+  const result=await new DataExportService(db).exportGuild({guildId:'g1',esoServer:'pc_na'});
+  assert.deepEqual(result.audit,[]);
+  assert.doesNotMatch(JSON.stringify(result),/Deleted secret house/);
+ }finally{await closeDatabase(db);}
 });

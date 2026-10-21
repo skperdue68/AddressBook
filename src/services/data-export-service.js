@@ -8,14 +8,13 @@ export class DataExportService {
 
   async exportGuild({ guildId, esoServer, userId = null, includePrivate = false } = {}) {
     const guild = String(guildId); const server = String(esoServer || '');
-    const privateForGuild = includePrivate === 'guild';
     const privateForUser = includePrivate === true && userId != null;
     const settings = await one(this.db, 'SELECT * FROM guild_settings WHERE guild_id=?', [guild]);
-    const privateHouses = privateForGuild ? " OR (scope='private' AND origin_guild_id=?)" : privateForUser ? " OR (scope='private' AND owner_user_id=?)" : '';
-    const houses = await this.db.query(`SELECT * FROM saved_houses WHERE eso_server=? AND ((scope='public' AND guild_id=?) OR scope='global'${privateHouses}) ORDER BY id`, [server, guild, ...(privateForGuild ? [guild] : privateForUser ? [String(userId)] : [])]);
+    const privateHouses = privateForUser ? " OR (scope='private' AND owner_user_id=?)" : '';
+    const houses = await this.db.query(`SELECT * FROM saved_houses WHERE eso_server=? AND ((scope='public' AND guild_id=?) OR scope='global'${privateHouses}) ORDER BY id`, [server, guild, ...(privateForUser ? [String(userId)] : [])]);
     const houseIds = ids(houses); const houseClause = houseIds.length ? `saved_house_id IN (${placeholders(houseIds)})` : '1=0';
-    const privateTours = privateForGuild ? " OR (visibility='private' AND origin_guild_id=?)" : privateForUser ? " OR (visibility='private' AND creator_id=?)" : '';
-    const tours = await this.db.query(`SELECT * FROM tours WHERE eso_server=? AND ((visibility='public' AND guild_id=?) OR visibility='global'${privateTours}) ORDER BY id`, [server, guild, ...(privateForGuild ? [guild] : privateForUser ? [String(userId)] : [])]);
+    const privateTours = privateForUser ? " OR (visibility='private' AND creator_id=?)" : '';
+    const tours = await this.db.query(`SELECT * FROM tours WHERE eso_server=? AND ((visibility='public' AND guild_id=?) OR visibility='global'${privateTours}) ORDER BY id`, [server, guild, ...(privateForUser ? [String(userId)] : [])]);
     const tourIds = ids(tours); const tourClause = tourIds.length ? `tour_id IN (${placeholders(tourIds)})` : '1=0';
     const stops = await this.db.query(`SELECT * FROM tour_stops WHERE ${tourClause} AND ${houseClause} ORDER BY tour_id,position`, [...tourIds,...houseIds]);
     const events = await this.db.query(`SELECT * FROM tour_events WHERE eso_server=? AND guild_id=? AND ${tourIds.length ? `tour_id IN (${placeholders(tourIds)})` : '1=0'} ORDER BY id`, [server, guild, ...tourIds]);
@@ -26,8 +25,10 @@ export class DataExportService {
         OR (f.target_kind='tour' AND t.eso_server=? AND (t.visibility='global' OR (t.visibility='public' AND t.guild_id=?))))
       ORDER BY f.position,f.id`, [guild,this.db.type==='mariadb'?new Date():new Date().toISOString(),server,guild,server,guild]);
     const comments = await this.db.query(`SELECT * FROM house_comments WHERE ${houseClause} ORDER BY saved_house_id,id`, houseIds);
-    const audit = await this.db.query('SELECT id,guild_id,guild_name,actor_id,actor_global_name,actor_display_name,action,entity_type,entity_id,entity_name,details,created_at FROM audit_log WHERE guild_id=? ORDER BY id', [guild]);
-    return { format: 'addressbook-export', version: '1.0.59', exportedAt: new Date().toISOString(), guildId: guild, esoServer: server, includePrivate: privateForGuild || privateForUser, settings, houses, tours, stops, events, featured, comments, audit };
+    // Audit metadata can reference hidden or deleted Private content.
+    // Use the separately privacy-filtered audit UI/CSV instead of embedding it.
+    const audit = [];
+    return { format: 'addressbook-export', version: '1.0.59', exportedAt: new Date().toISOString(), guildId: guild, esoServer: server, includePrivate: privateForUser, settings, houses, tours, stops, events, featured, comments, audit };
   }
 
   async toJson(options = {}) { return JSON.stringify(await this.exportGuild(options), null, 2); }
