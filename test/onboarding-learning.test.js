@@ -52,6 +52,6 @@ test('Help & Learning exposes replay, What’s New, and bounded topic shortcuts'
   }
 });
 
-test('current release notes describe weekly Featured, moderator access, and tour ordering',()=>{
- const text=JSON.stringify(whatsNewPayload());assert.match(text,/seven days/);assert.match(text,/Help/);assert.match(text,/stop order/);assert.match(text,/whatsnew:ack:1\.0\.60/);
+test('current release notes explain bot ownership and the new Home actions',()=>{
+ const text=JSON.stringify(whatsNewPayload());assert.match(text,/BOT_OWNER_IDS/);assert.match(text,/Random House/);assert.match(text,/Featured Housing/);assert.match(text,/whatsnew:ack:1\.0\.61/);
 });

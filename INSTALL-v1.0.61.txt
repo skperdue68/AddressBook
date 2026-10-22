@@ -1,0 +1,21 @@
+AddressBook v1.0.61 upgrade
+
+1. Stop AddressBook and back up the application, .env, and database.
+2. Update the complete application source to v1.0.61. Preserve .env and data.
+3. Add BOT_OWNER_IDS to your .env using your numeric Discord user ID:
+   BOT_OWNER_IDS=123456789012345678
+   Multiple owners: BOT_OWNER_IDS=123456789012345678,234567890123456789
+   Replace those examples with real user IDs. Usernames and role IDs do not work.
+4. Run npm ci, then start the bot. Restart after any owner ID changes.
+
+No database migration beyond schema 11, new dependencies, or command deployment
+is required. Docker Compose already reads .env through env_file.
+Owners automatically have every AddressBook role permission and Global access in
+all supported ESO environments. They can approve and revoke Global grants.
+Existing role-based Server administration and individual Server grants still work.
+The legacy GLOBAL_MODERATOR_APPROVER_USER_IDS setting stays approval-only.
+Private houses and tours remain owner-only. No Discord roles are assigned.
+
+Home now offers Search Houses, Search Housing Tours, Register New House, Random
+House, Featured Housing, My Address Book, authorized Administration, then Help.
+Featured configuration has Back to Administration; public lists return Home.

@@ -1,15 +1,16 @@
 const b=(customId,label,style='secondary')=>({customId,label,style});
 
 export function homeButtonSpecs(isAdmin=false){
-  const out=[
+  return [
     {...b('hu:find','Search Houses','primary'),emoji:'🔎'},
+    {...b('hu:tours','Search Housing Tours','secondary'),emoji:'🗺️'},
     {...b('hu:register','Register New House','success'),emoji:'➕'},
-    {...b('hu:tours','Housing Tours','secondary'),emoji:'🗺️'},
-    {...b('hu:my','My AddressBook','primary'),emoji:'📖'},
+    {...b('hu:random','Random House','primary'),emoji:'🎲'},
+    {...b('hu:featured','Featured Housing','primary'),emoji:'⭐'},
+    {...b('hu:my','My Address Book','primary'),emoji:'📖'},
+    ...(isAdmin?[{...b('hu:admin','Administration','secondary'),emoji:'⚙️'}]:[]),
     {...b('hu:help','Help','secondary'),emoji:'❓'}
   ];
-  if(isAdmin)out.push({...b('hu:admin','Administration','secondary'),emoji:'⚙️'});
-  return out;
 }
 export function toursButtonSpecs(){ return [{...b('hu:tours:start','Start a Tour','success'),emoji:'▶️'},b('hu:tours:browse','Browse Tours','primary'),{...b('hu:tours:create','Create Tour','secondary'),emoji:'➕'},b('hu:tours:featured','Featured Housing','primary'),{...b('hu:home','Back','secondary'),emoji:'↩️'}]; }
 export function tourDetailButtonSpecs(canEdit=false){ const out=[{...b('hu:tour:start','Start a Tour','success'),emoji:'▶️'}]; if(canEdit)out.push(b('hu:tour:manage','Edit Tour','secondary')); out.push({...b('hu:tours','Back','secondary'),emoji:'↩️'}); return out; }

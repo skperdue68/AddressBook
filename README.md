@@ -1,6 +1,6 @@
 # AddressBook
 
-**Version 1.0.60** · A menu-driven Discord bot for Elder Scrolls Online housing.
+**Version 1.0.61** · A menu-driven Discord bot for Elder Scrolls Online housing.
 
 Discover houses, save addresses, leave comments, and organize guided tours. Members access everything through one command:
 
@@ -12,12 +12,14 @@ Discover houses, save addresses, leave comments, and organize guided tours. Memb
 
 ## Features
 
-- **Housing discovery:** Search by house, owner, tags, zone, style, size, and visibility, or try Surprise Me.
-- **My AddressBook:** Save houses, Favorites, visit status, and reusable searches.
+- **Housing discovery:** Search by house, owner, tags, zone, style, size, and visibility, or choose Random House from Home.
+- **My Address Book:** Save houses, Favorites, visit status, and reusable searches.
 - **Housing tours:** Create Global, Server, or Private routes; run them self-paced or lead a shared tour.
 - **Share Passes:** Share revocable access to a house or tour. Choose a channel, optionally select an existing active thread, then confirm before posting.
 - **Featured Housing:** Featured Houses rotate every seven days; manually curate houses between refreshes and keep Featured Tours selected.
 - **Administration:** Review submissions and reports, manage roles and Server Moderator requests, inspect audit history, and export data through Discord or an optional web console.
+
+Home offers Search Houses, Search Housing Tours, Register New House, Random House, Featured Housing, My Address Book, authorized Administration, and Help.
 
 First-time users can take **Show Me Around**. **Help & Learning** provides feature guides and release notes.
 
@@ -52,7 +54,7 @@ docker compose up -d --build
 
 Compose persists SQLite data under `./data`. MariaDB is not bundled. See the [administration guide](docs/administration.md) for web console access with Docker.
 
-Upgrading an existing installation? Back up your application, `.env`, and database first. See the [v1.0.60 upgrade instructions](INSTALL-v1.0.60.txt).
+Upgrading an existing installation? Back up your application, `.env`, and database first. See the [v1.0.61 upgrade instructions](INSTALL-v1.0.61.txt).
 
 ## Configuration
 
@@ -86,7 +88,7 @@ AddressBook cannot bypass ESO visitor permissions. Environment changes require c
 
 - [Member guide](docs/member-guide.md): search, houses, tours, Featured Housing, Share Passes, and privacy.
 - [Administration and operations](docs/administration.md): permissions, web console, databases, exports, and legacy recovery.
-- [Upgrade instructions](INSTALL-v1.0.60.txt): installing v1.0.60 and its additive schema update.
+- [Upgrade instructions](INSTALL-v1.0.61.txt): installing v1.0.61 and configuring bot owners.
 - [User and administrator guide (Word)](AddressBook_v1.0.58_User_Admin_Guide.docx): general operation, written for v1.0.58.
 - [Detailed current-state reference](docs/AddressBook-v1.0.0-Current-State.md): additional technical and behavioral detail.
 

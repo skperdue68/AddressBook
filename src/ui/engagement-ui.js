@@ -54,7 +54,7 @@ export function eventStartPreflightPayload({event,tour,readiness,environmentLabe
   return {embeds:[new EmbedBuilder().setColor(blocking.length?0xd9534f:advisories.length?0xe6a817:0x2f9e44).setTitle('▶️ Tour Preflight').setDescription(discordDescription(description))],components:[row(actions)]};
 }
 
-export function featuredPayload({ items = [], canManage = false, selectedItem = null, nextRotationAt = null } = {}) {
+export function featuredPayload({ items = [], canManage = false, selectedItem = null, nextRotationAt = null, backId = null } = {}) {
   const embed = new EmbedBuilder().setColor(0x2b7ddd).setTitle('⭐ Featured Housing').setDescription(discordDescription(items.length ? items.map(item => `**${item.position}.** ${displayText(item.target_name,'Untitled',200)} — ${item.target_kind === 'tour' ? 'Tour' : 'House'}${item.expires_at ? ` · expires <t:${Math.floor(new Date(item.expires_at).getTime()/1000)}:R>` : ' · never expires'}`).join('\n') : 'No Featured housing has been selected yet.'));
   embed.setFooter({text:'Featured Houses rotate every seven days, including manual selections. Featured Tours stay selected.'});
   if(nextRotationAt)embed.addFields({name:'Next house refresh',value:`<t:${Math.floor(new Date(nextRotationAt).getTime()/1000)}:F>`});
@@ -63,13 +63,14 @@ export function featuredPayload({ items = [], canManage = false, selectedItem = 
     embed.addFields({name:discordTitle(`🏠 ${item.position}. ${label} — @${owner}`),value:`**Jump in ESO**\n\`\`\`text\n${buildJumpScript(owner,item.house_id)}\n\`\`\`\n**Housing Link**\n\`\`\`text\n${buildHousingLink(owner,item.house_id)}\n\`\`\``});
   }
   const selector = canManage && items.length ? new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId('hu:featured:select').setPlaceholder('Choose a Featured entry to manage').addOptions(items.slice(0, 25).map(item => ({ label: `${item.position}. ${String(item.target_name || 'Untitled').slice(0, 80)}`, value: `${item.target_kind}:${item.target_id}`, description: item.target_kind === 'tour' ? 'Tour' : 'House' })))) : null;
+  const source=canManage?'admin':backId==='hu:home'?'home':'viewer';
   const houses=items.filter(item=>item.target_kind==='house').slice(0,5);
-  const houseOpens=houses.length?row(houses.map(item=>button(`hu:featured:house:${item.target_id}:${canManage?'admin':'viewer'}`,`Open House ${item.position}`,ButtonStyle.Primary))):null;
+  const houseOpens=houses.length?row(houses.map(item=>button(`hu:featured:house:${item.target_id}:${source}`,`Open House ${item.position}`,ButtonStyle.Primary))):null;
   const tours=items.filter(item=>item.target_kind==='tour').slice(0,5);
-  const tourOpens=tours.length?row(tours.map(item=>button(`hu:featured:tour:${item.target_id}:${canManage?'admin':'viewer'}`,`Open Tour ${item.position}`,ButtonStyle.Primary))):null;
+  const tourOpens=tours.length?row(tours.map(item=>button(`hu:featured:tour:${item.target_id}:${source}`,`Open Tour ${item.position}`,ButtonStyle.Primary))):null;
   const categoryCount=selectedItem?items.filter(item=>item.target_kind===selectedItem.target_kind).length:0;
   const managementRows = selectedItem ? [row([button(`hu:featured:move:${selectedItem.target_kind}:${selectedItem.target_id}:${Math.max(1, Number(selectedItem.position) - 1)}`, '↑', ButtonStyle.Secondary, Number(selectedItem.position) <= 1), button(`hu:featured:move:${selectedItem.target_kind}:${selectedItem.target_id}:${Math.min(categoryCount, Number(selectedItem.position) + 1)}`, '↓', ButtonStyle.Secondary, Number(selectedItem.position) >= categoryCount), button(`hu:featured:remove:${selectedItem.target_kind}:${selectedItem.target_id}`, `Remove ${selectedItem.position}`, ButtonStyle.Danger), button(`hu:featured:expire:${selectedItem.target_kind}:${selectedItem.target_id}`, 'Expiration')])] : [];
-  const controls=canManage?[button('hu:featured:add:house','Add House'),button('hu:featured:add:tour','Add Tour'),button('hu:admin','Administration')]:[button('hu:tours','Back')];
+  const controls=canManage?[button('hu:featured:add:house','Add House'),button('hu:featured:add:tour','Add Tour'),button(backId||'hu:admin','Back to Administration')]:[button(backId||'hu:tours','Back')];
   return { embeds: [embed], components: [...(selector ? [selector] : []), ...(houseOpens?[houseOpens]:[]), ...(tourOpens?[tourOpens]:[]), ...managementRows, row(controls)] };
 }
 

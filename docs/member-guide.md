@@ -37,7 +37,7 @@ Search Houses initially displays all accessible houses and then lets the member 
 
 Filtered results can be saved by name and reopened from **My AddressBook → Saved Searches**. Saved searches can be run, renamed, replaced with the current filters, or deleted. They store criteria rather than result IDs, so every run applies the current Discord server, ESO environment, and access permissions. Invalid or future-version filter data fails closed instead of becoming an unfiltered search.
 
-**Surprise Me** selects from the complete accessible result set, including results beyond the current 25-item Discord page. **Another Surprise** avoids immediately repeating the same destination when another result is available.
+**Random House** selects from the complete accessible result set, including results beyond the current 25-item Discord page. **Another Surprise** avoids immediately repeating the same destination when another result is available.
 
 Register New House accepts an official house name or ID, an ESO Housing Link, a Jump to Specific House command, or the owner and numeric house ID portion such as:
 
@@ -130,7 +130,7 @@ Share Passes are bound to one ESO environment. Changing a guild's environment re
 
 Browse Tours keeps its selected tour and navigation controls when you return from Start a Tour preflight.
 
-Featured houses have Open House buttons for details and comments. Returning from Comments preserves expanded house details, and Back returns to the originating Featured Housing screen. In browsable house lists, expanded details also persist when using Previous and Next, including for Non-Player homes. Opening a saved result checks current visibility, guild, ESO environment, and record status so stale list entries cannot expose inaccessible houses. Surprise Me also rechecks each pick, skips inaccessible saved houses, and shows an empty state when no accessible result remains. Featured tours have Open Tour buttons. Tour cards and Start a Tour preflight return to the Featured Housing screen where they were opened.
+Featured houses have Open House buttons for details and comments. Returning from Comments preserves expanded house details, and Back returns to the originating Featured Housing screen. In browsable house lists, expanded details also persist when using Previous and Next, including for Non-Player homes. Opening a saved result checks current visibility, guild, ESO environment, and record status so stale list entries cannot expose inaccessible houses. Random House also rechecks each pick, skips inaccessible saved houses, and shows an empty state when no accessible result remains. Featured tours have Open Tour buttons. Tour cards and Start a Tour preflight return to the Featured Housing screen where they were opened.
 
 Reordering Featured Housing retains an entry’s expiration date.
 
@@ -147,3 +147,9 @@ Search results still support multiple selection across pages. Previously selecte
 ## Requesting moderator access
 
 Open **Help → Moderator Access**. **Request Server Moderator Access** applies to the current Discord server and is reviewed by its current AddressBook Server administrators. **Request Global Moderator Access** uses the existing centralized approval workflow for the current ESO environment. Neither grant exposes another member’s Private houses or tours.
+
+## Main menu
+
+The main screen is ordered Search Houses, Search Housing Tours, Register New House, Random House, Featured Housing, My Address Book, Administration (when authorized), and Help. Random House chooses from accessible registered Global, Server, and your own Private houses in the current ESO environment; it excludes Non-Player catalog homes and other users’ Private houses. Another Random House avoids the previous destination when alternatives exist. Back returns Home. It is no longer a search-results action.
+
+Featured Housing is also available directly from Home. Opening a featured house or tour retains a path to that list and Home. Administrators configure Featured Housing where they do now; its management screen has Back to Administration.
