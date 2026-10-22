@@ -1,3 +1,4 @@
+import {registrationTourActions} from './registration-tour-ui.js';
 import {
   ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelSelectMenuBuilder, ChannelType,
   EmbedBuilder, LabelBuilder, ModalBuilder, RoleSelectMenuBuilder, StringSelectMenuBuilder,
@@ -30,12 +31,12 @@ function homeButtonRows(isAdmin){
   const groups=[
     [by('hu:find'),by('hu:register')],
     [by('hu:tours'),by('hu:my')],
-    [by('hu:help'),by('hu:globalmod')],
+    [by('hu:help')],
     ...(isAdmin?[[by('hu:admin')]]:[])
   ];
   return groups.map(group=>new ActionRowBuilder().addComponents(...group.filter(Boolean).map(button)));
 }
-export function homePayload({isAdmin=false,version='1.0.59',esoServer=null,adminInterface=adminInterfaceMode()}={}){ const environment=esoServer?`\n\n**ESO environment:** ${esoServerLabel(esoServer)}`:''; const adminNote=adminInterface==='web'?'\n\n**Administration:** Use the companion web console.':''; return {embeds:[embed('🏠 AddressBook',`Your ESO housing directory and tour guide.\n\nFind saved homes, keep a Private address book, share Server or Global destinations, and lead or follow housing tours—all without memorizing commands.${environment}${adminNote}`).setFooter({text:`AddressBook • Version ${version} • Start anytime with /housing`})],components:homeButtonRows(isAdmin)}; }
+export function homePayload({isAdmin=false,version='1.0.60',esoServer=null,adminInterface=adminInterfaceMode()}={}){ const environment=esoServer?`\n\n**ESO environment:** ${esoServerLabel(esoServer)}`:''; const adminNote=adminInterface==='web'?'\n\n**Administration:** Use the companion web console.':''; return {embeds:[embed('🏠 AddressBook',`Your ESO housing directory and tour guide.\n\nFind saved homes, keep a Private address book, share Server or Global destinations, and lead or follow housing tours—all without memorizing commands.${environment}${adminNote}`).setFooter({text:`AddressBook • Version ${version} • Start anytime with /housing`})],components:homeButtonRows(isAdmin)}; }
 
 export function environmentSetupPayload({message=null}={}){
   const select=new StringSelectMenuBuilder().setCustomId('hu:environment:setup').setPlaceholder('Choose this Discord server’s ESO environment…').addOptions(esoServerOptions().map(option=>({label:option.label,value:option.value,description:`Use ${option.label} houses, tours, and Global results`})));
@@ -55,7 +56,7 @@ export function onboardingPayload({page=0}={}){
     2:{title:'Introduction 2 of 7 — Register in Seconds',description:'Save a destination without memorizing a complicated format.',fields:[['Flexible destination input','Paste an ESO Housing Link, a jump command, `("@Owner", 62)`, or enter an owner and part of the official house name.'],['Choose visibility','Global shares within the exact ESO environment, Server stays in this Discord server, and Private belongs only to you.']]},
     3:{title:'Introduction 3 of 7 — Visit and Explore',description:'House cards keep the useful ESO actions together and easy to copy.',fields:[['Copy-ready commands','Jump in ESO, Unfurnished Preview, and Housing Link each appear in a separate code block.'],['Helpful context','See house details, who submitted it, its visibility, comments, and every visible tour that includes it.']]},
     4:{title:'Introduction 4 of 7 — Your AddressBook',description:'My AddressBook is your private dashboard for work you created or recently used.',fields:[['Keep moving','Open My Houses, My Tours, Pending submissions, Recently Viewed, or resume an active tour.'],['Older data','If an older house or tour has no ESO environment, preview and assign your eligible legacy records here.']]},
-    5:{title:'Introduction 5 of 7 — Build and Follow Tours',description:'Create a tour manually or build one from filtered search results, then arrange its route and stop notes.',fields:[['Self-Paced','Each visitor advances privately at their own speed and can resume progress later.'],['Shared','The route appears in a channel for the group, while only the tour leader controls navigation.'],['Events','Schedule an event from tour management so members can RSVP and receive optional DM reminders.']]},
+    5:{title:'Introduction 5 of 7 — Build and Follow Tours',description:'Create a tour manually or build one from filtered search results, then arrange its route and stop notes.',fields:[['Self-Paced','Each visitor advances privately at their own speed and can resume progress later.'],['Shared','The route appears in a channel for the group, while only the tour leader controls navigation.']]},
     6:{title:'Introduction 6 of 7 — Share Without Going Public',description:'A Share Pass can post a house or tour to a channel without changing its normal visibility.',fields:[['Stay in control','Revoke passes when they are no longer needed. Tour Pass visitors receive independent Self-Paced sessions.'],['Make your own copy','When a pass is the only reason you can see someone else’s Private house, Copy House lets you review and save an editable entry of your own.']]},
     7:{title:'Introduction 7 of 7 — Visibility and Safety',description:'AddressBook keeps discovery boundaries predictable: Global, then Server, then Private.',fields:[['Environment boundary','Global content is shared only between Discord servers configured for the exact same ESO environment.'],['Community tools','Report misleading, inappropriate, or inaccessible listings. Housing and Global Moderators receive the applicable review queues.']]}
   };
@@ -137,12 +138,13 @@ export function environmentChangePreviewPayload(preview){
   );
   return {embeds:[e],components:buttonRows([{customId:`hu:environment:confirm:${preview.toEsoServer}:${preview.fingerprint}`,label:`Confirm Change to ${esoServerLabel(preview.toEsoServer)}`,style:'danger'},{customId:'hu:admin',label:'Cancel',style:'secondary'}])};
 }
-export function myPendingPayload({houses=[],requests=[]}={}){
+export function myPendingPayload({houses=[],requests=[],serverRequests=[]}={}){
   const lines=[];
   for(const house of houses.slice(0,15))lines.push(`• **${destinationLabel(house)}** — ${house.scope==='global'?'Global':'Server'} house`);
   for(const request of requests.slice(0,5))lines.push(`• **Global Moderator Access** — requested <t:${unixTime(request.requested_at)}:R>`);
-  const total=houses.length+requests.length;
-  const description=total?`${lines.join('\n')}${total>lines.length?`\n…and ${total-lines.length} more`:''}\n\nThese requests remain here until an authorized moderator approves or denies them.`:'You have no pending house submissions or Global Moderator access requests.';
+  for(const request of serverRequests.slice(0,5))lines.push(`• **Server Moderator Access** — requested <t:${unixTime(request.requested_at)}:R>`);
+  const total=houses.length+requests.length+serverRequests.length;
+  const description=total?`${lines.join('\n')}${total>lines.length?`\n…and ${total-lines.length} more`:''}\n\nThese requests remain here until an authorized moderator approves or denies them.`:'You have no pending house submissions or moderator access requests.';
   const actions=[];if(!total)actions.push({customId:'hu:register',label:'Register a House',style:'success'});actions.push({customId:'hu:my',label:'Back to My AddressBook',style:'secondary',emoji:'↩️'});
   return {embeds:[embed('⏳ My Pending Requests',description)],components:buttonRows(actions)};
 }
@@ -152,14 +154,14 @@ export function helpPayload({backId='hu:home'}={}){
     .addFields(
       {name:'🔎 Search Houses',value:'Search Global houses in this ESO environment, this server’s Server houses, your Private houses, and optionally Non-Player Homes.'},
       {name:'➕ Register New House',value:'Register a house with Global, Server, or Private visibility. Global and Server submissions use this server’s registration policy; Private houses remain visible only to you.'},
-      {name:'🗺️ Housing Tours',value:'Follow Global, Server, or Private tours in Self Paced or Shared mode. Eligible stops are selected automatically by visibility. Browse Upcoming Events and Featured Housing from this menu.'},
-      {name:'📖 My AddressBook',value:'Open your personal dashboard for your houses, tours, pending requests, recently viewed destinations, and persistent Self-Paced Tour Progress. RSVP to events and optionally receive DM reminders.'},
+      {name:'🗺️ Housing Tours',value:'Follow Global, Server, or Private tours in Self Paced or Shared mode. Eligible stops are selected automatically by visibility. Browse Featured Housing from this menu.'},
+      {name:'📖 My AddressBook',value:'Open your personal dashboard for your houses, tours, pending requests, recently viewed destinations, and persistent Self-Paced Tour Progress.'},
       {name:'⚙️ Administration',value:'Authorized Housing Moderators can manage policy, roles, and the AddressBook channel from the Administration button.'}
     );
-  return {embeds:[e],components:buttonRows([{customId:'hu:help:learning',label:'Show Introduction Again',style:'primary'},{customId:backId,label:'Back',style:'secondary',emoji:'↩️'}])};
+  return {embeds:[e],components:buttonRows([{customId:'hu:help:moderators',label:'Moderator Access',style:'secondary'},{customId:'hu:help:learning',label:'Show Introduction Again',style:'primary'},{customId:backId,label:'Back',style:'secondary',emoji:'↩️'}])};
 }
 
-export function helpLearningPayload({latestVersion='1.0.59',seenVersion=null,acknowledgedFeatures=[]}={}){
+export function helpLearningPayload({latestVersion='1.0.60',seenVersion=null,acknowledgedFeatures=[]}={}){
   const current=seenVersion===latestVersion?'You have seen the current walkthrough.':'There is a current walkthrough and release guide available.';
   const e=embed('📚 Help & Learning',`${current}\n\nReplay the full **Show Me Around** walkthrough, review the latest changes, or jump directly to one topic.\n\n**Current release:** ${latestVersion}`);
   return {embeds:[e],components:buttonRows([
@@ -167,16 +169,16 @@ export function helpLearningPayload({latestVersion='1.0.59',seenVersion=null,ack
     {customId:'hu:help:whatsnew',label:'What’s New',style:'success',disabled:acknowledgedFeatures.includes(`whats-new-${latestVersion}`)},
     {customId:'hu:help:topic:search',label:'Search Houses',style:'secondary'},
     {customId:'hu:help:topic:houses',label:'Register & Manage Houses',style:'secondary'},
-    {customId:'hu:help:topic:tours',label:'Tours & Events',style:'secondary'},
+    {customId:'hu:help:topic:tours',label:'Housing Tours',style:'secondary'},
     {customId:'hu:help:topic:sharing',label:'Sharing & Passes',style:'secondary'},
     {customId:'hu:help:topic:administration',label:'Administration',style:'secondary'},
     {customId:'hu:help',label:'Back to Help',style:'secondary',emoji:'↩️'}
   ])};
 }
 
-export function whatsNewPayload({latestVersion='1.0.59',acknowledgedFeatures=[]}={}){
+export function whatsNewPayload({latestVersion='1.0.60',acknowledgedFeatures=[]}={}){
   const key=`whats-new-${latestVersion}`,seen=acknowledgedFeatures.includes(key);
-  const e=embed(`✨ What’s New in AddressBook ${latestVersion}`,'Tour Share Passes now offer a paginated channel picker, including forum and media channels. Choose a channel to post in, or select an existing active thread / forum post. You can also paste a channel or thread link / ID, including an older unlocked thread. Posting checks both your permissions and AddressBook’s permissions. Earlier shared-tour and event text fixes are included.');
+  const e=embed(`✨ What’s New in AddressBook ${latestVersion}`,'Featured Houses now rotate every seven days. Moderator access requests live under Help; current AddressBook Server administrators can approve Server requests. Add an active registered house straight to a tour, recover from unknown house names, and review or adjust selected stop order before saving. Scheduled events and reminders have been retired.');
   return {embeds:[e],components:buttonRows([{customId:`hu:help:whatsnew:ack:${latestVersion}`,label:seen?'Seen ✓':'Acknowledge What’s New',style:'success',disabled:seen},{customId:'hu:help:learning',label:'Back to Help & Learning',style:'secondary',emoji:'↩️'}])};
 }
 
@@ -184,7 +186,7 @@ export function learningTopicPayload(topic='search'){
   const topics={
     search:['🔎 Search Houses','Search starts with all homes populated. Use Filters for house name, owner, tags, themes, zone, style, classification, size/type, visibility, Non-Player homes, and houses not currently on a Server or Global tour.','hu:find','Open Search Houses'],
     houses:['🏠 Houses','Register Global, Server, or Private houses. Private records remain yours unless you explicitly share them; house details retain submitter, visibility, comments, and visible tour associations.','hu:register','Register a House'],
-    tours:['🗺️ Tours & Events','Create Global, Server, or Private tours with visibility-eligible stops. Shared tours use one leader-controlled route; Self Paced tours advance privately. Upcoming Events add RSVP and optional DM reminders.','hu:tours','Open Housing Tours'],
+    tours:['🗺️ Housing Tours','Create Global, Server, or Private tours with visibility-eligible stops. Shared tours use one leader-controlled route; Self Paced tours advance privately.','hu:tours','Open Housing Tours'],
     sharing:['🔗 Sharing & Passes','Share a house or tour without changing its saved visibility. A private Share Pass gives recipients a restricted, independent view; copy appears only when the viewer would not normally have access.','hu:tours','Open Housing Tours'],
     administration:['⚙️ Administration','Housing Moderators manage server policy, roles, environment settings, pending review, health, audit, exports, maintenance, and Global Moderator workflows.','hu:admin','Open Administration']
   };
@@ -193,6 +195,7 @@ export function learningTopicPayload(topic='search'){
 }
 
 export function pickerPayload({title,description,customId,options,page=0,pages=1,backId='hu:home',multiple=false,actions=[],paginationArrows=false}){
+  if(!options.length)return {embeds:[embed(title,description||'No options are available. Try again.')],components:buttonRows([...actions,{customId:backId,label:'Back',style:'secondary'}])};
   const select=new StringSelectMenuBuilder().setCustomId(customId).setPlaceholder(multiple?'Choose one or more options…':'Choose an option…').addOptions(options.map(o=>({label:safe(o.label),value:safe(o.value,100),description:o.description?safe(o.description,100):undefined,default:!!o.default}))).setMinValues(1).setMaxValues(multiple?Math.min(25,Math.max(1,options.length)):1);
   const nav=[];
   if(pages>1){ nav.push({customId:`hu:picker:prev:${customId.split(':').pop()}`,label:'Previous',style:'secondary',emoji:paginationArrows?'⬅️':undefined,disabled:page<=0},{customId:`hu:picker:next:${customId.split(':').pop()}`,label:'Next',style:'secondary',emoji:paginationArrows?'➡️':undefined,disabled:page>=pages-1}); }
@@ -295,6 +298,7 @@ export function destinationMenuPayload(r,{canEdit=false,backId='hu:home',showDet
     {customId:`hu:personal:open:saved:${Number(r.id)}`,label:'Personal Actions',style:'secondary',emoji:'⭐'}
   ];
   const editSpecs=canEdit?[
+    ...registrationTourActions({savedHouseId:r.id,status:r.status}),
     {customId:`hu:${scope}:edit:${Number(r.id)}:${actionBack}`,label:'Edit House',style:'secondary',emoji:'✏️'},
     {customId:`hu:scope:change:${Number(r.id)}:${actionBack}`,label:'Change Visibility',style:'secondary',emoji:'🔄'},
     {customId:`hu:${scope}:remove:${Number(r.id)}:${actionBack}`,label:'Delete House',style:'danger',emoji:'🗑️'}
@@ -544,10 +548,10 @@ export function registrationTypePayload({backId='hu:home'}={}){
 const visibilityName=value=>value==='global'?'Global':value==='public'||value==='server'?'Server':'Private';
 const registrationStatusName=value=>value==='pending'?'Awaiting Housing Moderator approval':'Active';
 
-export function destinationInputModal(scope){
+export function destinationInputModal(scope,{destination='',owner=''}={}){
   return new ModalBuilder().setCustomId(`hu:modal:register-destination:${scope}`).setTitle('Register New House').addComponents(
-    textField('destination','House Name, ID, Housing Link, or Jump Command',{required:true,placeholder:'Grand Psijic Villa, 62, @owner, 62, or an ESO link'}),
-    textField('owner','ESO owner (optional with link or command)',{required:false,placeholder:'e.g. HouseOwner'})
+    textField('destination','House Name, ID, Housing Link, or Jump Command',{required:true,value:destination,placeholder:'Grand Psijic Villa, 62, @owner, 62, or an ESO link'}),
+    textField('owner','ESO owner (optional with link or command)',{required:false,value:owner,placeholder:'e.g. HouseOwner'})
   );
 }
 
@@ -621,8 +625,8 @@ function houseFormFields(scope,r=null){
     textField('tags','Tags / themes, comma separated',{value:(()=>{try{return JSON.parse(r?.tags||'[]').join(', ')}catch{return ''}})()})
   ];
 }
-export function registerHouseFormModal(scope){
-  return new ModalBuilder().setCustomId(`hu:modal:register:${scope}`).setTitle('Register New House').addComponents(...houseFormFields(scope));
+export function registerHouseFormModal(scope,fields=null){
+  return new ModalBuilder().setCustomId(`hu:modal:register:${scope}`).setTitle('Register New House').addComponents(...houseFormFields(scope,fields));
 }
 export function houseEditModal(scope,r,backId=''){
   const personal=scope==='personal';
@@ -761,7 +765,7 @@ May start and control Shared Server Tours. This role does not grant Housing Mode
     {name:'🔑 Housing Trusted Submitter Role',value:`${roles(settings.registration_role_ids)}
 Trusted submitter role used by the selected registration policy. It does not grant Housing Moderator Administration access.`}
   );
-  e.addFields({name:'🛠️ Administration tools',value:adminInterface==='web'?'Use the tool menu below for Discord-only administration. Health, audit, maintenance, pending review, problem reports, and export are available in the companion web console.':'Use the tool menu below for health, audit, maintenance, moderation, exports, and review queues. Event timezone and channel restrictions are under Administration Settings.'});
+  e.addFields({name:'🛠️ Administration tools',value:adminInterface==='web'?'Use the tool menu below for Discord-only administration. Health, audit, maintenance, pending review, problem reports, and export are available in the companion web console.':'Use the tool menu below for health, audit, maintenance, moderation, exports, and review queues. Channel restrictions are under Administration Settings.'});
 
   const policy=new StringSelectMenuBuilder().setCustomId('hu:admin:policy').setPlaceholder('Choose registration policy…').addOptions(
     {label:'Open — everyone is auto-approved',value:'open',description:'Anyone may submit and entries become active immediately.',default:settings.registration_policy==='open'},
@@ -772,7 +776,6 @@ Trusted submitter role used by the selected registration policy. It does not gra
   if(settings.staff_role_ids?.length)moderator.setDefaultRoles(...settings.staff_role_ids.slice(0,25));
   const channel=new ChannelSelectMenuBuilder().setCustomId('hu:admin:channel').setPlaceholder('Choose a channel, or clear to allow any channel…').setChannelTypes(ChannelType.GuildText).setMinValues(0).setMaxValues(1);
   if(settings.bot_channel_id)channel.setDefaultChannels(settings.bot_channel_id);
-  const timezone=new StringSelectMenuBuilder().setCustomId('hu:admin:timezone').setPlaceholder('Choose event timezone…').addOptions(['America/New_York','America/Chicago','America/Denver','America/Los_Angeles','America/Toronto','America/Vancouver','Europe/London','Europe/Paris','Europe/Berlin','Asia/Tokyo','Australia/Sydney','UTC'].map(value=>({label:value,value,default:settings.timezone===value})));
   const components=[new ActionRowBuilder().addComponents(policy),new ActionRowBuilder().addComponents(moderator)];
   if(settings.registration_policy!=='open'){
     const trusted=new RoleSelectMenuBuilder().setCustomId('hu:admin:trusted').setPlaceholder('Choose Housing Trusted Submitter roles, or clear for none…').setMinValues(0).setMaxValues(25);
@@ -791,6 +794,7 @@ Trusted submitter role used by the selected registration policy. It does not gra
     ['passes','Share Passes','Review share-pass activity.'],
     ['otherroles','Other Roles','Configure Housing Tours roles.'],
     ['pending','Pending Review','Review pending house submissions.'],
+    ['servermod','Server Moderator Requests','Review requests and manage Server grants.'],
     ['globalmod','Global Moderation','Manage Global Moderator access.']
   ].filter(([value])=>adminInterface!=='web'||!['health','audit','export','maintenance','pending','reports'].includes(value)).map(([value,label,description])=>({value,label,description})));
   components.push(new ActionRowBuilder().addComponents(tools),...buttonRows([{customId:'hu:admin:settings',label:'Administration Settings',style:'primary'},{customId:'hu:help:learning',label:'Help & Learning',style:'secondary'},{customId:'hu:home',label:'Back',style:'secondary',emoji:'↩️'}]));
@@ -798,11 +802,10 @@ Trusted submitter role used by the selected registration policy. It does not gra
 }
 
 export function adminSettingsPayload(settings){
-  const timezone=new StringSelectMenuBuilder().setCustomId('hu:admin:timezone').setPlaceholder('Choose event timezone…').addOptions(['America/New_York','America/Chicago','America/Denver','America/Los_Angeles','America/Toronto','America/Vancouver','Europe/London','Europe/Paris','Europe/Berlin','Asia/Tokyo','Australia/Sydney','UTC'].map(value=>({label:value,value,default:settings.timezone===value})));
   const channel=new ChannelSelectMenuBuilder().setCustomId('hu:admin:channel').setPlaceholder('Choose a channel, or clear to allow any channel…').setChannelTypes(ChannelType.GuildText).setMinValues(0).setMaxValues(1);
   if(settings.bot_channel_id)channel.setDefaultChannels(settings.bot_channel_id);
-  const e=embed('⚙️ Administration Settings',`These settings apply only to this Discord server.\n\n**Event timezone:** ${settings.timezone||'Not configured'}\nUsed when scheduling local event dates and times.\n\n**AddressBook channel:** ${settings.bot_channel_id?`<#${settings.bot_channel_id}>`:'Any channel'}\nOptionally limit normal AddressBook commands and menu interactions to one channel.`);
-  return {embeds:[e],components:[new ActionRowBuilder().addComponents(timezone),new ActionRowBuilder().addComponents(channel),...buttonRows([{customId:'hu:admin',label:'Back to Administration',style:'secondary',emoji:'↩️'}])]};
+  const e=embed('⚙️ Administration Settings',`These settings apply only to this Discord server.\n\n**AddressBook channel:** ${settings.bot_channel_id?`<#${settings.bot_channel_id}>`:'Any channel'}\nOptionally limit normal AddressBook commands and menu interactions to one channel.`);
+  return {embeds:[e],components:[new ActionRowBuilder().addComponents(channel),...buttonRows([{customId:'hu:admin',label:'Back to Administration',style:'secondary',emoji:'↩️'}])]};
 }
 
 export function legacyTourRecoveryPayload(preview){
@@ -873,7 +876,7 @@ export function adminSharePassesPayload(passes={house:{active:0,revoked:0},tour:
 
 export function houseScopePayload(r,backId='hu:find'){ const current=r.scope==='personal'?'Private':r.scope==='server'?'Server':'Global'; return {embeds:[embed(`🔄 Change House Visibility — ${destinationLabel(r)}`,`Current visibility: **${current}**\n\nChanging visibility keeps the same house record, comments, and metadata. If the house is no longer eligible for a tour, AddressBook will show the affected tours before making the change.`)],components:buttonRows([{customId:`hu:scope:set:global:${r.id}:${encodeURIComponent(backId)}`,label:'Global',style:'secondary'},{customId:`hu:scope:set:public:${r.id}:${encodeURIComponent(backId)}`,label:'Server',style:'success'},{customId:`hu:scope:set:private:${r.id}:${encodeURIComponent(backId)}`,label:'Private',style:'primary'},{customId:backId,label:'Back',style:'secondary',emoji:'↩️'}])}; }
 export function globalModeratorRequestModal(){ return new ModalBuilder().setCustomId('hu:modal:globalmod:request').setTitle('Request Global Moderator Access').addComponents(textField('reason','Why do you need Global moderation here?',{required:true,paragraph:true,maxLength:1000})); }
-export function globalModeratorPayload({isApprover=false,isModerator=false,pendingCount=0,esoServer=null,grants=[],requests=[]}={}){ const environment=esoServerLabel(esoServer),grantLabels=grants.map(r=>r.eso_server?esoServerLabel(r.eso_server):'Legacy grant (environment not assigned)'),requestLabels=requests.map(r=>esoServerLabel(r.eso_server)); const details=[`**Current ESO environment:** ${environment}`,`**Your ${environment} moderator status:** ${isModerator?'Active':'Not active'}`,`**Active environments:** ${grantLabels.length?grantLabels.join(', '):'None'}`,`**Pending requests:** ${requestLabels.length?requestLabels.join(', '):'None'}`]; return {embeds:[embed('🌐 Global Housing Moderation',details.join('\n'))],components:buttonRows([{customId:'hu:globalmod:request',label:`Request ${environment} Access`,style:'primary',disabled:isModerator||requests.some(r=>r.eso_server===esoServer)},...(isApprover?[{customId:'hu:globalmod:requests',label:`Review Requests (${pendingCount})`,style:'success'},{customId:'hu:globalmod:list',label:'Manage Global Moderators',style:'secondary'}]:[]),{customId:'hu:home',label:'Back',style:'secondary',emoji:'↩️'}])}; }
+export function globalModeratorPayload({isApprover=false,isModerator=false,pendingCount=0,esoServer=null,grants=[],requests=[]}={}){ const environment=esoServerLabel(esoServer),grantLabels=grants.map(r=>r.eso_server?esoServerLabel(r.eso_server):'Legacy grant (environment not assigned)'),requestLabels=requests.map(r=>esoServerLabel(r.eso_server)); const details=[`**Current ESO environment:** ${environment}`,`**Your ${environment} moderator status:** ${isModerator?'Active':'Not active'}`,`**Active environments:** ${grantLabels.length?grantLabels.join(', '):'None'}`,`**Pending requests:** ${requestLabels.length?requestLabels.join(', '):'None'}`]; return {embeds:[embed('🌐 Global Housing Moderation',details.join('\n'))],components:buttonRows([{customId:'hu:globalmod:request',label:`Request ${environment} Access`,style:'primary',disabled:isModerator||requests.some(r=>r.eso_server===esoServer)},...(isApprover?[{customId:'hu:globalmod:requests',label:`Review Requests (${pendingCount})`,style:'success'},{customId:'hu:globalmod:list',label:'Manage Global Moderators',style:'secondary'}]:[]),{customId:'hu:help',label:'Back to Help',style:'secondary',emoji:'↩️'}])}; }
 
 
 export function globalModeratorRequestsPayload(rows=[],page=1){
@@ -890,3 +893,5 @@ export function globalModeratorListPayload(rows=[],page=1){
   return {embeds:[embed('🌐 Global Housing Moderators',`**${rows.length}** active environment-specific Global Moderator grant${rows.length===1?'':'s'}. Page ${current} of ${Math.ceil(rows.length/25)}. Revoking one environment does not affect the others.`)],components:[new ActionRowBuilder().addComponents(select),...buttonRows([{customId:`hu:globalmod:list:${current-1}`,label:'Previous',style:'secondary',disabled:current===1},{customId:`hu:globalmod:list:${current+1}`,label:'Next',style:'secondary',disabled:current*25>=rows.length},{customId:'hu:globalmod',label:'Back',style:'secondary',emoji:'↩️'}])]};
 }
 export function globalModeratorRevokePayload(r,page=1){return confirmPayload({title:'Revoke Global Moderator?',description:`Remove **${r.eso_server?esoServerLabel(r.eso_server):'Legacy (unassigned)'}** Global Housing Moderator access from <@${r.discord_user_id}>? Other environment grants will remain active.`,confirmId:`hu:globalmod:revoke:${r.eso_server||'legacy'}:${r.discord_user_id}:${page}`,cancelId:`hu:globalmod:list:${page}`});}
+
+export function registrationNotFoundPayload({retryId,backId='hu:register'}){return {embeds:[embed('No matching ESO house found','Try an official house name, part of its name, or a valid house ID.')],components:buttonRows([{customId:retryId,label:'Try Again',style:'primary'},{customId:backId,label:'Back',style:'secondary'}])};}

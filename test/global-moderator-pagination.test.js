@@ -16,7 +16,7 @@ test('approver can page to and approve a request from another guild',async()=>{
     await db.query("INSERT INTO guild_settings(guild_id,eso_server) VALUES('g1','pc_na')");
     for(let n=1;n<=26;n++)await db.query('INSERT INTO global_moderator_requests(eso_server,discord_user_id,origin_guild_id,reason) VALUES(?,?,?,?)',['pc_na',`user${n}`,n===26?'g2':'g1','Help moderate']);
     const handlers=createHandlers(db);let rendered;
-    const i=(customId,values)=>({customId,values,guildId:'g1',channelId:'c1',guild:{name:'First Guild'},user:{id:'approver',username:'Approver'},member:{displayName:'Approver',roles:{cache:{has:()=>false}}},update:p=>{rendered=p;},reply:p=>{rendered=p;}});
+    const i=(customId,values)=>({customId,values,guildId:'g1',channelId:'c1',guild:{name:'First Guild'},user:{id:'approver',username:'Approver'},member:{displayName:'Approver',roles:{cache:new Map()}},update:p=>{rendered=p;},reply:p=>{rendered=p;}});
     await handlers.button(i('hu:globalmod:requests'));
     let controls=rendered.components.flatMap(row=>row.toJSON().components);
     assert.equal(controls.find(c=>c.type===3).options.length,25);
@@ -47,7 +47,7 @@ test('approver can page to and revoke the twenty sixth environment grant',async(
     await db.query("INSERT INTO guild_settings(guild_id,eso_server) VALUES('g1','pc_na')");
     for(let n=1;n<=26;n++)await db.query('INSERT INTO global_moderators(discord_user_id,eso_server,approved_by) VALUES(?,?,?)',[`user${String(n).padStart(2,'0')}`,'pc_na','approver']);
     const handlers=createHandlers(db);let rendered;
-    const i=(customId,values)=>({customId,values,guildId:'g1',channelId:'c1',guild:{name:'Guild'},user:{id:'approver',username:'Approver'},member:{displayName:'Approver',roles:{cache:{has:()=>false}}},update:p=>{rendered=p;},reply:p=>{rendered=p;}});
+    const i=(customId,values)=>({customId,values,guildId:'g1',channelId:'c1',guild:{name:'Guild'},user:{id:'approver',username:'Approver'},member:{displayName:'Approver',roles:{cache:new Map()}},update:p=>{rendered=p;},reply:p=>{rendered=p;}});
     await handlers.button(i('hu:globalmod:list'));
     let buttons=rendered.components.flatMap(row=>row.toJSON().components);
     const next=buttons.find(c=>c.label==='Next');assert.ok(next&&!next.disabled);

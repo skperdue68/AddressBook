@@ -71,3 +71,15 @@ test('unified transfer preserves all environment identities and composite modera
     assert.equal((await target.query("SELECT eso_server_selected_at FROM guild_settings WHERE guild_id='g1'"))[0].eso_server_selected_at,'2026-09-20 12:34:56.000');
   }finally{await closeDatabase(source);await closeDatabase(target);}
 });
+
+test('grant and cycle data transfers both directions and v10 sources remain compatible',async t=>{
+ const a=openDatabase({DB_TYPE:'sqlite',DATABASE_PATH:':memory:'}),b=openDatabase({DB_TYPE:'sqlite',DATABASE_PATH:':memory:'});t.after(async()=>{await closeDatabase(a);await closeDatabase(b);});await migrate(a);await migrate(b);
+ await a.query("INSERT INTO server_moderator_requests(id,guild_id,discord_user_id,reason,status,revision) VALUES(1,'g','u','help','approved',2)");
+ await a.query("INSERT INTO server_moderators(guild_id,discord_user_id,approved_by,request_id,request_revision) VALUES('g','u','admin',1,2)");
+ await a.query("INSERT INTO featured_house_cycles VALUES('g','pc_na','2026-10-21 12:00:00','[4,5]')");
+ await transferUnifiedData(a,b);assert.equal((await b.query('SELECT request_revision FROM server_moderators'))[0].request_revision,2);
+ await transferUnifiedData(b,a);assert.equal((await a.query('SELECT previous_destination_ids FROM featured_house_cycles'))[0].previous_destination_ids,'[4,5]');
+ for(const table of ['server_moderators','server_moderator_requests','featured_house_cycles'])await a.query(`DROP TABLE ${table}`);
+ await a.query('DELETE FROM schema_migrations WHERE version=11');await transferUnifiedData(a,b);
+ assert.equal((await b.query('SELECT COUNT(*) n FROM server_moderators'))[0].n,0);
+});

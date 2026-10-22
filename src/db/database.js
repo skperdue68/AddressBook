@@ -2,8 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { DatabaseSync } from 'node:sqlite';
-import { SCHEMA_VERSION, SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V6, SCHEMA_V7, SCHEMA_V8, SCHEMA_V2_COLUMNS, SCHEMA_V9_COLUMNS } from './schema.js';
-import { SQLITE_SCHEMA_VERSION, SQLITE_SCHEMA_V1, SQLITE_SCHEMA_V2, SQLITE_SCHEMA_V3, SQLITE_SCHEMA_V4, SQLITE_SCHEMA_V6, SQLITE_SCHEMA_V7, SQLITE_SCHEMA_V8, SQLITE_V2_COLUMNS, SQLITE_V9_COLUMNS } from './sqlite-schema.js';
+import { SCHEMA_VERSION, SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, SCHEMA_V4, SCHEMA_V6, SCHEMA_V7, SCHEMA_V8, SCHEMA_V2_COLUMNS, SCHEMA_V9_COLUMNS, SCHEMA_V11 } from './schema.js';
+import { SQLITE_SCHEMA_VERSION, SQLITE_SCHEMA_V1, SQLITE_SCHEMA_V2, SQLITE_SCHEMA_V3, SQLITE_SCHEMA_V4, SQLITE_SCHEMA_V6, SQLITE_SCHEMA_V7, SQLITE_SCHEMA_V8, SQLITE_V2_COLUMNS, SQLITE_V9_COLUMNS, SQLITE_SCHEMA_V11 } from './sqlite-schema.js';
 import { backfillDestinations, verifyDestinationBackfill } from './destination-migration.js';
 
 const require=createRequire(import.meta.url);
@@ -172,7 +172,15 @@ function upgradeLegacySqlite(db){
 
 export async function closeDatabase(db){ if(db) await db.end(); }
 
+const sqliteTransactions=new WeakMap();
 export async function withTransaction(db,fn){
+  if(db.type!=='sqlite')return runTransaction(db,fn);
+  const previous=sqliteTransactions.get(db)||Promise.resolve();
+  const current=previous.catch(()=>{}).then(()=>runTransaction(db,fn));
+  sqliteTransactions.set(db,current);
+  try{return await current;}finally{if(sqliteTransactions.get(db)===current)sqliteTransactions.delete(db);}
+}
+async function runTransaction(db,fn){
   const conn=await db.getConnection();
   try{
     await conn.beginTransaction(); const value=await fn(conn); await conn.commit(); return value;
@@ -277,6 +285,7 @@ export async function migrate(db){
       });
       applied.add(10);
     }
+    if(!applied.has(11)){for(const sql of SQLITE_SCHEMA_V11)await db.query(sql);await db.query('INSERT INTO schema_migrations(version) VALUES (11)');applied.add(11);}
     const latest=Math.max(0,...applied,1);
     if(latest>SQLITE_SCHEMA_VERSION) throw new Error(`Database schema version ${latest} is newer than this AddressBook release (${SQLITE_SCHEMA_VERSION}).`);
     return;
@@ -386,6 +395,7 @@ export async function migrate(db){
     await db.query('INSERT INTO schema_migrations(version) VALUES (?)',[10]);
     applied.add(10);
   }
+  if(!applied.has(11)){for(const sql of SCHEMA_V11)await db.query(sql);await db.query('INSERT INTO schema_migrations(version) VALUES (11)');applied.add(11);}
   const latest=Math.max(0,...applied);
   if(latest>SCHEMA_VERSION) throw new Error(`Database schema version ${latest} is newer than this AddressBook release (${SCHEMA_VERSION}).`);
 }

@@ -1,17 +1,22 @@
 export class EngagementWorker {
-  constructor({ reminders, featured, intervalMs = 60_000, logger = console, setIntervalFn = setInterval, clearIntervalFn = clearInterval } = {}) {
-    this.reminders = reminders; this.featured = featured; this.intervalMs = intervalMs; this.logger = logger; this.setIntervalFn = setIntervalFn; this.clearIntervalFn = clearIntervalFn; this.timer = null;
+  constructor({ featured, intervalMs = 60_000, logger = console, setIntervalFn = setInterval, clearIntervalFn = clearInterval } = {}) {
+    this.featured = featured; this.intervalMs = intervalMs; this.logger = logger; this.setIntervalFn = setIntervalFn; this.clearIntervalFn = clearIntervalFn; this.timer = null;
   }
 
   async runOnce() {
-    await this.reminders?.runOnce?.().catch(error => this.logger.error?.('Event reminder worker failed:', error));
-    await this.featured?.expireDue?.().catch(error => this.logger.error?.('Featured expiry worker failed:', error));
-    await this.featured?.autoSelectEmptyAll?.().catch(error => this.logger.error?.('Automatic Featured selection failed:', error));
+    if(this.running)return this.running;
+    this.running=(async()=>{
+      await this.featured?.expireDue?.().catch(error => this.logger.error?.('Featured expiry worker failed:', error));
+      await this.featured?.rotateDueHousesAll?.().catch(error => this.logger.error?.('Weekly Featured selection failed:', error));
+    })();
+    try{return await this.running;}finally{this.running=null;}
   }
 
   async start() {
-    if (this.timer != null) return;
+    if (this.timer != null || this.starting) return;
+    this.starting=true;
     await this.runOnce();
+    this.starting=false;
     this.timer = this.setIntervalFn(() => this.runOnce(), this.intervalMs);
   }
 

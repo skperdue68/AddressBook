@@ -4,7 +4,12 @@ import { closeDatabase, ensureMariaDatabase, migrate, openDatabase, withTransact
 
 export const MIGRATION_CONFIRMATION = 'ERASE_TARGET_DATABASE';
 
+const OPTIONAL_V11 = new Set(['server_moderator_requests', 'server_moderators', 'featured_house_cycles']);
 const TABLES = [
+  ['server_moderator_requests',['id', 'guild_id', 'discord_user_id', 'reason', 'status', 'revision', 'requested_at', 'reviewed_at', 'reviewed_by', 'discord_global_name', 'discord_display_name', 'guild_name']],
+  ['server_moderators',['guild_id', 'discord_user_id', 'approved_by', 'request_id', 'request_revision', 'approved_at']],
+  ['featured_house_cycles',['guild_id', 'eso_server', 'last_rotated_at', 'previous_destination_ids']],
+
   ['houses',['house_id','name','normalized_name','zone','subzone','category','classification','house_type','style','furnishing_limit','furnishing_limit_plus','special_furnishing_limit','special_furnishing_limit_plus','collectible_limit','collectible_limit_plus','special_collectible_limit','special_collectible_limit_plus','population_limit','population_limit_plus','purchase_type','gold_price','crown_price','crown_price_unfurnished','crown_price_furnished','requirements','availability','uesp_url','last_verified']],
   ['discord_guilds',['guild_id','guild_name','last_seen_at','updated_at']],
   ['discord_users',['discord_user_id','global_name','username','last_seen_at','updated_at']],
@@ -49,11 +54,19 @@ const valueForSql=v=>{if(v instanceof Date)v=v.toISOString();if(typeof v==='stri
 
 export async function transferUnifiedData(source,target){
   const sourceRows=new Map();
-  for(const [table,columns] of TABLES){await source.query(`SELECT ${columns.join(',')} FROM ${table} LIMIT 0`);sourceRows.set(table,await source.query(`SELECT * FROM ${table}`));}
+  for(const [table,columns] of TABLES){
+    try{await source.query(`SELECT ${columns.join(',')} FROM ${table} LIMIT 0`);sourceRows.set(table,await source.query(`SELECT * FROM ${table}`));}
+    catch(err){
+      if(!OPTIONAL_V11.has(table)||!(/no such table/i.test(err.message)||err.code==='ER_NO_SUCH_TABLE'))throw err;
+      const versions=await source.query('SELECT MAX(version) version FROM schema_migrations');
+      if(Number(versions[0]?.version||0)>=11)throw err;
+      sourceRows.set(table,[]);
+    }
+  }
   const summary={};
   await withTransaction(target,async conn=>{
     // Delete children before parents. Active tour sessions are intentionally not migrated.
-  for(const table of ['share_pass_sessions','tour_sessions','tour_event_deliveries','tour_event_rsvps','tour_progress_stops','housing_reports','house_share_passes','tour_share_passes','recent_house_views','house_comments','tour_stops','featured_items','tour_progress','tour_events','global_moderators','global_moderator_requests','user_onboarding','user_house_states','saved_house_searches','tours','saved_houses','housing_destinations','guild_settings','audit_log','discord_guild_members','discord_channels','discord_roles','discord_users','discord_guilds','houses'])
+  for(const table of ['server_moderators','server_moderator_requests','featured_house_cycles','share_pass_sessions','tour_sessions','tour_event_deliveries','tour_event_rsvps','tour_progress_stops','housing_reports','house_share_passes','tour_share_passes','recent_house_views','house_comments','tour_stops','featured_items','tour_progress','tour_events','global_moderators','global_moderator_requests','user_onboarding','user_house_states','saved_house_searches','tours','saved_houses','housing_destinations','guild_settings','audit_log','discord_guild_members','discord_channels','discord_roles','discord_users','discord_guilds','houses'])
       await conn.query(`DELETE FROM ${table}`);
     for(const [table,columns] of TABLES){
       const rows=sourceRows.get(table);

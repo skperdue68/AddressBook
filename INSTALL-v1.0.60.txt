@@ -1,0 +1,28 @@
+AddressBook v1.0.60 upgrade
+
+1. Stop the bot and independently back up the application, .env, and database.
+2. Install the complete v1.0.60 application source. Preserve your .env, secrets,
+   and database. Do not copy node_modules from another computer.
+3. Run npm ci with Node.js 22 or newer, then npm start.
+4. Startup applies additive schema version 11 for SQLite or MariaDB. No new
+   environment variables, dependencies, Discord roles, or commands are required.
+
+Scheduled event menus and reminder execution are retired. Historical event data
+is retained. Normal tours and progress remain supported.
+Featured Houses rotate every seven days, including manual selections. The first
+cycle retains an existing eligible list for seven days after initialization.
+An empty list fills immediately. Featured Tours do not rotate automatically.
+
+Moderator requests are under Help > Moderator Access. Current AddressBook Server
+administrators review Server requests and manage individual grants in Discord
+Administration, including web-only administration mode. Configure staff roles
+first if no actual reviewer exists. Global approval configuration is unchanged.
+Private houses and tours remain owner-only.
+
+Active house registration offers Add to a Tour; pending houses wait for approval.
+Search-result tour selection now has a numbered order preview and adjustment
+controls. Confirm Order determines the saved route; Discord click history is
+not guaranteed within one multi-select submission.
+
+Before using the new version, check Help, register a house, try an unknown name,
+verify a normal tour starts, and review Server grants with an existing staff user.

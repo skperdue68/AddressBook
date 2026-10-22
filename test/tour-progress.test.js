@@ -25,7 +25,7 @@ function control(payload,label){return payload.components.flatMap(row=>row.toJSO
 function buttonInteraction(customId,{update=()=>{},reply=payload=>payload,showModal=()=>{}}={}){
   return {
     customId,guildId:'g1',channelId:'c1',guild:{name:'Guild One'},channel:{name:'housing'},
-    user:{id:'u1',username:'User One',globalName:'User One'},member:{displayName:'User One',roles:{cache:{has:()=>false}}},
+    user:{id:'u1',username:'User One',globalName:'User One'},member:{displayName:'User One',roles:{cache:new Map()}},
     update:payload=>Promise.resolve(update(payload)),showModal:modal=>Promise.resolve(showModal(modal)),
     reply:payload=>Promise.resolve(reply(payload))
   };

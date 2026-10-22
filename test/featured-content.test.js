@@ -15,7 +15,7 @@ async function fixture() {
   await db.query("INSERT INTO housing_destinations(id,eso_server,eso_owner,normalized_owner,house_id) VALUES(1,'pc_na','Owner','owner',62),(2,'pc_na','Owner','owner',63)");
   await db.query("INSERT INTO saved_houses(id,eso_server,scope,guild_id,house_id,eso_owner,normalized_owner,destination_id,status,created_by,updated_by) VALUES(1,'pc_na','public','g1',62,'Owner','owner',1,'active','u1','u1'),(2,'pc_na','global',NULL,63,'Owner','owner',2,'active','u1','u1')");
   await db.query("INSERT INTO tours(id,eso_server,visibility,guild_id,creator_id,name,house_source) VALUES(1,'pc_na','public','g1','u1','Server Tour','public_global'),(2,'pc_na','global',NULL,'u1','Global Tour','global')");
-  return { db, featured: new FeaturedContentService(db) };
+  return { db, featured: new FeaturedContentService(db,{clock:()=>Date.parse('2026-09-21T00:00:00Z')}) };
 }
 
 test('moderators can feature up to five eligible houses and tours in order', async () => {
@@ -37,7 +37,7 @@ test('Featured reorder keeps the moved entry selected for further changes', asyn
     await featured.set({guildId:'g1',esoServer:'pc_na',targetKind:'house',targetId:2,actorId:'mod',isModerator:true});
     await featured.set({guildId:'g1',esoServer:'pc_na',targetKind:'tour',targetId:1,actorId:'mod',isModerator:true});
     let rendered;
-    await createHandlers(db).button({customId:'hu:featured:move:house:1:2',guildId:'g1',channelId:'c1',guild:{name:'Guild'},user:{id:'mod',username:'Moderator'},member:{displayName:'Moderator',roles:{cache:{has:()=>false}}},update:payload=>{rendered=payload;},reply:payload=>{rendered=payload;}});
+    await createHandlers(db).button({customId:'hu:featured:move:house:1:2',guildId:'g1',channelId:'c1',guild:{name:'Guild'},user:{id:'mod',username:'Moderator'},member:{displayName:'Moderator',roles:{cache:new Map()}},update:payload=>{rendered=payload;},reply:payload=>{rendered=payload;}});
     const controls=rendered.components.flatMap(row=>row.toJSON().components);
     assert.ok(controls.some(c=>c.custom_id==='hu:featured:remove:house:1'));
     assert.equal(controls.find(c=>c.label==='↓').disabled,true);
@@ -56,7 +56,7 @@ test('changing a Featured expiration retains its position', async () => {
     assert.ok(rows[0].expires_at);
     await db.query("INSERT INTO guild_settings(guild_id,eso_server) VALUES('g1','pc_na')");
     let rendered;
-    await createHandlers(db).modal({customId:'hu:modal:featured:expiry:house:1',guildId:'g1',channelId:'c1',guild:{name:'Guild'},user:{id:'mod',username:'Moderator'},member:{displayName:'Moderator',roles:{cache:{has:()=>false}}},fields:{getTextInputValue:()=> '0'},isFromMessage:()=>true,update:payload=>{rendered=payload;},reply:payload=>{rendered=payload;}});
+    await createHandlers(db).modal({customId:'hu:modal:featured:expiry:house:1',guildId:'g1',channelId:'c1',guild:{name:'Guild'},user:{id:'mod',username:'Moderator'},member:{displayName:'Moderator',roles:{cache:new Map()}},fields:{getTextInputValue:()=> '0'},isFromMessage:()=>true,update:payload=>{rendered=payload;},reply:payload=>{rendered=payload;}});
     const controls=rendered.components.flatMap(row=>row.toJSON().components);
     assert.ok(controls.some(c=>c.custom_id==='hu:featured:remove:house:1'));
     assert.deepEqual((await featured.list({guildId:'g1',esoServer:'pc_na',targetKind:'house'})).map(row=>Number(row.target_id)),[1,2]);
@@ -83,7 +83,7 @@ test('a Featured tour opens and returns to the Featured list through preflight',
     await db.query('INSERT INTO tour_stops(id,tour_id,position,saved_house_id) VALUES(1,1,1,1)');
     await featured.set({guildId:'g1',esoServer:'pc_na',targetKind:'tour',targetId:1,actorId:'mod',isModerator:true});
     const handlers=createHandlers(db);let rendered;
-    const run=id=>handlers.button({customId:id,guildId:'g1',channelId:'c1',guild:{name:'Guild'},user:{id:'member',username:'Member'},member:{displayName:'Member',roles:{cache:{has:()=>false}}},update:payload=>{rendered=payload;},reply:payload=>{rendered=payload;}});
+    const run=id=>handlers.button({customId:id,guildId:'g1',channelId:'c1',guild:{name:'Guild'},user:{id:'member',username:'Member'},member:{displayName:'Member',roles:{cache:new Map()}},update:payload=>{rendered=payload;},reply:payload=>{rendered=payload;}});
     const control=label=>rendered.components.flatMap(row=>row.toJSON().components).find(c=>c.label===label);
     await run('hu:tours:featured');
     await run(control('Open Tour 1').custom_id);
@@ -104,7 +104,7 @@ test('a Featured house opens with details and returns to Featured Housing', asyn
     await db.query("INSERT INTO guild_settings(guild_id,eso_server) VALUES('g1','pc_na')");
     await featured.set({guildId:'g1',esoServer:'pc_na',targetKind:'house',targetId:1,actorId:'mod',isModerator:true});
     const handlers=createHandlers(db);let rendered;
-    const run=id=>handlers.button({customId:id,guildId:'g1',channelId:'c1',guild:{name:'Guild'},user:{id:'member',username:'Member'},member:{displayName:'Member',roles:{cache:{has:()=>false}}},update:payload=>{rendered=payload;},reply:payload=>{rendered=payload;}});
+    const run=id=>handlers.button({customId:id,guildId:'g1',channelId:'c1',guild:{name:'Guild'},user:{id:'member',username:'Member'},member:{displayName:'Member',roles:{cache:new Map()}},update:payload=>{rendered=payload;},reply:payload=>{rendered=payload;}});
     const control=label=>rendered.components.flatMap(row=>row.toJSON().components).find(c=>c.label===label);
     await run('hu:tours:featured');
     await run(control('Open House 1').custom_id);
@@ -123,7 +123,7 @@ test('returning from Featured house comments retains expanded details', async ()
     await db.query("INSERT INTO guild_settings(guild_id,eso_server) VALUES('g1','pc_na')");
     await featured.set({guildId:'g1',esoServer:'pc_na',targetKind:'house',targetId:1,actorId:'mod',isModerator:true});
     const handlers=createHandlers(db);let rendered;
-    const run=id=>handlers.button({customId:id,guildId:'g1',channelId:'c1',guild:{name:'Guild'},user:{id:'member',username:'Member'},member:{displayName:'Member',roles:{cache:{has:()=>false}}},update:payload=>{rendered=payload;},reply:payload=>{rendered=payload;}});
+    const run=id=>handlers.button({customId:id,guildId:'g1',channelId:'c1',guild:{name:'Guild'},user:{id:'member',username:'Member'},member:{displayName:'Member',roles:{cache:new Map()}},update:payload=>{rendered=payload;},reply:payload=>{rendered=payload;}});
     const control=label=>rendered.components.flatMap(row=>row.toJSON().components).find(c=>c.label===label);
     await run('hu:tours:featured');
     await run(control('Open House 1').custom_id);

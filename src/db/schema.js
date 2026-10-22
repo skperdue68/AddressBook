@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 10;
+export const SCHEMA_VERSION = 11;
 
 export const SCHEMA_V8 = [
   ['last_seen_tour_version', 'VARCHAR(32) NULL'],
@@ -481,3 +481,19 @@ export const SCHEMA_V2_COLUMNS = {
 // Migration 2 originally introduced readable identity fields. Migration 9
 // reconciles installations that recorded v2 before every field was defined.
 export const SCHEMA_V9_COLUMNS = SCHEMA_V2_COLUMNS;
+
+export const SCHEMA_V11 = [
+`CREATE TABLE IF NOT EXISTS server_moderator_requests (
+ id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY, guild_id VARCHAR(32) NOT NULL, discord_user_id VARCHAR(32) NOT NULL,
+ reason TEXT NOT NULL, status VARCHAR(16) NOT NULL DEFAULT 'pending', revision INT NOT NULL DEFAULT 1,
+ requested_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, reviewed_at DATETIME NULL, reviewed_by VARCHAR(32) NULL,
+ discord_global_name VARCHAR(255) NULL, discord_display_name VARCHAR(255) NULL, guild_name VARCHAR(255) NULL,
+ UNIQUE KEY uq_server_request(guild_id,discord_user_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+`CREATE TABLE IF NOT EXISTS server_moderators (
+ guild_id VARCHAR(32) NOT NULL, discord_user_id VARCHAR(32) NOT NULL, approved_by VARCHAR(32) NOT NULL,
+ request_id BIGINT UNSIGNED NOT NULL, request_revision INT NOT NULL, approved_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ PRIMARY KEY(guild_id,discord_user_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+`CREATE TABLE IF NOT EXISTS featured_house_cycles (
+ guild_id VARCHAR(32) PRIMARY KEY, eso_server VARCHAR(32) NOT NULL, last_rotated_at DATETIME NULL,
+ previous_destination_ids LONGTEXT NOT NULL DEFAULT '[]') ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+];

@@ -54,8 +54,10 @@ export function eventStartPreflightPayload({event,tour,readiness,environmentLabe
   return {embeds:[new EmbedBuilder().setColor(blocking.length?0xd9534f:advisories.length?0xe6a817:0x2f9e44).setTitle('▶️ Tour Preflight').setDescription(discordDescription(description))],components:[row(actions)]};
 }
 
-export function featuredPayload({ items = [], canManage = false, selectedItem = null } = {}) {
+export function featuredPayload({ items = [], canManage = false, selectedItem = null, nextRotationAt = null } = {}) {
   const embed = new EmbedBuilder().setColor(0x2b7ddd).setTitle('⭐ Featured Housing').setDescription(discordDescription(items.length ? items.map(item => `**${item.position}.** ${displayText(item.target_name,'Untitled',200)} — ${item.target_kind === 'tour' ? 'Tour' : 'House'}${item.expires_at ? ` · expires <t:${Math.floor(new Date(item.expires_at).getTime()/1000)}:R>` : ' · never expires'}`).join('\n') : 'No Featured housing has been selected yet.'));
+  embed.setFooter({text:'Featured Houses rotate every seven days, including manual selections. Featured Tours stay selected.'});
+  if(nextRotationAt)embed.addFields({name:'Next house refresh',value:`<t:${Math.floor(new Date(nextRotationAt).getTime()/1000)}:F>`});
   for(const item of items.filter(item=>item.target_kind==='house'&&item.house_id!=null&&item.eso_owner).slice(0,5)){
     const label=displayText(item.house_display_name||item.target_name,'Featured House',120),owner=displayText(String(item.eso_owner).replace(/^@/,''),'Unknown',100);
     embed.addFields({name:discordTitle(`🏠 ${item.position}. ${label} — @${owner}`),value:`**Jump in ESO**\n\`\`\`text\n${buildJumpScript(owner,item.house_id)}\n\`\`\`\n**Housing Link**\n\`\`\`text\n${buildHousingLink(owner,item.house_id)}\n\`\`\``});

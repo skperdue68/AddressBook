@@ -24,7 +24,7 @@ test('browse house details survive comments and Previous/Next navigation', async
     await db.query("INSERT INTO housing_destinations(id,eso_server,eso_owner,normalized_owner,house_id) VALUES(1,'pc_na','Owner','owner',62),(2,'pc_na','Owner','owner',63)");
     await db.query("INSERT INTO saved_houses(id,eso_server,scope,guild_id,house_id,eso_owner,normalized_owner,destination_id,status,created_by,updated_by) VALUES(1,'pc_na','public','g1',62,'Owner','owner',1,'active','u1','u1'),(2,'pc_na','public','g1',63,'Owner','owner',2,'active','u1','u1')");
     const handlers=createHandlers(db);let rendered;
-    const interaction=(customId,values)=>({customId,values,guildId:'g1',channelId:'c1',guild:{name:'Guild'},user:{id:'u1',username:'Owner'},member:{displayName:'Owner',roles:{cache:{has:()=>false}}},update:payload=>{rendered=payload;},reply:payload=>{rendered=payload;}});
+    const interaction=(customId,values)=>({customId,values,guildId:'g1',channelId:'c1',guild:{name:'Guild'},user:{id:'u1',username:'Owner'},member:{displayName:'Owner',roles:{cache:new Map()}},update:payload=>{rendered=payload;},reply:payload=>{rendered=payload;}});
     const button=id=>handlers.button(interaction(id));
     const control=label=>rendered.components.flatMap(row=>row.toJSON().components).find(c=>c.label===label);
     await button('hu:my:houses');
@@ -55,7 +55,7 @@ test('a saved browse result cannot reopen after becoming another member’s Priv
     await db.query("INSERT INTO housing_destinations(id,eso_server,eso_owner,normalized_owner,house_id) VALUES(1,'pc_na','Owner','owner',62)");
     await db.query("INSERT INTO saved_houses(id,eso_server,scope,guild_id,house_id,eso_owner,normalized_owner,destination_id,status,created_by,updated_by) VALUES(1,'pc_na','public','g1',62,'Owner','owner',1,'active','u2','u2')");
     const handlers=createHandlers(db);let rendered;
-    const interaction=(customId,values)=>({customId,values,guildId:'g1',channelId:'c1',guild:{name:'Guild'},user:{id:'u1',username:'Viewer'},member:{displayName:'Viewer',roles:{cache:{has:()=>false}}},update:payload=>{rendered=payload;},reply:payload=>{rendered=payload;}});
+    const interaction=(customId,values)=>({customId,values,guildId:'g1',channelId:'c1',guild:{name:'Guild'},user:{id:'u1',username:'Viewer'},member:{displayName:'Viewer',roles:{cache:new Map()}},update:payload=>{rendered=payload;},reply:payload=>{rendered=payload;}});
     await handlers.button(interaction('hu:find'));
     const picker=rendered.components.find(row=>row.toJSON().components[0].type===3).toJSON().components[0].custom_id;
     await db.query("UPDATE saved_houses SET scope='private',guild_id=NULL,owner_user_id='u2' WHERE id=1");

@@ -11,7 +11,7 @@ export class WebAdminService {
   constructor(db, services = {}) {
     this.db = db;
     this.guilds = services.guilds || new GuildService(db);
-    this.health = services.health || new AdminHealthService(db, { version: '1.0.59' });
+    this.health = services.health || new AdminHealthService(db, { version: '1.0.60' });
     this.audit = services.audit || new AuditLogService(db);
     this.maintenance = services.maintenance || new HouseMaintenanceService(db);
     this.reports = services.reports || new HousingReportService(db);
@@ -19,14 +19,13 @@ export class WebAdminService {
     this.dataExport = services.dataExport || new DataExportService(db);
   }
 
-  authorizeGuild({ guildId, requestedGuildId, esoServer, requestedEsoServer, memberRoleIds = [] } = {}) {
+  async authorizeGuild({ guildId, requestedGuildId, esoServer, requestedEsoServer, userId, memberRoleIds = [] } = {}) {
     if (!guildId || String(guildId) !== String(requestedGuildId)) return { allowed: false, reason: 'guild' };
     if (!esoServer || String(esoServer) !== String(requestedEsoServer)) return { allowed: false, reason: 'environment' };
-    const settings = this.guilds.getSettings(guildId);
-    const configured = Array.isArray(settings.staff_role_ids) ? settings.staff_role_ids : [];
-    const bootstrap = configured.length === 0;
-    const hasRole = bootstrap || configured.some(role => memberRoleIds.map(String).includes(String(role)));
-    return hasRole ? { allowed: true, reason: null } : { allowed: false, reason: 'permission' };
+    this.guilds.invalidate(guildId);const current=await this.guilds.ensureSettings(guildId);
+    if(current.eso_server!==esoServer)return {allowed:false,reason:'environment'};
+    const access=await this.guilds.serverModerators.access({guildId,userId,roleIds:memberRoleIds.map(String)});
+    return access.isModerator||access.bootstrap ? {allowed:true,reason:null} : {allowed:false,reason:'permission'};
   }
 
   overview({ guildId, esoServer, availableChannelIds = [] } = {}) {

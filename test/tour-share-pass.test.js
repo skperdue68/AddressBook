@@ -90,7 +90,7 @@ test('Tour Information responds with an accessible private route', async () => {
     await tours.addStop(tour.id,house.id);
     const { token } = await passes.createTourPass({ tourId:tour.id, createdBy:'owner', originGuildId:'g1', esoServer:'pc_na' });
     let response;
-    await createHandlers(db).button({customId:`hu:pass:tour:info:${token}`,guildId:'g1',channelId:'c1',guild:{name:'Guild'},user:{id:'viewer',username:'Viewer'},member:{displayName:'Viewer',roles:{cache:{has:()=>false}}},reply:p=>{response=p;},update:p=>{response=p;}});
+    await createHandlers(db).button({customId:`hu:pass:tour:info:${token}`,guildId:'g1',channelId:'c1',guild:{name:'Guild'},user:{id:'viewer',username:'Viewer'},member:{displayName:'Viewer',roles:{cache:new Map()}},reply:p=>{response=p;},update:p=>{response=p;}});
     assert.match(JSON.stringify(response?.embeds),/Secret Route/);
     assert.match(JSON.stringify(response?.embeds),/Grand Psijic Villa/);
   } finally { await closeDatabase(db); }
@@ -106,7 +106,7 @@ test('Tour Pass Information lists nickname, official house, then owner',async()=
     await tours.addStop(tour.id,house.id);
     const {token}=await passes.createTourPass({tourId:tour.id,createdBy:'owner',originGuildId:'g1',esoServer:'pc_na'});
     let response;
-    await createHandlers(db).button({customId:`hu:pass:tour:info:${token}`,guildId:'g1',user:{id:'viewer'},member:{roles:{cache:{has:()=>false}}},reply:p=>{response=p;}});
+    await createHandlers(db).button({customId:`hu:pass:tour:info:${token}`,guildId:'g1',user:{id:'viewer'},member:{roles:{cache:new Map()}},reply:p=>{response=p;}});
     assert.match(response.embeds[0].toJSON().description,/Secret Garden \(Grand Psijic Villa\) — @Owner/);
   }finally{await closeDatabase(db);}
 });
@@ -158,7 +158,7 @@ test('Tour Pass Information acknowledges before a slow database lookup', async (
       return original(sql, args);
     };
     let deferred = false, edited;
-    const pending = createHandlers(db).button({ customId:`hu:pass:tour:info:${token}`, guildId:'g1', channelId:'c1', user:{id:'viewer',username:'Viewer'}, member:{roles:{cache:{has:()=>false}}}, message:{flags:{has:()=>true}}, deferUpdate:async()=>{deferred=true;}, editReply:async payload=>{edited=payload;}, reply:async()=>{}, update:async()=>{} });
+    const pending = createHandlers(db).button({ customId:`hu:pass:tour:info:${token}`, guildId:'g1', channelId:'c1', user:{id:'viewer',username:'Viewer'}, member:{roles:{cache:new Map()}}, message:{flags:{has:()=>true}}, deferUpdate:async()=>{deferred=true;}, editReply:async payload=>{edited=payload;}, reply:async()=>{}, update:async()=>{} });
     await new Promise(resolve => setImmediate(resolve));
     assert.equal(deferred, true);
     release(); await pending;
@@ -175,7 +175,7 @@ test('Copy Tour Cancel responds with Tour Information without copying', async ()
     await tours.addStop(tour.id,house.id);
     const { token } = await passes.createTourPass({ tourId:tour.id, createdBy:'owner', originGuildId:'g1', esoServer:'pc_na' });
     let response, updated = false;
-    await createHandlers(db).button({customId:`hu:pass:tour:info:${token}`,guildId:'g1',channelId:'c1',guild:{name:'Guild'},user:{id:'viewer',username:'Viewer'},member:{displayName:'Viewer',roles:{cache:{has:()=>false}}},message:{flags:{has:()=>true}},reply:p=>{response=p;},update:p=>{response=p;updated=true;}});
+    await createHandlers(db).button({customId:`hu:pass:tour:info:${token}`,guildId:'g1',channelId:'c1',guild:{name:'Guild'},user:{id:'viewer',username:'Viewer'},member:{displayName:'Viewer',roles:{cache:new Map()}},message:{flags:{has:()=>true}},reply:p=>{response=p;},update:p=>{response=p;updated=true;}});
     assert.equal(updated,true);
     assert.match(JSON.stringify(response?.embeds),/Secret Route/);
     assert.equal((await db.query("SELECT count(*) c FROM tours WHERE creator_id='viewer'"))[0].c,0);
@@ -194,7 +194,7 @@ test('Tour Pass information and copy preview stay available while navigating rep
     for(let attempt=0;attempt<8;attempt++){
       let response;
       const action=attempt%2?'copy':'info';
-      await handlers.button({customId:`hu:pass:tour:${action}:${token}`,guildId:'g1',user:{id:'viewer',username:'Viewer'},member:{roles:{cache:{has:()=>false}}},message:{flags:{has:()=>true}},update:p=>{response=p;},reply:p=>{response=p;}});
+      await handlers.button({customId:`hu:pass:tour:${action}:${token}`,guildId:'g1',user:{id:'viewer',username:'Viewer'},member:{roles:{cache:new Map()}},message:{flags:{has:()=>true}},update:p=>{response=p;},reply:p=>{response=p;}});
       assert.ok(response?.embeds?.length,`attempt ${attempt+1}: ${response?.content}`);
     }
   }finally{await closeDatabase(db);}
@@ -208,7 +208,7 @@ async function privatePassRun(){
   const stop=await tours.addStop(tour.id,house.id);
   const created=await passes.createTourPass({tourId:tour.id,createdBy:'owner',originGuildId:'g1',esoServer:'pc_na'});
   const session=await new TourSessionService(db).startFromPass({passId:created.pass.id,tourId:tour.id,guildId:'g1',channelId:'c1',userId:'viewer',esoServer:'pc_na'});
-  const base={guildId:'g1',channelId:'c1',user:{id:'viewer',username:'Viewer'},member:{roles:{cache:{has:()=>false}}},message:{flags:{has:()=>true}}};
+  const base={guildId:'g1',channelId:'c1',user:{id:'viewer',username:'Viewer'},member:{roles:{cache:new Map()}},message:{flags:{has:()=>true}}};
   return {...setup,house,tour,stop,created,session,base,handlers:createHandlers(db)};
 }
 
