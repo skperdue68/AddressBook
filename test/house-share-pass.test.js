@@ -97,7 +97,7 @@ test('House Share Pass comments open and return to the private pass',async()=>{
     const house=await houses.createPrivate({esoServer:'pc_na',originGuildId:'g1',userId:'owner',houseId:62,esoOwner:'HouseOwner',createdBy:'owner'});
     const {token}=await passes.createHousePass({savedHouseId:house.id,createdBy:'owner',originGuildId:'g1',esoServer:'pc_na'});
     const handlers=createHandlers(db);
-    const interact=async customId=>{let response;await handlers.button({customId,guildId:'g1',user:{id:'viewer',username:'Viewer'},member:{roles:{cache:{has:()=>false}}},message:{flags:{has:()=>true}},update:p=>{response=p;},reply:p=>{response=p;}});return response;};
+    const interact=async customId=>{let response;await handlers.button({customId,guildId:'g1',user:{id:'viewer',username:'Viewer'},member:{roles:{cache:new Map()}},message:{flags:{has:()=>true}},update:p=>{response=p;},reply:p=>{response=p;}});return response;};
     const comments=await interact(`hu:pass:house:comments:${token}`);
     assert.match(JSON.stringify(comments?.embeds),/Comments/);
     const buttons=comments.components.flatMap(row=>row.toJSON().components);
@@ -113,7 +113,7 @@ test('House Share Pass Add Comment opens a modal for the visitor',async()=>{
     const house=await houses.createPrivate({esoServer:'pc_na',originGuildId:'g1',userId:'owner',houseId:62,esoOwner:'HouseOwner',createdBy:'owner'});
     const {token}=await passes.createHousePass({savedHouseId:house.id,createdBy:'owner',originGuildId:'g1',esoServer:'pc_na'});
     let modal;
-    await createHandlers(db).button({customId:`hu:pass:house:comment:add:${token}`,guildId:'g1',user:{id:'viewer'},member:{roles:{cache:{has:()=>false}}},showModal:m=>{modal=m;}});
+    await createHandlers(db).button({customId:`hu:pass:house:comment:add:${token}`,guildId:'g1',user:{id:'viewer'},member:{roles:{cache:new Map()}},showModal:m=>{modal=m;}});
     assert.equal(modal?.toJSON().custom_id,`hu:modal:pass:house:comment:${token}`);
   }finally{await closeDatabase(db);}
 });
@@ -125,12 +125,12 @@ test('House Share Pass visitor comment submits and appears in the pass comments'
     const house=await houses.createPrivate({esoServer:'pc_na',originGuildId:'g1',userId:'owner',houseId:62,esoOwner:'HouseOwner',createdBy:'owner'});
     const {token}=await passes.createHousePass({savedHouseId:house.id,createdBy:'owner',originGuildId:'g1',esoServer:'pc_na'});
     let result;
-    await createHandlers(db).modal({customId:`hu:modal:pass:house:comment:${token}`,guildId:'g1',user:{id:'viewer',username:'Viewer'},member:{roles:{cache:{has:()=>false}}},fields:{getTextInputValue:()=> 'Lovely place'},reply:p=>{result=p;}});
+    await createHandlers(db).modal({customId:`hu:modal:pass:house:comment:${token}`,guildId:'g1',user:{id:'viewer',username:'Viewer'},member:{roles:{cache:new Map()}},fields:{getTextInputValue:()=> 'Lovely place'},reply:p=>{result=p;}});
     assert.match(JSON.stringify(result?.embeds),/Lovely place/);
     assert.equal((await db.query("SELECT count(*) c FROM house_comments WHERE discord_user_id='viewer'"))[0].c,1);
     await passes.revokeHousePass((await db.query('SELECT id FROM house_share_passes'))[0].id,{actorId:'owner'});
     result=null;
-    await createHandlers(db).modal({customId:`hu:modal:pass:house:comment:${token}`,guildId:'g1',user:{id:'viewer',username:'Viewer'},member:{roles:{cache:{has:()=>false}}},fields:{getTextInputValue:()=> 'Should be rejected'},reply:p=>{result=p;}});
+    await createHandlers(db).modal({customId:`hu:modal:pass:house:comment:${token}`,guildId:'g1',user:{id:'viewer',username:'Viewer'},member:{roles:{cache:new Map()}},fields:{getTextInputValue:()=> 'Should be rejected'},reply:p=>{result=p;}});
     assert.match(result?.content,/revoked/i);
     assert.equal((await db.query("SELECT count(*) c FROM house_comments WHERE discord_user_id='viewer'"))[0].c,1);
   }finally{await closeDatabase(db);}
@@ -145,7 +145,7 @@ test('House Share Pass More Details toggles on and off',async()=>{
     let response;
     const handlers=createHandlers(db);
     for(const id of [`hu:pass:house:details:${token}`,`hu:pass:house:details:hide:${token}`]){
-      await handlers.button({customId:id,guildId:'g1',user:{id:'viewer'},member:{roles:{cache:{has:()=>false}}},message:{flags:{has:()=>true}},update:p=>{response=p;}});
+      await handlers.button({customId:id,guildId:'g1',user:{id:'viewer'},member:{roles:{cache:new Map()}},message:{flags:{has:()=>true}},update:p=>{response=p;}});
       const labels=response?.components.flatMap(row=>row.toJSON().components.map(button=>button.label));
       assert.ok(labels?.includes(id.includes(':hide:')?'More Details':'Hide Details'));
     }
@@ -159,7 +159,7 @@ test('House Share Pass copy cancellation returns to the private house in the sam
     const house=await houses.createPrivate({esoServer:'pc_na',originGuildId:'g1',userId:'owner',houseId:62,esoOwner:'HouseOwner',createdBy:'owner'});
     const {token}=await passes.createHousePass({savedHouseId:house.id,createdBy:'owner',originGuildId:'g1',esoServer:'pc_na'});
     let method, response;
-    await createHandlers(db).button({customId:`hu:pass:house:view:${token}`,guildId:'g1',user:{id:'viewer'},member:{roles:{cache:{has:()=>false}}},message:{flags:{has:()=>true}},update:p=>{method='update';response=p;},reply:p=>{method='reply';response=p;}});
+    await createHandlers(db).button({customId:`hu:pass:house:view:${token}`,guildId:'g1',user:{id:'viewer'},member:{roles:{cache:new Map()}},message:{flags:{has:()=>true}},update:p=>{method='update';response=p;},reply:p=>{method='reply';response=p;}});
     assert.equal(method,'update');
     assert.match(JSON.stringify(response?.embeds),/Shared Private access/);
   }finally{await closeDatabase(db);}
@@ -179,7 +179,7 @@ for(const [name,customId] of [
     const handlers=createHandlers(db);
     for(let attempt=0;attempt<7;attempt++){
       let response;
-      await handlers.button({customId:customId(token),guildId:'g1',user:{id:'viewer',username:'Viewer'},member:{roles:{cache:{has:()=>false}}},message:{flags:{has:()=>true}},update:p=>{response=p;},reply:p=>{response=p;}});
+      await handlers.button({customId:customId(token),guildId:'g1',user:{id:'viewer',username:'Viewer'},member:{roles:{cache:new Map()}},message:{flags:{has:()=>true}},update:p=>{response=p;},reply:p=>{response=p;}});
       assert.ok(response?.embeds?.length,`attempt ${attempt+1}: ${response?.content}`);
     }
   }finally{await closeDatabase(db);}
@@ -197,7 +197,7 @@ for(const target of ['channel','thread','link','send-failure','record-failure'])
     parent.threads={fetchActive:async()=>({threads:new Map([['thread',thread]])})};
     const channels=new Map([['parent',parent],['thread',thread]]);
     const handlers=createHandlers(db);
-    const interaction=(customId,values=[])=>({customId,values,guildId:'g1',user:{id:'owner',username:'Owner'},member:{roles:{cache:{has:()=>false}}},guild:{id:'g1',name:'Test',members:{fetch:async()=>({id:'owner',displayName:'Owner'}),fetchMe:async()=>({id:'bot'})},channels:{fetch:async id=>id?channels.get(id):channels}},deferUpdate:async()=>{},editReply:async p=>{response=p;}});
+    const interaction=(customId,values=[])=>({customId,values,guildId:'g1',user:{id:'owner',username:'Owner'},member:{roles:{cache:new Map()}},guild:{id:'g1',name:'Test',members:{fetch:async()=>({id:'owner',displayName:'Owner'}),fetchMe:async()=>({id:'bot'})},channels:{fetch:async id=>id?channels.get(id):channels}},deferUpdate:async()=>{},editReply:async p=>{response=p;}});
     await handlers.button(interaction(`hu:pass:house:share:${house.id}`));
     assert.ok(response.components.flatMap(r=>r.toJSON().components).some(c=>c.custom_id===`hu:pass:house:channel:${house.id}`));
     if(target==='link'){

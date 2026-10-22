@@ -12,7 +12,7 @@ test('latest schema retains Discord identity caches and readable companion field
   const db=openDatabase({DB_TYPE:'sqlite',DATABASE_PATH:path.join(dir,'identities.sqlite')});
   try{
     await migrate(db);
-    assert.equal(Number((await one(db,'SELECT MAX(version) version FROM schema_migrations')).version),10);
+    assert.equal(Number((await one(db,'SELECT MAX(version) version FROM schema_migrations')).version),11);
     for(const table of ['discord_guilds','discord_users','discord_guild_members','discord_channels','discord_roles']){
       assert.equal(Number((await one(db,"SELECT COUNT(*) count FROM sqlite_master WHERE type='table' AND name=?",[table])).count),1,table);
     }
@@ -39,7 +39,7 @@ test('v9 repairs readable tour columns when an earlier MariaDB migration was alr
     ['guild_settings',new Set()],['saved_houses',new Set()],['house_comments',new Set()],['tours',new Set(['id','guild_name'])],
     ['tour_stops',new Set()],['tour_sessions',new Set()],['global_moderators',new Set()],['global_moderator_requests',new Set()],['audit_log',new Set()]
   ]);
-  const versions=new Set([1,2,3,4,5,6,7,8]);
+  const versions=new Set([1,2,3,4,5,6,7,8,11]);
   const db={type:'mariadb',getConnection:async()=>db,beginTransaction:async()=>{},commit:async()=>{},rollback:async()=>{},release(){},query:async(sql,params=[])=>{
     if(/^CREATE TABLE IF NOT EXISTS schema_migrations/i.test(sql))return {affectedRows:0};
     if(/^SELECT version FROM schema_migrations/i.test(sql))return [...versions].map(version=>({version}));
@@ -69,7 +69,7 @@ test('v10 upgrades existing SQLite sessions without inventing Private sharing au
     await db.query("INSERT INTO tour_sessions(tour_id,guild_id,channel_id,mode,started_by) VALUES(1,'g','c','shared','owner')");
     await migrate(db);await migrate(db);
     assert.equal((await one(db,'SELECT launch_visibility FROM tour_sessions')).launch_visibility,null);
-    assert.equal(Number((await one(db,'SELECT max(version) v FROM schema_migrations')).v),10);
+    assert.equal(Number((await one(db,'SELECT max(version) v FROM schema_migrations')).v),11);
   }finally{await closeDatabase(db);fs.rmSync(dir,{recursive:true,force:true});}
 });
 

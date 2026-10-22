@@ -41,6 +41,14 @@ export class TourService{
     const origin=originGuildId||guildId||sourceGuildId||null;const r=await conn.query('INSERT INTO tours(eso_server,visibility,guild_id,origin_guild_id,source_guild_id,creator_id,name,description,tags,house_source) VALUES(?,?,?,?,?,?,?,?,?,?)',[server,visibility,visibility==='public'?guildId:null,origin,srcGuild,String(creatorId),cleanName,cleanDescription,JSON.stringify(tags||[]),source]);
     return this.get(r.insertId,conn);
   }
+  async createWithStops({creatorId,guildId,esoServer,visibility,name,description=null,savedHouseIds=[]}){
+    if(!savedHouseIds.length)throw new Error('Select at least one house.');
+    return withTransaction(this.db,async conn=>{
+      const tour=await this.createInConnection(conn,{creatorId,guildId,originGuildId:guildId,esoServer,visibility,name,description});let added=0,skipped=0;
+      for(const id of savedHouseIds){try{await this.addStopInConnection(conn,{tourId:tour.id,savedHouseId:id,position:added+1});added++;}catch(error){if(/already|duplicate/i.test(error.message)){skipped++;continue;}throw error;}}
+      return {tour,added,skipped};
+    });
+  }
   async addStopInConnection(conn,{tourId,savedHouseId,position,customTitle=null,notes=null}){
     const tour=await this.get(tourId,conn);if(!tour)throw new Error('Tour not found.');
     const house=await one(conn,"SELECT * FROM saved_houses WHERE id=? AND status='active'",[Number(savedHouseId)]);if(!house)throw new Error('Saved house not found.');

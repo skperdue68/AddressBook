@@ -163,7 +163,7 @@ test('stale Global Moderator review acknowledges and refreshes without a raw err
     let deferred = false, response;
     await createHandlers(db).button({
       customId:`hu:globalmod:deny:${request.id}:1`, guildId:'g1', channelId:'c1', guild:{name:'Guild One'},
-      user:{id:'approver',username:'Approver',globalName:'Approver'}, member:{displayName:'Approver',roles:{cache:{has:()=>false}}},
+      user:{id:'approver',username:'Approver',globalName:'Approver'}, member:{displayName:'Approver',roles:{cache:new Map()}},
       deferUpdate:async()=>{deferred=true;}, editReply:async payload=>{response=payload;}, update:async payload=>{response=payload;}, reply:async payload=>{response=payload;}
     });
     assert.equal(deferred, true);

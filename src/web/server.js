@@ -36,7 +36,7 @@ export function createWebAdminServer({ service, config = {}, resolveOAuthIdentit
       if (!current) continue;
       const settings = service.guilds?.getSettings ? service.guilds.getSettings(guild.id) : { eso_server: current.esoServer || guild.esoServer || null };
       const esoServer = settings?.eso_server || current.esoServer || guild.esoServer || null;
-      const authorization = service.authorizeGuild({ guildId: guild.id, requestedGuildId: guild.id, esoServer, requestedEsoServer: esoServer, memberRoleIds: current.roleIds || [] });
+      const authorization = await service.authorizeGuild({ userId: session.id, guildId: guild.id, requestedGuildId: guild.id, esoServer, requestedEsoServer: esoServer, memberRoleIds: current.roleIds || [] });
       if (authorization.allowed) choices.push({ guild: { ...guild, ...current }, settings, esoServer });
     }
     const requestedGuildId = url.searchParams.get('choose') === '1' ? '' : String(url.searchParams.get('guildId') || session.selectedGuildId || '');

@@ -52,11 +52,6 @@ test('Help & Learning exposes replay, What’s New, and bounded topic shortcuts'
   }
 });
 
-test('current release notes describe v1.0.59 channel and thread sharing', () => {
-  const latest = whatsNewPayload();
-  const text = JSON.stringify(latest);
-  assert.match(text, /AddressBook 1\.0\.59/);
-  assert.match(text, /paginated channel picker/);
-  assert.match(text, /thread/);
-  assert.match(text, /whatsnew:ack:1\.0\.59/);
+test('current release notes describe weekly Featured, moderator access, and tour ordering',()=>{
+ const text=JSON.stringify(whatsNewPayload());assert.match(text,/seven days/);assert.match(text,/Help/);assert.match(text,/stop order/);assert.match(text,/whatsnew:ack:1\.0\.60/);
 });

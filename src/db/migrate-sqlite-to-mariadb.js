@@ -5,8 +5,9 @@ import { DatabaseSync } from 'node:sqlite';
 import { closeDatabase, migrate, openDatabase, one, withTransaction } from './database.js';
 
 const LEGACY_SOURCE_TABLES=['houses','guild_settings','registered_houses','personal_bookmarks','house_comments','tours','tour_stops','audit_log'];
-const UNIFIED_SOURCE_TABLES=['houses','discord_guilds','discord_users','discord_guild_members','discord_channels','discord_roles','guild_settings','housing_destinations','saved_houses','house_comments','tours','tour_stops','recent_house_views','global_moderators','global_moderator_requests','audit_log','tour_events','tour_event_rsvps','tour_event_deliveries','featured_items','tour_progress','tour_progress_stops'];
-const TARGET_DATA_TABLES=['discord_guilds','discord_users','discord_guild_members','discord_channels','discord_roles','guild_settings','housing_destinations','saved_houses','house_comments','tours','tour_stops','recent_house_views','tour_sessions','global_moderators','global_moderator_requests','audit_log','tour_events','tour_event_rsvps','tour_event_deliveries','featured_items','tour_progress','tour_progress_stops'];
+const V11_COLUMNS={'server_moderator_requests': ['id', 'guild_id', 'discord_user_id', 'reason', 'status', 'revision', 'requested_at', 'reviewed_at', 'reviewed_by', 'discord_global_name', 'discord_display_name', 'guild_name'], 'server_moderators': ['guild_id', 'discord_user_id', 'approved_by', 'request_id', 'request_revision', 'approved_at'], 'featured_house_cycles': ['guild_id', 'eso_server', 'last_rotated_at', 'previous_destination_ids']};
+const UNIFIED_SOURCE_TABLES=[...Object.keys(V11_COLUMNS),'houses','discord_guilds','discord_users','discord_guild_members','discord_channels','discord_roles','guild_settings','housing_destinations','saved_houses','house_comments','tours','tour_stops','recent_house_views','global_moderators','global_moderator_requests','audit_log','tour_events','tour_event_rsvps','tour_event_deliveries','featured_items','tour_progress','tour_progress_stops'];
+const TARGET_DATA_TABLES=[...Object.keys(V11_COLUMNS),'discord_guilds','discord_users','discord_guild_members','discord_channels','discord_roles','guild_settings','housing_destinations','saved_houses','house_comments','tours','tour_stops','recent_house_views','tour_sessions','global_moderators','global_moderator_requests','audit_log','tour_events','tour_event_rsvps','tour_event_deliveries','featured_items','tour_progress','tour_progress_stops'];
 
 function sourceRows(db,table){
   const exists=db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(table);
@@ -212,6 +213,8 @@ export async function migrateSqliteToMariaDb(sourcePath,{pool=null}={}){
         await copyRecentViews(conn,src.recent_house_views);
         await copyGlobalModeration(conn,src.global_moderators,src.global_moderator_requests);
         await copyEngagement(conn,src);
+        for(const [table,columns] of Object.entries(V11_COLUMNS))for(const row of src[table]||[])await conn.query(`INSERT INTO ${table}(${columns.join(',')}) VALUES(${columns.map(()=>'?').join(',')})`,columns.map(c=>row[c] instanceof Date?timestamp(row[c]):row[c]??null));
+        for(const table of Object.keys(V11_COLUMNS)){const count=await one(conn,`SELECT COUNT(*) c FROM ${table}`);if(Number(count.c)!==(src[table]||[]).length)throw new Error(`Verification failed for ${table}`);}
       }else{
         await copySavedHouses(conn,src.registered_houses,src.personal_bookmarks,maps);
         await copyComments(conn,src.house_comments,maps);

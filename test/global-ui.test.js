@@ -11,7 +11,7 @@ test('registration, search, and tours expose Global scope',()=>{
   assert.match(ui,/Global Tour/);
   assert.match(menu,/scope==='global'/);
   assert.match(menu,/Global entries/);
-  assert.match(specs,/Global Moderator Access/);
+  // Access requests now live under Help; interaction coverage is in server-moderator-ui.test.js.
 });
 
 test('visibility changes preview tour impact and require confirmation',()=>{

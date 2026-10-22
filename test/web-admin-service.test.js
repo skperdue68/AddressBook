@@ -65,12 +65,13 @@ async function seedAuditHouses(db, rows) {
   for (const [id,guild,name] of rows) await db.query("INSERT INTO saved_houses(id,scope,guild_id,house_id,eso_owner,normalized_owner,display_name,created_by,updated_by) VALUES(?,'public',?,62,?,?,?,?,?)",[id,guild,`Owner${id}`,`owner${id}`,name,'u','u']);
 }
 
-test('web admin authorization requires configured moderator role and exact guild context', async () => {
-  const service = new WebAdminService({}, { guilds: { getSettings: () => ({ eso_server: 'pc_na', staff_role_ids: ['mod'] }) } });
-  assert.deepEqual(service.authorizeGuild({ guildId: 'g1', requestedGuildId: 'g1', esoServer: 'pc_na', requestedEsoServer: 'pc_na', memberRoleIds: ['mod'] }), { allowed: true, reason: null });
-  assert.equal(service.authorizeGuild({ guildId: 'g1', requestedGuildId: 'g2', esoServer: 'pc_na', requestedEsoServer: 'pc_na', memberRoleIds: ['mod'] }).allowed, false);
-  assert.equal(service.authorizeGuild({ guildId: 'g1', requestedGuildId: 'g1', esoServer: 'pc_na', requestedEsoServer: 'pc_eu', memberRoleIds: ['mod'] }).allowed, false);
-  assert.equal(service.authorizeGuild({ guildId: 'g1', requestedGuildId: 'g1', esoServer: 'pc_na', requestedEsoServer: 'pc_na', memberRoleIds: [] }).allowed, false);
+test('web admin authorization requires configured moderator role and exact guild context', async t => {
+  const db=openDatabase({DB_TYPE:'sqlite',DATABASE_PATH:':memory:'});t.after(()=>closeDatabase(db));await migrate(db);
+  await db.query(`INSERT INTO guild_settings(guild_id,eso_server,staff_role_ids) VALUES('g1','pc_na','["mod"]')`);
+  const service=new WebAdminService(db);
+  const args={guildId:'g1',requestedGuildId:'g1',esoServer:'pc_na',requestedEsoServer:'pc_na',userId:'u',memberRoleIds:['mod']};
+  assert.deepEqual(await service.authorizeGuild(args),{allowed:true,reason:null});
+  for(const change of [{requestedGuildId:'g2'},{requestedEsoServer:'pc_eu'},{memberRoleIds:[]}])assert.equal((await service.authorizeGuild({...args,...change})).allowed,false);
 });
 
 test('web admin export delegates to the existing guild/environment export', async () => {

@@ -43,14 +43,17 @@ export function parseDestinationInput(value){
   return {kind:'catalog',houseQuery:input};
 }
 
+function houseNotFound(){return Object.assign(new Error('No matching ESO house found. The house was not found in the official ESO catalog.'),{code:'HOUSE_NOT_FOUND'});}
+
 export async function resolveDestinationInput({input,owner=''},houseService){
   const parsed=parseDestinationInput(input);
   let house;
   if(parsed.houseId!=null){
     house=await houseService.get(parsed.houseId);
-    if(!house)throw new Error(`Official ESO house ID ${parsed.houseId} was not found.`);
+    if(!house)throw houseNotFound();
   }else{
     const resolved=await houseService.resolve(parsed.houseQuery);
+    if(!resolved.exact&&!resolved.matches.length)throw houseNotFound();
     if(!resolved.exact){
       if(resolved.matches.length===1)house=resolved.matches[0];
       else return {house:null,matches:resolved.matches,esoOwner:stripLeadingAt(owner)};

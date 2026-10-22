@@ -17,87 +17,12 @@ async function fixture() {
   await db.query("INSERT INTO tours(id,eso_server,visibility,guild_id,creator_id,name,house_source) VALUES(1,'pc_na','public','g1','u1','Guild Route','public_global')");
   await db.query("INSERT INTO tour_stops(id,tour_id,position,saved_house_id) VALUES(1,1,1,1)");
   await db.query("INSERT INTO guild_settings(guild_id,eso_server,timezone) VALUES('g1','pc_na','America/Chicago')");
-  return { db, events: new TourEventService(db) };
+  return { db, events: new TourEventService(db,{now:()=>new Date('2026-01-01T00:00:00Z')}) };
 }
 
 function eventButton(customId,update){
-  return {customId,guildId:'g1',channelId:'c1',guild:{name:'Guild'},channel:{name:'Housing'},user:{id:'u1',username:'Host',globalName:'Host'},member:{displayName:'Host',roles:{cache:{has:()=>false}}},update:payload=>Promise.resolve(update(payload)),reply:payload=>Promise.resolve(payload)};
+  return {customId,guildId:'g1',channelId:'c1',guild:{name:'Guild'},channel:{name:'Housing'},user:{id:'u1',username:'Host',globalName:'Host'},member:{displayName:'Host',roles:{cache:new Map()}},update:payload=>Promise.resolve(update(payload)),reply:payload=>Promise.resolve(payload)};
 }
-
-test('event Start opens preflight and requires a confirmed second action',async()=>{
-  const {db,events}=await fixture();
-  try{
-    const event=await events.create({guildId:'g1',channelId:'c1',tourId:1,title:'Guild Night',date:'2026-10-15',time:'19:30',hostId:'u1',isTourHost:true});
-    const handlers=createHandlers(db);let rendered;
-    await handlers.button(eventButton(`hu:event:start:${event.id}`,payload=>{rendered=payload;}));
-    assert.match(rendered.embeds[0].toJSON().title,/Tour Preflight/);
-    const confirm=rendered.components.flatMap(row=>row.toJSON().components).find(component=>component.custom_id===`hu:event:startconfirm:${event.id}`);
-    assert.ok(confirm);
-    assert.equal((await db.query('SELECT started_at FROM tour_events WHERE id=?',[event.id]))[0].started_at,null);
-    await handlers.button(eventButton(confirm.custom_id,payload=>{rendered=payload;}));
-    assert.ok((await db.query('SELECT started_at FROM tour_events WHERE id=?',[event.id]))[0].started_at);
-  }finally{await closeDatabase(db);}
-});
-
-test('opening and updating an event from page two returns to page two', async () => {
-  const { db, events } = await fixture();
-  try {
-    for (let n = 1; n <= 6; n++) {
-      await events.create({ guildId: 'g1', channelId: 'c1', tourId: 1, title: `Guild Night ${n}`, date: '2026-10-15', time: `${10 + n}:30`, hostId: 'u1', isTourHost: true });
-    }
-    const handlers = createHandlers(db);
-    let rendered;
-    const run = async customId => handlers.button(eventButton(customId, payload => { rendered = payload; }));
-    await run('hu:events:next:2');
-    const open = rendered.components.flatMap(row => row.toJSON().components).find(control => control.custom_id?.startsWith('hu:event:open:'));
-    assert.ok(open);
-    await run(open.custom_id);
-    const rsvp = rendered.components.flatMap(row => row.toJSON().components).find(control => control.custom_id?.startsWith('hu:event:rsvp:going:'));
-    await run(rsvp.custom_id);
-    const reminder = rendered.components.flatMap(row => row.toJSON().components).find(control => control.custom_id?.startsWith('hu:event:reminder:'));
-    await run(reminder.custom_id);
-    const start = rendered.components.flatMap(row => row.toJSON().components).find(control => control.custom_id?.startsWith('hu:event:start:'));
-    await run(start.custom_id);
-    const preflightBack = rendered.components.flatMap(row => row.toJSON().components).find(control => control.label === 'Back to Event');
-    assert.match(preflightBack.custom_id, /:2$/);
-    await run(preflightBack.custom_id);
-    const back = rendered.components.flatMap(row => row.toJSON().components).find(control => control.label === 'Back to Upcoming Events');
-    assert.equal(back.custom_id, 'hu:events:page:2');
-    await run(back.custom_id);
-    assert.match(rendered.embeds[0].toJSON().description, /Guild Night 6/);
-    assert.ok(rendered.components.flatMap(row => row.toJSON().components).find(control => control.custom_id === 'hu:events:prev:1'));
-  } finally { await closeDatabase(db); }
-});
-
-test('reopening an event shows the viewer’s saved RSVP and reminder choice', async () => {
-  const { db, events } = await fixture();
-  try {
-    const event = await events.create({ guildId: 'g1', channelId: 'c1', tourId: 1, title: 'Guild Night', date: '2026-10-15', time: '19:30', hostId: 'u1', isTourHost: true });
-    await events.setRsvp({ eventId: event.id, userId: 'u1', status: 'going', dmReminders: true, guildId: 'g1', esoServer: 'pc_na' });
-    const handlers = createHandlers(db);
-    let rendered;
-    await handlers.button(eventButton(`hu:event:open:${event.id}`, payload => { rendered = payload; }));
-    const controls = rendered.components.flatMap(row => row.toJSON().components);
-    assert.equal(controls.find(control => control.custom_id.startsWith('hu:event:rsvp:going:')).label, 'Going ✓');
-    assert.equal(controls.find(control => control.custom_id.startsWith('hu:event:reminder:')).label, 'DM Reminders ✓');
-  } finally { await closeDatabase(db); }
-});
-
-test('reminder change on an active event keeps its In progress state and Complete action', async () => {
-  const { db, events } = await fixture();
-  try {
-    const event = await events.create({ guildId: 'g1', channelId: 'c1', tourId: 1, title: 'Guild Night', date: '2026-10-15', time: '19:30', hostId: 'u1', isTourHost: true });
-    await events.setRsvp({ eventId: event.id, userId: 'u1', status: 'going', guildId: 'g1', esoServer: 'pc_na' });
-    await events.start({ eventId: event.id, actorId: 'u1', guildId: 'g1', esoServer: 'pc_na' });
-    const handlers = createHandlers(db);
-    let rendered;
-    await handlers.button(eventButton(`hu:event:reminder:${event.id}`, payload => { rendered = payload; }));
-    const json = JSON.stringify(rendered);
-    assert.match(json, /In progress/);
-    assert.match(json, /hu:event:complete:/);
-    assert.doesNotMatch(json, /hu:event:start:/);
-  } finally { await closeDatabase(db); }
-});
 
 test('creates an event in the guild timezone and lists its RSVP summary', async () => {
   const { db, events } = await fixture();
@@ -188,27 +113,6 @@ test('event start refuses an ineligible tour stop without starting a session',as
     const [row]=await db.query('SELECT started_at FROM tour_events WHERE id=?',[event.id]);
     assert.equal(row.started_at,null);
     assert.equal((await db.query('SELECT id FROM tour_sessions WHERE tour_id=1')).length,0);
-  }finally{await closeDatabase(db);}
-});
-
-test('Upcoming Events pages through more than ten entries within Discord component limits',async()=>{
-  const {db,events}=await fixture();
-  try{
-    await db.query("INSERT INTO guild_settings(guild_id,eso_server,timezone) VALUES('g1','pc_na','UTC') ON CONFLICT(guild_id) DO UPDATE SET eso_server='pc_na',timezone='UTC'");
-    for(let n=1;n<=11;n++)await events.create({guildId:'g1',channelId:'c1',tourId:1,title:`Event ${n}`,date:'2026-10-15',time:'19:30',hostId:'u1',isTourHost:true});
-    const handlers=createHandlers(db);let rendered;
-    const run=id=>handlers.button({customId:id,guildId:'g1',channelId:'c1',guild:{name:'Guild'},user:{id:'u1',username:'Host'},member:{displayName:'Host',roles:{cache:{has:()=>false}}},update:p=>{rendered=p;},reply:p=>{rendered=p;}});
-    await run('hu:tours:events');
-    for(const expected of [6,11]){
-      const next=rendered.components.flatMap(row=>row.toJSON().components).find(c=>c.label==='Next');
-      assert.ok(next&&!next.disabled);
-      await run(next.custom_id);
-      const buttons=rendered.components.flatMap(row=>row.toJSON().components);
-      assert.ok(buttons.length<=8);
-      assert.ok(rendered.components.every(row=>row.toJSON().components.length<=5));
-      assert.match(rendered.embeds[0].toJSON().description,new RegExp(`Event ${expected}`));
-    }
-    assert.equal(rendered.components.flatMap(row=>row.toJSON().components).find(c=>c.label==='Next').disabled,true);
   }finally{await closeDatabase(db);}
 });
 

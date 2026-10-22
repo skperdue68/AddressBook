@@ -1,10 +1,10 @@
+import {resolveCurrentGuildMembership} from './web/guild-membership.js';
 import 'dotenv/config';
 import { Client, Events, GatewayIntentBits, MessageFlags } from 'discord.js';
 import { closeDatabase, ensureMariaDatabase, migrate, openDatabase } from './db/database.js';
 import { runConfiguredMigration } from './db/database-migration.js';
 import { seedHouses } from './db/seed-houses.js';
 import { createHandlers } from './handlers.js';
-import { EventReminderService } from './services/event-reminder-service.js';
 import { FeaturedContentService } from './services/featured-content-service.js';
 import { EngagementWorker } from './services/engagement-worker.js';
 import { WebAdminService } from './services/web-admin-service.js';
@@ -27,11 +27,7 @@ await migrate(db);
 await seedHouses(db);
 const handlers=createHandlers(db);
 const client=new Client({intents:[GatewayIntentBits.Guilds]});
-const reminders=new EventReminderService(db,{gateway:{
-  async sendChannel({channelId,event,reminderKey}){const channel=await client.channels.fetch(channelId);await channel.send(`Reminder (${reminderKey}): **${event.title}** starts soon. Use the event card to RSVP or start the tour.`);},
-  async sendDm({userId,event,reminderKey}){const user=await client.users.fetch(userId);await user.send(`AddressBook reminder (${reminderKey}): **${event.title}** starts soon in ${event.channel_id}.`);}
-}});
-const worker=new EngagementWorker({reminders,featured:new FeaturedContentService(db),intervalMs:60_000});
+const worker=new EngagementWorker({featured:new FeaturedContentService(db),intervalMs:60_000});
 const webConfig=webAdminConfig();
 const webAdmin=webConfig.enabled?new WebAdminService(db):null;
 let webServer=null;
@@ -46,16 +42,13 @@ client.once(Events.ClientReady,async c=>{
       const user=await response.json(),guilds=[];
       for(const guild of c.guilds.cache.values()){
         try{
-          const member=await guild.members.fetch(user.id),settings=await webAdmin.guilds.ensureSettings(guild.id);
+          const member=await guild.members.fetch({user:user.id,force:true}),settings=await webAdmin.guilds.ensureSettings(guild.id);
           guilds.push({id:guild.id,name:guild.name,roleIds:[...member.roles.cache.keys()],esoServer:settings.eso_server});
         }catch{/* user is not a member of this bot guild */}
       }
       return {...user,guilds};
-    },resolveGuildMembership:async ({userId,guildId})=>{
-      const guild=c.guilds.cache.get(String(guildId));
-      if(!guild)return null;
-      try{const member=await guild.members.fetch(String(userId)),settings=await webAdmin.guilds.ensureSettings(guild.id);return {id:guild.id,name:guild.name,roleIds:[...member.roles.cache.keys()],esoServer:settings.eso_server};}catch{return null;}
-    }});
+    },resolveGuildMembership:({userId,guildId})=>resolveCurrentGuildMembership({client:c,guilds:webAdmin.guilds,userId,guildId})
+    });
     await new Promise((resolve,reject)=>{webServer.once('error',reject);webServer.listen(webConfig.port,webConfig.host,resolve);});
     console.log(`AddressBook web administration listening on ${webConfig.host}:${webConfig.port}`);
   }

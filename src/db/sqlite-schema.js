@@ -1,4 +1,4 @@
-export const SQLITE_SCHEMA_VERSION = 10;
+export const SQLITE_SCHEMA_VERSION = 11;
 
 export const SQLITE_SCHEMA_V8 = [
   ['last_seen_tour_version', "TEXT"],
@@ -398,3 +398,18 @@ export const SQLITE_V2_COLUMNS = {
 };
 
 export const SQLITE_V9_COLUMNS = SQLITE_V2_COLUMNS;
+
+export const SQLITE_SCHEMA_V11 = [
+`CREATE TABLE IF NOT EXISTS server_moderator_requests (
+ id INTEGER PRIMARY KEY AUTOINCREMENT, guild_id TEXT NOT NULL, discord_user_id TEXT NOT NULL,
+ reason TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', revision INTEGER NOT NULL DEFAULT 1,
+ requested_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, reviewed_at TEXT, reviewed_by TEXT,
+ discord_global_name TEXT, discord_display_name TEXT, guild_name TEXT, UNIQUE(guild_id,discord_user_id))`,
+`CREATE TABLE IF NOT EXISTS server_moderators (
+ guild_id TEXT NOT NULL, discord_user_id TEXT NOT NULL, approved_by TEXT NOT NULL,
+ request_id INTEGER NOT NULL, request_revision INTEGER NOT NULL, approved_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ PRIMARY KEY(guild_id,discord_user_id))`,
+`CREATE TABLE IF NOT EXISTS featured_house_cycles (
+ guild_id TEXT PRIMARY KEY, eso_server TEXT NOT NULL, last_rotated_at TEXT,
+ previous_destination_ids TEXT NOT NULL DEFAULT '[]')`
+];
