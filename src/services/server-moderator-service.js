@@ -1,3 +1,4 @@
+import {botOwnerIds} from '../config/bot-owners.js';
 import {one,withTransaction} from '../db/database.js';
 
 // SQLite exposes one shared connection. Serialize this service's writes on it;
@@ -9,14 +10,15 @@ async function serialized(db,fn){
  queues.set(db,next);try{return await next;}finally{if(queues.get(db)===next)queues.delete(db);}
 }
 export class ServerModeratorService{
- constructor(db){this.db=db;}
+ constructor(db,env=process.env){this.db=db;this.owners=botOwnerIds(env);}
+ isOwner(userId){return this.owners.has(String(userId||''));}
  async access({guildId,userId,roleIds=[]},conn=this.db){
   if(!guildId)return {isModerator:false,hasGrant:false,activeGrantCount:0,canReviewRequests:false,bootstrap:false};
   const settings=await one(conn,'SELECT staff_role_ids FROM guild_settings WHERE guild_id=?',[String(guildId)]);
   const configured=JSON.parse(settings?.staff_role_ids||'[]');
   const grants=await conn.query('SELECT discord_user_id FROM server_moderators WHERE guild_id=?',[String(guildId)]);
   const hasGrant=grants.some(g=>g.discord_user_id===String(userId));
-  const isModerator=hasGrant||configured.some(r=>roleIds.includes(r));
+  const isModerator=this.isOwner(userId)||hasGrant||configured.some(r=>roleIds.includes(r));
   return {isModerator,hasGrant,activeGrantCount:grants.length,canReviewRequests:isModerator,bootstrap:configured.length===0&&grants.length===0};
  }
  async request({guildId,userId,reason,names={}}){

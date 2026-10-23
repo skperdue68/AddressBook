@@ -95,7 +95,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
   const tourCopies=new TourCopyService(db);
   const reports=new HousingReportService(db);
   const onboarding=new OnboardingService(db);
-  const adminHealth=new AdminHealthService(db,{version:'1.0.60'});
+  const adminHealth=new AdminHealthService(db,{version:'1.0.61'});
   const accessContexts=new AccessContextService(db);
   const personalStates=new UserHouseStateService(db,{visitService:visits});
   const savedSearches=new SavedHouseSearchService(db);
@@ -317,7 +317,6 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     const searchActions=s.kind==='visit'&&s.extra.advancedToken?[
       {customId:`hu:advanced:filters:${s.extra.advancedToken}`,label:'Filters',style:'primary',emoji:'🔍'},
       {customId:`hu:advanced:clear:${s.extra.advancedToken}`,label:'Clear Filters',style:'secondary'},
-      {customId:`hu:surprise:from:${id}`,label:'Surprise Me',style:'primary',emoji:'🎲'},
       ...(hasMeaningfulSearchFilters(currentFilters)?[{customId:`hu:savedsearch:save:${s.extra.advancedToken}`,label:'Save Search',style:'success',emoji:'💾'}]:[])
     ]:[];
     const tourActions=savedCount?[{customId:`hu:results:create:${id}`,label:'Create New Tour From Results',style:'success',emoji:'🗺️'},{customId:`hu:results:add:${id}`,label:'Add Results to Existing Tour',style:'primary',emoji:'➕'}]:[];
@@ -355,8 +354,8 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
   }
   function surpriseContext(i,stateToken){
     const context=surpriseStates.get(stateToken);
-    if(!context||Date.now()-context.created>30*60*1000)return {error:'That Surprise Me session expired. Run a house search again.'};
-    if(context.userId!==i.user.id)return {error:'That Surprise Me session belongs to another user.'};
+    if(!context||Date.now()-context.created>30*60*1000||context.guildId!==i.guildId||context.esoServer!==guilds.getEsoServer(i.guildId))return {error:'That Random House session expired. Open Random House from the main menu.'};
+    if(context.userId!==i.user.id)return {error:'That Random House session belongs to another user.'};
     return {context};
   }
   async function showSurprise(i,stateToken){
@@ -370,14 +369,16 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       }else{
         const access=await accessContexts.forHouse({userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId),savedHouseId:row.id});
         if(access.canView){
-          const current=legacySavedRow(access.record);
+          const enriched=await saved.getVisible(row.id,{userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)});
+          if(!enriched){found.context.rows=found.context.rows.filter(candidate=>candidate.id!==row.id);continue;}
+          const current=legacySavedRow(enriched);
           found.context.previousTargetKey=houseTargetKey(houseTarget(current));
           return i.update(destinationMenuPayload(await withHouseCardContext(i,current),{canEdit:canEditSaved(i,current),backId,surpriseToken:stateToken}));
         }
       }
       found.context.rows=found.context.rows.filter(candidate=>row.scope==='official'?candidate.scope!=='official'||Number(candidate.house_id)!==Number(row.house_id):candidate.scope==='official'||Number(candidate.id)!==Number(row.id));
     }
-    return i.update({content:'No accessible houses are available for a surprise.',embeds:[],components:buttonRows([{customId:found.context.backId,label:'Back',style:'secondary',emoji:'↩️'}])});
+    return i.update({content:'No accessible registered houses are available. Register a house or return to the main menu.',embeds:[],components:buttonRows([{customId:found.context.backId,label:'Back',style:'secondary',emoji:'↩️'}])});
   }
   function modalResponse(i,payload){ if(typeof i.isFromMessage==='function'&&i.isFromMessage())return i.update(payload); return i.reply({...payload,flags:MessageFlags.Ephemeral}); }
   function respond(i,payload,mode='update'){ if(mode==='reply')return i.reply({...payload,flags:MessageFlags.Ephemeral}); if(mode==='modal')return modalResponse(i,payload); return i.update(payload); }
@@ -799,13 +800,13 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     if(isTourShareDestination(id))return handleTourShareDestination(i,{sharePasses,tours,guilds,loadHouse:async(i,id)=>(await loadSavedReference(i,id)).record});
     if(isDiscordAdminInteraction(id))return i.reply({content:webOnlyAdminNotice(),flags:MessageFlags.Ephemeral});
     if(id.startsWith('tour:'))return handleTourRuntimeButton(i,id);
-    if(id==='hu:tours:featured'){
+    if(id==='hu:tours:featured'||id==='hu:featured'){
       const cycle=await featured.rotateHouses({guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)});
       const rows=await featured.list({guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)});
-      return i.update(featuredPayload({items:rows,nextRotationAt:cycle.nextRotationAt}));
+      return i.update(featuredPayload({items:rows,nextRotationAt:cycle.nextRotationAt,backId:id==='hu:featured'?'hu:home':'hu:tours'}));
     }
     if(id.startsWith('hu:featured:tour:')){
-      const parts=id.split(':'),tourId=Number(parts[3]),source=parts[4]==='admin'&&isAdmin(i)?'admin':'viewer';
+      const parts=id.split(':'),tourId=Number(parts[3]),source=parts[4]==='admin'&&isAdmin(i)?'admin':parts[4]==='home'?'home':'viewer';
       const rows=await featured.list({guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)});
       if(!rows.some(item=>item.target_kind==='tour'&&Number(item.target_id)===tourId))return i.reply({content:'That tour is no longer Featured.',flags:MessageFlags.Ephemeral});
       const t=await tourById(i,tourId);
@@ -813,13 +814,13 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       return i.update(tourDetailPayload(t,await tours.getStops(t.id),canManageTour(i,t),null,source));
     }
     if(id.startsWith('hu:featured:house:')){
-      const parts=id.split(':'),houseId=Number(parts[3]),source=parts[4]==='admin'&&isAdmin(i)?'admin':'viewer';
+      const parts=id.split(':'),houseId=Number(parts[3]),source=parts[4]==='admin'&&isAdmin(i)?'admin':parts[4]==='home'?'home':'viewer';
       const rows=await featured.list({guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)});
       if(!rows.some(item=>item.target_kind==='house'&&Number(item.target_id)===houseId))return i.reply({content:'That house is no longer Featured.',flags:MessageFlags.Ephemeral});
       const access=await loadSavedReference(i,houseId);
       if(!access?.canView)return i.reply({content:'That house is no longer available.',flags:MessageFlags.Ephemeral});
       const house=legacySavedRow(access.record);
-      return i.update(destinationMenuPayload(await withHouseCardContext(i,house),{canEdit:canEditSaved(i,house),backId:source==='admin'?'hu:admin:featured':'hu:tours:featured'}));
+      return i.update(destinationMenuPayload(await withHouseCardContext(i,house),{canEdit:canEditSaved(i,house),backId:source==='admin'?'hu:admin:featured':source==='home'?'hu:featured':'hu:tours:featured'}));
     }
     if(id.startsWith('hu:featured:expire:')){
       if(!isAdmin(i))return i.reply({content:'Only Housing Moderators can manage Featured housing.',flags:MessageFlags.Ephemeral});
@@ -859,7 +860,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     if(id.startsWith('hu:onboarding:')){
       const action=id.split(':')[2];
       if(action==='skip'){await onboarding.skip(i.user.id,onboardingNames(i));return i.update(homePayload({isAdmin:isAdmin(i),esoServer:guilds.getEsoServer(i.guildId)}));}
-      if(action==='finish'){await onboarding.complete(i.user.id,onboardingNames(i));await onboarding.markWalkthroughSeen(i.user.id,'1.0.60',onboardingNames(i));return i.update(homePayload({isAdmin:isAdmin(i),esoServer:guilds.getEsoServer(i.guildId)}));}
+      if(action==='finish'){await onboarding.complete(i.user.id,onboardingNames(i));await onboarding.markWalkthroughSeen(i.user.id,'1.0.61',onboardingNames(i));return i.update(homePayload({isAdmin:isAdmin(i),esoServer:guilds.getEsoServer(i.guildId)}));}
       return i.update(onboardingPayload({page:Number(action)||1}));
     }
     if(['hu:find','hu:register','hu:tours:start'].includes(id)&&!await onboarding.get(i.user.id))await onboarding.complete(i.user.id,onboardingNames(i));
@@ -912,10 +913,15 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       if(!row)return i.reply({content:'That saved search belongs to another user or is no longer available.',flags:MessageFlags.Ephemeral});
       return i.update(savedSearchDeleteConfirmPayload({id:row.id,name:row.name}));
     }
+    if(id==='hu:random'){
+      const rows=await visits.search({userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId),scope:'all',includeNonPlayer:false,limit:null});
+      const stateToken=token();surpriseStates.set(stateToken,{userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId),rows,previousTargetKey:null,backId:'hu:home',created:Date.now()});
+      return showSurprise(i,stateToken);
+    }
     if(id.startsWith('hu:surprise:from:')){
       const stateId=id.split(':')[3],state=states.get(stateId);
       if(!state||state.userId!==i.user.id||state.kind!=='visit')return i.reply({content:'That house list belongs to another user or has expired.',flags:MessageFlags.Ephemeral});
-      const stateToken=token();surpriseStates.set(stateToken,{userId:i.user.id,rows:state.rows,previousTargetKey:null,backId:`hu:results:back:${stateId}`,created:Date.now()});
+      const stateToken=token();surpriseStates.set(stateToken,{userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId),rows:state.rows,previousTargetKey:null,backId:`hu:results:back:${stateId}`,created:Date.now()});
       return showSurprise(i,stateToken);
     }
     if(id.startsWith('hu:surprise:again:'))return showSurprise(i,id.split(':')[3]);
@@ -1453,7 +1459,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     if(id.startsWith('hu:picker:return:')){const sid=id.split(':')[3],s=states.get(sid);if(!s||s.userId!==i.user.id)return i.reply({content:'That menu expired. Browse Tours again.',flags:MessageFlags.Ephemeral});return i.update(renderPicker(sid));}
     if(id.startsWith('hu:tourbrowse:prev:')||id.startsWith('hu:tourbrowse:next:')||id.startsWith('hu:tourbrowse:open:')){const p=id.split(':');return tourBrowseDetail(i,p[3],Number(p[4]));}
     if(id.startsWith('hu:tour:view:'))return tourDetail(i,Number(id.split(':')[3]));
-    if(id.startsWith('hu:tour:start:')){ const parts=id.split(':'),t=await tourById(i,Number(parts[3])); if(!t)return i.update({content:'Tour not found.',embeds:[],components:[]}); const state=states.get(parts[4]),index=Number(parts[5]),browse=state?.userId===i.user.id&&state.kind==='tour-view'&&Number.isInteger(index)&&Number(state.rows[index]?.id)===Number(t.id); const fromFeatured=parts[4]==='featured'&&(await featured.list({guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)})).some(item=>item.target_kind==='tour'&&Number(item.target_id)===Number(t.id)); const featuredSource=parts[5]==='admin'&&isAdmin(i)?'admin':'viewer'; return i.update(await tourStartPreflight(i,t,{backId:browse?`hu:tourbrowse:open:${parts[4]}:${index}`:fromFeatured?`hu:featured:tour:${t.id}:${featuredSource}`:null})); }
+    if(id.startsWith('hu:tour:start:')){ const parts=id.split(':'),t=await tourById(i,Number(parts[3])); if(!t)return i.update({content:'Tour not found.',embeds:[],components:[]}); const state=states.get(parts[4]),index=Number(parts[5]),browse=state?.userId===i.user.id&&state.kind==='tour-view'&&Number.isInteger(index)&&Number(state.rows[index]?.id)===Number(t.id); const fromFeatured=parts[4]==='featured'&&(await featured.list({guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)})).some(item=>item.target_kind==='tour'&&Number(item.target_id)===Number(t.id)); const featuredSource=parts[5]==='admin'&&isAdmin(i)?'admin':parts[5]==='home'?'home':'viewer'; return i.update(await tourStartPreflight(i,t,{backId:browse?`hu:tourbrowse:open:${parts[4]}:${index}`:fromFeatured?`hu:featured:tour:${t.id}:${featuredSource}`:null})); }
     if(id.startsWith('hu:tour:startprivate:')||id.startsWith('hu:tour:startpublic:')){ const p=id.split(':'),t=await tourById(i,Number(p[3])); if(!t)return i.update({content:'Tour not found.',embeds:[],components:[]}); if(p[2]==='startprivate'){try{const item=await progress.startOrResume({userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId),tourId:t.id,globalName:i.user.globalName||i.user.username,displayName:i.member?.displayName});return i.update(await progressRunCard(i,item));}catch(error){return i.reply({content:error.message,flags:MessageFlags.Ephemeral});}} return startTourSession(i,t,'public'); }
     if(id.startsWith('hu:tour:manage:'))return tourManage(i,Number(id.split(':')[3]));
     if(id.startsWith('hu:tour:add:')){ const tid=Number(id.split(':')[3]),t=await tourById(i,tid,{forManagement:true}); if(!t||!canManageTour(i,t))return i.update({content:'You cannot manage that tour.',embeds:[],components:[]}); return i.update(await tourAddHousePayload(i,t)); }

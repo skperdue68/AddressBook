@@ -10,7 +10,7 @@ test('home explains AddressBook and displays the running version', () => {
   const embed = homePayload().embeds[0].toJSON();
   assert.match(embed.title, /AddressBook/);
   assert.match(embed.description, /ESO housing/i);
-  assert.match(embed.footer.text, /Version 1\.0\.60/);
+  assert.match(embed.footer.text, /Version 1\.0\.61/);
 });
 
 test('house actions display Jump, Preview, then Housing Link in separate fields', () => {

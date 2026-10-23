@@ -24,7 +24,7 @@ test('discovery selection stays in the supplied pool and avoids an immediate rep
   assert.ok([a,b].includes(discovery.choose([a,b])));
 });
 
-test('Surprise Me uses the full result set and Another Surprise avoids the prior house',async()=>{
+test('Random House uses all accessible registered houses and avoids the prior destination',async()=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'addressbook-surprise-'));
   const db=openDatabase({DB_TYPE:'sqlite',DATABASE_PATH:path.join(dir,'surprise.sqlite')});
   try{
@@ -36,12 +36,9 @@ test('Surprise Me uses the full result set and Another Surprise avoids the prior
       await db.query("INSERT INTO saved_houses(id,eso_server,scope,origin_guild_id,house_id,eso_owner,normalized_owner,display_name,destination_id,status,created_by,updated_by) VALUES(?,'pc_na','global','g1',62,?,?,?,?,'active','u2','u2')",[id,owner,owner.toLowerCase(),owner,id]);
     }
     const menu=createHousingMenu(db,{discovery:new HouseDiscoveryService({randomInt:max=>max-1})});
-    const opened=interaction('hu:find');await menu.button(opened.value);
-    assert.ok(labels(opened.calls.updates[0]).includes('Surprise Me'));
-    const surprise=flat(opened.calls.updates[0]).find(component=>component.label==='Surprise Me');
-    const picked=interaction(surprise.custom_id);await menu.button(picked.value);
+    const picked=interaction('hu:random');await menu.button(picked.value);
     assert.match(picked.calls.updates[0].embeds[0].toJSON().title,/Owner25/);
-    const another=flat(picked.calls.updates[0]).find(component=>component.label==='Another Surprise');assert.ok(another);
+    const another=flat(picked.calls.updates[0]).find(component=>component.label==='Another Random House');assert.ok(another);
     const repeated=interaction(another.custom_id);await menu.button(repeated.value);
     assert.doesNotMatch(repeated.calls.updates[0].embeds[0].toJSON().title,/Owner25/);
     const foreign=interaction(another.custom_id,'u3');await menu.button(foreign.value);
@@ -49,7 +46,7 @@ test('Surprise Me uses the full result set and Another Surprise avoids the prior
   }finally{await closeDatabase(db);}
 });
 
-test('Surprise Me skips a result that became Private after the list loaded',async()=>{
+test('older random-result callbacks skip houses made Private after their list loaded',async()=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'addressbook-surprise-stale-'));
   const db=openDatabase({DB_TYPE:'sqlite',DATABASE_PATH:path.join(dir,'surprise.sqlite')});
   try{
@@ -62,16 +59,17 @@ test('Surprise Me skips a result that became Private after the list loaded',asyn
     }
     const menu=createHousingMenu(db,{discovery:new HouseDiscoveryService({randomInt:max=>max-1})});
     const opened=interaction('hu:find');await menu.button(opened.value);
-    const surprise=flat(opened.calls.updates[0]).find(component=>component.label==='Surprise Me');
+    const stateId=flat(opened.calls.updates[0]).find(component=>component.label==='Create New Tour From Results').custom_id.split(':')[3];
+    const surprise={custom_id:`hu:surprise:from:${stateId}`};
     await db.query("UPDATE saved_houses SET scope='private',owner_user_id='u2' WHERE id=2");
     const picked=interaction(surprise.custom_id);await menu.button(picked.value);
     assert.match(JSON.stringify(picked.calls.updates[0].embeds[0].toJSON()),/Owner1/);
-    const another=flat(picked.calls.updates[0]).find(component=>component.label==='Another Surprise');
+    const another=flat(picked.calls.updates[0]).find(component=>component.label==='Another Random House');
     const repeated=interaction(another.custom_id);await menu.button(repeated.value);
     assert.match(JSON.stringify(repeated.calls.updates[0].embeds[0].toJSON()),/Owner1/);
     await db.query("UPDATE saved_houses SET scope='private',owner_user_id='u2' WHERE id=1");
     const empty=interaction(another.custom_id);await menu.button(empty.value);
-    assert.match(empty.calls.updates[0].content,/No accessible houses/);
+    assert.match(empty.calls.updates[0].content,/No accessible registered houses/);
   }finally{await closeDatabase(db);}
 });
 

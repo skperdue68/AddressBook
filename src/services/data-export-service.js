@@ -28,7 +28,7 @@ export class DataExportService {
     // Audit metadata can reference hidden or deleted Private content.
     // Use the separately privacy-filtered audit UI/CSV instead of embedding it.
     const audit = [];
-    return { format: 'addressbook-export', version: '1.0.60', exportedAt: new Date().toISOString(), guildId: guild, esoServer: server, includePrivate: privateForUser, settings, houses, tours, stops, events, featured, comments, audit };
+    return { format: 'addressbook-export', version: '1.0.61', exportedAt: new Date().toISOString(), guildId: guild, esoServer: server, includePrivate: privateForUser, settings, houses, tours, stops, events, featured, comments, audit };
   }
 
   async toJson(options = {}) { return JSON.stringify(await this.exportGuild(options), null, 2); }

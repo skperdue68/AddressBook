@@ -11,8 +11,7 @@ const labels=payload=>payload.components.flatMap(row=>row.components).map(compon
 
 test('home includes My AddressBook without replacing the established entry points',()=>{
   assert.deepEqual(labels(homePayload()),[
-    'Search Houses','Register New House','Housing Tours','My AddressBook',
-    'Help'
+    'Search Houses','Search Housing Tours','Register New House','Random House','Featured Housing','My Address Book','Help'
   ]);
 });
 

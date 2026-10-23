@@ -9,6 +9,19 @@ Administration can be exposed in Discord, in the companion web console, or in bo
 
 ## Moderation and permissions
 
+### Bot owners
+
+Set `BOT_OWNER_IDS` in `.env` to one numeric Discord user ID or a comma-separated list, then restart. These people automatically receive all AddressBook role permissions in configured servers and Global administrator access in every supported ESO environment. This does not assign Discord roles or bypass Discord’s own permissions. Web administration still verifies current server membership. Private houses and tours remain owner-only, including for bot owners.
+
+```env
+BOT_OWNER_IDS=123456789012345678,234567890123456789
+```
+
+Owners use Help → Moderator Access → Global Moderator Access to review requests and manage Global grants. Approved Global administrators remain environment-specific and do not automatically receive owner authority. Remove an owner through `.env` and restart; the bot’s grant-revocation controls cannot remove configured ownership. Removing an owner ID does not remove a separate ordinary role/grant they already hold.
+
+`GLOBAL_MODERATOR_APPROVER_USER_IDS` remains supported for additional approval-only users. It does not automatically give those users administrative or moderation permissions. Existing Server grants remain supported. Configure Server staff with the native Discord role picker: search by role name; AddressBook stores role IDs so renaming a role preserves its assignment.
+
+
 Tour editing uses AddressBook's permissions. A configured Server Housing Moderator can edit other creators' Server tours only in that tour's own Discord server. An approved Global Housing Moderator can edit Global tours and other servers' Server tours, within the ESO environment covered by their grant. Use **Housing Tours → Edit Tour** to find these administrative editing targets. Private tours and houses remain accessible only to their creator/owner, unless that owner explicitly shares them through a Share Pass. Administrator roles never override this restriction. Global permissions are refreshed on each interaction, including saving an edit form, so revocation blocks previously opened editors.
 
 Guild administrative functions accept up to 25 configured roles through Discord's searchable native role picker. Holding any configured role grants that function.

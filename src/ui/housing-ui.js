@@ -25,18 +25,8 @@ function button(spec){ const b=new ButtonBuilder().setCustomId(spec.customId).se
 export function buttonRows(specs,size=5){ const width=Math.max(1,Math.min(5,Number(size)||5)); const rows=[]; for(let n=0;n<specs.length;n+=width)rows.push(new ActionRowBuilder().addComponents(...specs.slice(n,n+width).map(button))); return rows; }
 function embed(title,description){ return new EmbedBuilder().setColor(color).setTitle(title).setDescription(description); }
 
-function homeButtonRows(isAdmin){
-  const specs=homeButtonSpecs(isAdmin);
-  const by=id=>specs.find(x=>x.customId===id);
-  const groups=[
-    [by('hu:find'),by('hu:register')],
-    [by('hu:tours'),by('hu:my')],
-    [by('hu:help')],
-    ...(isAdmin?[[by('hu:admin')]]:[])
-  ];
-  return groups.map(group=>new ActionRowBuilder().addComponents(...group.filter(Boolean).map(button)));
-}
-export function homePayload({isAdmin=false,version='1.0.60',esoServer=null,adminInterface=adminInterfaceMode()}={}){ const environment=esoServer?`\n\n**ESO environment:** ${esoServerLabel(esoServer)}`:''; const adminNote=adminInterface==='web'?'\n\n**Administration:** Use the companion web console.':''; return {embeds:[embed('🏠 AddressBook',`Your ESO housing directory and tour guide.\n\nFind saved homes, keep a Private address book, share Server or Global destinations, and lead or follow housing tours—all without memorizing commands.${environment}${adminNote}`).setFooter({text:`AddressBook • Version ${version} • Start anytime with /housing`})],components:homeButtonRows(isAdmin)}; }
+function homeButtonRows(isAdmin){return buttonRows(homeButtonSpecs(isAdmin),2);}
+export function homePayload({isAdmin=false,version='1.0.61',esoServer=null,adminInterface=adminInterfaceMode()}={}){ const environment=esoServer?`\n\n**ESO environment:** ${esoServerLabel(esoServer)}`:''; const adminNote=adminInterface==='web'?'\n\n**Administration:** Use the companion web console.':''; return {embeds:[embed('🏠 AddressBook',`Your ESO housing directory and tour guide.\n\nFind saved homes, keep a Private address book, share Server or Global destinations, and lead or follow housing tours—all without memorizing commands.${environment}${adminNote}`).setFooter({text:`AddressBook • Version ${version} • Start anytime with /housing`})],components:homeButtonRows(isAdmin)}; }
 
 export function environmentSetupPayload({message=null}={}){
   const select=new StringSelectMenuBuilder().setCustomId('hu:environment:setup').setPlaceholder('Choose this Discord server’s ESO environment…').addOptions(esoServerOptions().map(option=>({label:option.label,value:option.value,description:`Use ${option.label} houses, tours, and Global results`})));
@@ -161,7 +151,7 @@ export function helpPayload({backId='hu:home'}={}){
   return {embeds:[e],components:buttonRows([{customId:'hu:help:moderators',label:'Moderator Access',style:'secondary'},{customId:'hu:help:learning',label:'Show Introduction Again',style:'primary'},{customId:backId,label:'Back',style:'secondary',emoji:'↩️'}])};
 }
 
-export function helpLearningPayload({latestVersion='1.0.60',seenVersion=null,acknowledgedFeatures=[]}={}){
+export function helpLearningPayload({latestVersion='1.0.61',seenVersion=null,acknowledgedFeatures=[]}={}){
   const current=seenVersion===latestVersion?'You have seen the current walkthrough.':'There is a current walkthrough and release guide available.';
   const e=embed('📚 Help & Learning',`${current}\n\nReplay the full **Show Me Around** walkthrough, review the latest changes, or jump directly to one topic.\n\n**Current release:** ${latestVersion}`);
   return {embeds:[e],components:buttonRows([
@@ -176,9 +166,9 @@ export function helpLearningPayload({latestVersion='1.0.60',seenVersion=null,ack
   ])};
 }
 
-export function whatsNewPayload({latestVersion='1.0.60',acknowledgedFeatures=[]}={}){
+export function whatsNewPayload({latestVersion='1.0.61',acknowledgedFeatures=[]}={}){
   const key=`whats-new-${latestVersion}`,seen=acknowledgedFeatures.includes(key);
-  const e=embed(`✨ What’s New in AddressBook ${latestVersion}`,'Featured Houses now rotate every seven days. Moderator access requests live under Help; current AddressBook Server administrators can approve Server requests. Add an active registered house straight to a tour, recover from unknown house names, and review or adjust selected stop order before saving. Scheduled events and reminders have been retired.');
+  const e=embed(`✨ What’s New in AddressBook ${latestVersion}`,'The main menu now includes Random House and Featured Housing in the requested navigation order. Configure BOT_OWNER_IDS for automatic AddressBook permissions across all ESO environments and Global administrator approval/revocation. Server roles and existing individual grants remain supported; Private content remains owner-only.');
   return {embeds:[e],components:buttonRows([{customId:`hu:help:whatsnew:ack:${latestVersion}`,label:seen?'Seen ✓':'Acknowledge What’s New',style:'success',disabled:seen},{customId:'hu:help:learning',label:'Back to Help & Learning',style:'secondary',emoji:'↩️'}])};
 }
 
@@ -304,7 +294,7 @@ export function destinationMenuPayload(r,{canEdit=false,backId='hu:home',showDet
     {customId:`hu:${scope}:remove:${Number(r.id)}:${actionBack}`,label:'Delete House',style:'danger',emoji:'🗑️'}
   ]:[];
   const navSpecs=houseNavigationSpecs(navigation,showDetails);
-  const backSpecs=[...(surpriseToken?[{customId:`hu:surprise:again:${surpriseToken}`,label:'Another Surprise',style:'success',emoji:'🎲'}]:[]),{customId:backId,label:'Back',style:'secondary',emoji:'↩️'}];
+  const backSpecs=[...(surpriseToken?[{customId:`hu:surprise:again:${surpriseToken}`,label:'Another Random House',style:'success',emoji:'🎲'}]:[]),{customId:backId,label:'Back',style:'secondary',emoji:'↩️'}];
   return {embeds:[cleanDestinationEmbed(r,{showDetails})],components:[...buttonRows(primarySpecs),...buttonRows(editSpecs),...buttonRows(navSpecs,2),...buttonRows(backSpecs)]};
 }
 
@@ -322,7 +312,7 @@ export function officialHousePayload(house,backId='hu:find',showDetails=false,na
     {customId:`hu:personal:open:official:${Number(house.house_id)}`,label:'Personal Actions',style:'secondary',emoji:'⭐'}
   ];
   const navSpecs=houseNavigationSpecs(navigation,showDetails);
-  const backSpecs=[...(surpriseToken?[{customId:`hu:surprise:again:${surpriseToken}`,label:'Another Surprise',style:'success',emoji:'🎲'}]:[]),{customId:backId,label:'Back',style:'secondary',emoji:'↩️'}];
+  const backSpecs=[...(surpriseToken?[{customId:`hu:surprise:again:${surpriseToken}`,label:'Another Random House',style:'success',emoji:'🎲'}]:[]),{customId:backId,label:'Back',style:'secondary',emoji:'↩️'}];
   return {embeds:[e],components:[...buttonRows(specs),...buttonRows(navSpecs,2),...buttonRows(backSpecs)]};
 }
 
@@ -658,7 +648,7 @@ export function tourDetailPayload(tour,stops,canEdit=false,navigation=null,featu
     {name:'Tour Visibility',value:visibility,inline:true}
   );
   if(stops.length)e.addFields({name:'Route',value:stops.map(s=>`${s.position}. **${destinationLabel(s)}** — @${String(s.eso_owner).replace(/^@/,'')}`).join('\n').slice(0,1024)});
-  let specs=tourDetailButtonSpecs(canEdit).map(spec=>({...spec,customId:spec.customId==='hu:tour:start'?`hu:tour:start:${tour.id}${navigation?`:${navigation.stateId}:${navigation.index}`:featuredSource?`:featured:${featuredSource}`:''}`:spec.customId==='hu:tour:manage'?`hu:tour:manage:${tour.id}`:featuredSource&&spec.customId==='hu:tours'?(featuredSource==='admin'?'hu:admin:featured':'hu:tours:featured'):spec.customId,label:featuredSource&&spec.customId==='hu:tours'?'Back to Featured':spec.label}));
+  let specs=tourDetailButtonSpecs(canEdit).map(spec=>({...spec,customId:spec.customId==='hu:tour:start'?`hu:tour:start:${tour.id}${navigation?`:${navigation.stateId}:${navigation.index}`:featuredSource?`:featured:${featuredSource}`:''}`:spec.customId==='hu:tour:manage'?`hu:tour:manage:${tour.id}`:featuredSource&&spec.customId==='hu:tours'?(featuredSource==='admin'?'hu:admin:featured':featuredSource==='home'?'hu:featured':'hu:tours:featured'):spec.customId,label:featuredSource&&spec.customId==='hu:tours'?'Back to Featured':spec.label}));
   specs.splice(1,0,{customId:`hu:pass:tour:share:${tour.id}`,label:'Share Tour Pass',style:'success'});
   specs.splice(2,0,{customId:`hu:report:tourid:${tour.id}`,label:'Report a Problem',style:'secondary'});
   if(navigation){
@@ -876,7 +866,7 @@ export function adminSharePassesPayload(passes={house:{active:0,revoked:0},tour:
 
 export function houseScopePayload(r,backId='hu:find'){ const current=r.scope==='personal'?'Private':r.scope==='server'?'Server':'Global'; return {embeds:[embed(`🔄 Change House Visibility — ${destinationLabel(r)}`,`Current visibility: **${current}**\n\nChanging visibility keeps the same house record, comments, and metadata. If the house is no longer eligible for a tour, AddressBook will show the affected tours before making the change.`)],components:buttonRows([{customId:`hu:scope:set:global:${r.id}:${encodeURIComponent(backId)}`,label:'Global',style:'secondary'},{customId:`hu:scope:set:public:${r.id}:${encodeURIComponent(backId)}`,label:'Server',style:'success'},{customId:`hu:scope:set:private:${r.id}:${encodeURIComponent(backId)}`,label:'Private',style:'primary'},{customId:backId,label:'Back',style:'secondary',emoji:'↩️'}])}; }
 export function globalModeratorRequestModal(){ return new ModalBuilder().setCustomId('hu:modal:globalmod:request').setTitle('Request Global Moderator Access').addComponents(textField('reason','Why do you need Global moderation here?',{required:true,paragraph:true,maxLength:1000})); }
-export function globalModeratorPayload({isApprover=false,isModerator=false,pendingCount=0,esoServer=null,grants=[],requests=[]}={}){ const environment=esoServerLabel(esoServer),grantLabels=grants.map(r=>r.eso_server?esoServerLabel(r.eso_server):'Legacy grant (environment not assigned)'),requestLabels=requests.map(r=>esoServerLabel(r.eso_server)); const details=[`**Current ESO environment:** ${environment}`,`**Your ${environment} moderator status:** ${isModerator?'Active':'Not active'}`,`**Active environments:** ${grantLabels.length?grantLabels.join(', '):'None'}`,`**Pending requests:** ${requestLabels.length?requestLabels.join(', '):'None'}`]; return {embeds:[embed('🌐 Global Housing Moderation',details.join('\n'))],components:buttonRows([{customId:'hu:globalmod:request',label:`Request ${environment} Access`,style:'primary',disabled:isModerator||requests.some(r=>r.eso_server===esoServer)},...(isApprover?[{customId:'hu:globalmod:requests',label:`Review Requests (${pendingCount})`,style:'success'},{customId:'hu:globalmod:list',label:'Manage Global Moderators',style:'secondary'}]:[]),{customId:'hu:help',label:'Back to Help',style:'secondary',emoji:'↩️'}])}; }
+export function globalModeratorPayload({isApprover=false,isModerator=false,isOwner=false,pendingCount=0,esoServer=null,grants=[],requests=[]}={}){ const environment=esoServerLabel(esoServer),grantLabels=grants.map(r=>r.eso_server?esoServerLabel(r.eso_server):'Legacy grant (environment not assigned)'),requestLabels=requests.map(r=>esoServerLabel(r.eso_server)); const details=[`**Current ESO environment:** ${environment}`,`**Your ${environment} moderator status:** ${isModerator?'Active':'Not active'}`,`**Active environments:** ${isOwner?'All ESO environments (bot owner)':grantLabels.length?grantLabels.join(', '):'None'}`,`**Pending requests:** ${requestLabels.length?requestLabels.join(', '):'None'}`]; return {embeds:[embed('🌐 Global Housing Moderation',details.join('\n'))],components:buttonRows([{customId:'hu:globalmod:request',label:`Request ${environment} Access`,style:'primary',disabled:isModerator||requests.some(r=>r.eso_server===esoServer)},...(isApprover?[{customId:'hu:globalmod:requests',label:`Review Requests (${pendingCount})`,style:'success'},{customId:'hu:globalmod:list',label:'Manage Global Moderators',style:'secondary'}]:[]),{customId:'hu:help',label:'Back to Help',style:'secondary',emoji:'↩️'}])}; }
 
 
 export function globalModeratorRequestsPayload(rows=[],page=1){
