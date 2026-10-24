@@ -16,6 +16,7 @@ export function createHandlers(db){
     return result;
   };
   return {
+    invalidateSettings(guildId){housingMenu.invalidateSettings(guildId);},
     async ready(client){ return identities.syncClient(client); },
     async autocomplete(i){ await identities.syncInteraction(i); return i.respond([]); },
     async chat(i){

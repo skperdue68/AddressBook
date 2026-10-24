@@ -736,7 +736,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     }
     const targetOwnerUserId=targetScope==='private'?(current.owner_user_id||current.created_by||i.user.id):null;
     const targetGuildId=(targetScope==='public'||targetScope==='global')?i.guildId:null;
-    const preview=await saved.previewScopeChange(id,targetScope,{targetStatus:status});
+    const preview=await saved.previewScopeChange(id,targetScope,{targetStatus:status,targetGuildId,targetOwnerUserId});
     return {current,currentLegacy,status,targetOwnerUserId,targetGuildId,preview};
   }
   async function applyScopeChange(i,id,targetScope,backId){
@@ -1905,5 +1905,5 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     if(id.startsWith('hu:modal:tour:edit:')){ const tid=Number(id.split(':')[4]),t=await tourById(i,tid,{forManagement:true}); if(!t||!canManageTour(i,t))return i.reply({content:'You cannot manage that tour.',flags:MessageFlags.Ephemeral}); const updated=await tours.update(tid,{name:text(i.fields.getTextInputValue('name')),description:text(i.fields.getTextInputValue('description'))||null}); await recordUsage(i,'updated_tour',{kind:'tour',id:tid});return modalResponse(i,tourEditDetailsPayload(updated)); }
     if(id.startsWith('hu:modal:stop:edit:')){ const p=id.split(':'),tid=Number(p[4]),stopId=Number(p[5]),t=await tourById(i,tid,{forManagement:true}); if(!t||!canManageTour(i,t))return modalResponse(i,{content:'You cannot manage that tour.',embeds:[],components:[]}); const current=(await tours.getStops(tid)).find(s=>s.id===stopId); if(!current)return modalResponse(i,{content:'That tour stop no longer exists.',embeds:[],components:[]}); const enteredTitle=text(i.fields.getTextInputValue('title')),defaultTitle=text(current.registration_nickname||current.house_name||current.title); const customTitle=enteredTitle&&enteredTitle!==defaultTitle?enteredTitle:null; await tours.updateStop(stopId,{title:customTitle,notes:text(i.fields.getTextInputValue('description'))||null});if(customTitle!==current.custom_title||(text(i.fields.getTextInputValue('description'))||null)!==current.notes)await recordUsage(i,'updated_tour',{kind:'tour',id:tid}); return modalResponse(i,tourManagePayload(t,await tours.getStops(tid))); }
   }
-  return {chat,button,select,modal};
+  return {chat,button,select,modal,invalidateSettings(guildId){guilds.invalidate(guildId);environments.invalidate(guildId);}};
 }

@@ -1,4 +1,6 @@
 import {readFile} from 'node:fs/promises';
+import {renderWorkspace,csrfField} from './workspace-render.js';
+import {ESO_SERVERS} from '../utils/eso-server.js';
 import {handleWorkspaceRoute} from './workspace-routes.js';
 import http from 'node:http';
 import { buildDiscordAuthorizeUrl, consumeOAuthState, createOAuthState, exchangeDiscordCode } from './oauth.js';
@@ -7,7 +9,7 @@ import { csrfMatches } from './session.js';
 import { page, escape } from './render.js';
 
 const cookieValue = (request, name) => String(request.headers.cookie || '').split(';').map(item => item.trim()).find(item => item.startsWith(`${name}=`))?.slice(name.length + 1) || null;
-const send = (response, status, body, headers = {}) => { response.writeHead(status, { 'content-type': 'text/html; charset=utf-8', ...headers }); response.end(body); };
+const send = (response, status, body, headers = {}) => { response.writeHead(status, { 'content-type': 'text/html; charset=utf-8', 'referrer-policy':'no-referrer', 'cache-control':'private, no-store', ...headers }); response.end(body); };
 const redirect = (response, location, headers = {}) => { response.writeHead(302, { location, ...headers }); response.end(); };
 const sessionCookie = (value, secure = false, lifetimeSeconds = sessionLifetimeSeconds()) => `addressbook_session=${value}; HttpOnly; SameSite=Lax;${secure ? ' Secure;' : ''} Path=/; Max-Age=${lifetimeSeconds}`;
 const pendingPage = value => Math.min(1000000, Math.max(1, Math.floor(Number(value) || 1)));
@@ -41,6 +43,7 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
       const authorization = await service.authorizeGuild({ userId: session.id, guildId: guild.id, requestedGuildId: guild.id, esoServer, requestedEsoServer: esoServer, memberRoleIds: current.roleIds || [] });
       let memberContext=null;
       if(workspace&&esoServer){try{memberContext=await workspace.authorizeContext({userId:session.id,guildId:guild.id,guildName:current.name||guild.name,esoServer,memberRoleIds:current.roleIds||[]});}catch{/* unavailable context */}}
+      if(workspace&&!esoServer)memberContext={userId:String(session.id),guildId:String(guild.id),guildName:current.name||guild.name,esoServer:null,memberRoleIds:current.roleIds||[],roles:[{kind:'member',label:'Member'}],setupRequired:true};
       const memberRoute=url.pathname==='/'||url.pathname==='/app'||url.pathname.startsWith('/app/');
       if (memberRoute?!!memberContext:authorization.allowed) choices.push({ guild: { ...guild, ...current }, settings, esoServer, memberContext });
     }
@@ -54,7 +57,7 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
 
   async function route(request, response) {
     const url = new URL(request.url, 'http://localhost');
-    if(['/assets/workspace.css','/assets/tour-editor.js','/assets/hearthbound-logo.png','/assets/account-menu.css','/assets/account-menu.js'].includes(url.pathname)){
+    if(['/assets/workspace.css','/assets/tour-editor.js','/assets/hearthbound-logo.png','/assets/account-menu.css','/assets/account-menu.js','/assets/web-actions.js'].includes(url.pathname)){
       if(request.method!=='GET')return send(response,405,'Method not allowed',{allow:'GET'});
       const asset=url.pathname.split('/').pop();return send(response,200,await readFile(new URL(`./assets/${asset}`,import.meta.url)),{'content-type':asset.endsWith('.png')?'image/png':asset.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8','x-content-type-options':'nosniff'});
     }
@@ -98,6 +101,16 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
         'cache-control':'private, no-store',
         'x-content-type-options':'nosniff'
       });
+    }
+    if(context.memberContext?.setupRequired){
+      if(!['/','/app','/app/setup'].includes(url.pathname))return redirect(response,'/app/setup');
+      if(request.method==='POST'){
+        const form=await readBody(request);
+        if(!csrfMatches(session.csrf,form.get('csrf'))||form.get('contextGuildId')!==String(guild.id)||form.get('contextEsoServer')!=='')return send(response,400,page('Form expired','<p>Reload setup and try again.</p>'));
+        await workspace.actions.environments.selectInitial({guildId:guild.id,esoServer:form.get('esoServer'),actorId:session.id});workspace.invalidateSettings?.(guild.id);return redirect(response,'/app');
+      }
+      if(request.method!=='GET')return send(response,405,'Method not allowed',{allow:'GET, POST'});
+      return send(response,200,renderWorkspace({title:'Choose this server’s ESO environment',user:session,context:context.memberContext,body:`<p>This is the same initial setup offered in Discord. Choose carefully; later changes require administration and an impact confirmation.</p><form action="/app/setup" method="post">${csrfField(session.csrf)}<label>ESO environment<select name="esoServer">${ESO_SERVERS.map(s=>`<option value="${s.value}">${s.label}</option>`).join('')}</select></label><button class="primary">Complete initial setup</button></form>`}));
     }
     if(workspace&&(url.pathname==='/'||url.pathname==='/app'||url.pathname.startsWith('/app/'))){return handleWorkspaceRoute({request,response,url,session,context:context.memberContext,workspace,readBody,send,redirect});}
     const common = { guildId: guild.id, esoServer };

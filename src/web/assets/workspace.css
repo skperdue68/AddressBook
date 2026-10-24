@@ -3,3 +3,7 @@
 pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#0e192c;padding:14px;border:1px solid #334763;border-radius:7px} .brand img{max-width:100%;height:auto;object-fit:contain}
 
 .workspace>header{align-items:center}.workspace>header>div:first-child{min-width:0;overflow-wrap:anywhere}
+
+.danger{background:#6a2c3b;border-color:#cb7485}.panel dl{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 18px}.panel dd{margin:0}.panel textarea{max-width:100%}
+
+.actions{align-items:center}.personal-nav{align-items:center}@media(max-width:700px){.personal-nav{flex-wrap:nowrap;overflow-x:auto;padding-bottom:6px}.personal-nav .button{flex-shrink:0}}

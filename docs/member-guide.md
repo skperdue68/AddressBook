@@ -173,3 +173,7 @@ Start or resume a self-paced web tour, complete the current stop and advance, or
 **Statistics** separates your Private count, Server registrations, Global registrations, and accessible community tours. Official-house rankings distinguish registrations, distinct registering Discord members, normalized ESO owners, and distinct tour appearances. Private records are excluded from community rankings. Fun facts include represented official house types and average shared-tour length; these are not counts of in-game visits.
 
 **Recent Activity** shows recorded Discord and web usage across connected servers, newest first, with the member, originating server, and source. Filter by server or activity type and use Older activity for pagination. Private activity uses generic descriptions such as using My Address Book; Private destination references and search text are not stored in the public feed. Content links still require current access. History begins after deployment and retains a 90-day window; no historic usage is fabricated.
+
+## Expanded web workflows
+
+See the [HearthBound web workflow guide](web-workflows.md) for personal collections, saved searches, comments, reports, deletion, self-paced tours, sharing and administration. Controls and navigation follow current HearthBound permissions; other members’ Private records remain protected.
