@@ -289,7 +289,7 @@ export async function migrate(db){
     if(!applied.has(11)){for(const sql of SQLITE_SCHEMA_V11)await db.query(sql);await db.query('INSERT INTO schema_migrations(version) VALUES (11)');applied.add(11);}
     await migrateWorkspace(db);applied.add(12);
     const latest=Math.max(0,...applied,1);
-    if(latest>SQLITE_SCHEMA_VERSION) throw new Error(`Database schema version ${latest} is newer than this AddressBook release (${SQLITE_SCHEMA_VERSION}).`);
+    if(latest>SQLITE_SCHEMA_VERSION) throw new Error(`Database schema version ${latest} is newer than this HearthBound release (${SQLITE_SCHEMA_VERSION}).`);
     return;
   }
   await db.query(`CREATE TABLE IF NOT EXISTS schema_migrations (version INT NOT NULL PRIMARY KEY, applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`);
@@ -400,7 +400,7 @@ export async function migrate(db){
   if(!applied.has(11)){for(const sql of SCHEMA_V11)await db.query(sql);await db.query('INSERT INTO schema_migrations(version) VALUES (11)');applied.add(11);}
   await migrateWorkspace(db);applied.add(12);
   const latest=Math.max(0,...applied);
-  if(latest>SCHEMA_VERSION) throw new Error(`Database schema version ${latest} is newer than this AddressBook release (${SCHEMA_VERSION}).`);
+  if(latest>SCHEMA_VERSION) throw new Error(`Database schema version ${latest} is newer than this HearthBound release (${SCHEMA_VERSION}).`);
 }
 
 export async function one(db,sql,params=[]){const rows=await db.query(sql,params);return rows[0]||null;}

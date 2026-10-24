@@ -22,7 +22,7 @@ export async function handleServerModeratorAction(i,{serverModerators,guilds,act
   }else if(id.startsWith('hu:servermod:revoke:')){
    await serverModerators.revoke({guildId:i.guildId,userId:id.split(':')[3],reviewer});return respond(serverGrantsPayload(await serverModerators.listGrants({guildId:i.guildId})));
   }else if(id.startsWith('hu:servermod:requests')||id.startsWith('hu:servermod:grants')){
-   if(!access.canReviewRequests)throw new Error('Current AddressBook Server Moderator access is required.');
+   if(!access.canReviewRequests)throw new Error('Current HearthBound Server Moderator access is required.');
    const grants=id.startsWith('hu:servermod:grants');return respond((grants?serverGrantsPayload:serverRequestsPayload)(await serverModerators[grants?'listGrants':'listRequests']({guildId:i.guildId}),Number(id.split(':')[3])||1));
   }
   const status=await serverModerators.status({guildId:i.guildId,userId:i.user.id});

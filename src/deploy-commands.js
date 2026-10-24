@@ -25,7 +25,7 @@ if (deployGlobal) {
   const guildsToClear = [...new Set([guildId, ...cleanupGuildIds].filter(Boolean))];
 
   for (const id of guildsToClear) {
-    console.log(`Removing guild-scoped AddressBook commands from guild ${id}...`);
+    console.log(`Removing guild-scoped HearthBound commands from guild ${id}...`);
     await rest.put(
       Routes.applicationGuildCommands(clientId, id),
       { body: [] },
@@ -36,26 +36,26 @@ if (deployGlobal) {
     console.log(`Removed guild-scoped commands from ${guildsToClear.length} guild(s).`);
   }
 
-  console.log('Registering AddressBook commands globally...');
+  console.log('Registering HearthBound commands globally...');
   const data = await rest.put(
     Routes.applicationCommands(clientId),
     { body: commandJson },
   );
 
-  console.log(`Registered ${data.length} global AddressBook slash command(s).`);
+  console.log(`Registered ${data.length} global HearthBound slash command(s).`);
 } else {
-  console.log('Removing global AddressBook commands...');
+  console.log('Removing global HearthBound commands...');
   await rest.put(
     Routes.applicationCommands(clientId),
     { body: [] },
   );
-  console.log('Global AddressBook commands removed.');
+  console.log('Global HearthBound commands removed.');
 
-  console.log(`Registering AddressBook commands to guild ${guildId}...`);
+  console.log(`Registering HearthBound commands to guild ${guildId}...`);
   const data = await rest.put(
     Routes.applicationGuildCommands(clientId, guildId),
     { body: commandJson },
   );
 
-  console.log(`Registered ${data.length} guild-scoped AddressBook slash command(s).`);
+  console.log(`Registered ${data.length} guild-scoped HearthBound slash command(s).`);
 }

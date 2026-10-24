@@ -29,10 +29,10 @@ test('Copy appears only for another user pass-only Private entry',async()=>{
   try{
     const recipient=await passes.resolveHousePass(issued.token,{userId:'recipient',guildId:'g1',esoServer:'pc_na'});
     assert.equal(recipient.access.passOnly,true);
-    assert.ok(labels(sharedPrivateHousePayload(source,{token:issued.token,canCopy:recipient.access.canCopy})).includes('Copy to My AddressBook'));
+    assert.ok(labels(sharedPrivateHousePayload(source,{token:issued.token,canCopy:recipient.access.canCopy})).includes('Copy to My Address Book'));
     const owner=await passes.resolveHousePass(issued.token,{userId:'owner',guildId:'g1',esoServer:'pc_na'});
     assert.equal(owner.access.canCopy,false);
-    assert.equal(labels(sharedPrivateHousePayload(source,{token:issued.token,canCopy:owner.access.canCopy})).includes('Copy to My AddressBook'),false);
+    assert.equal(labels(sharedPrivateHousePayload(source,{token:issued.token,canCopy:owner.access.canCopy})).includes('Copy to My Address Book'),false);
     await passes.revokeHousePass(issued.pass.id,{actorId:'owner'});
     await assert.rejects(()=>passes.resolveHousePass(issued.token,{userId:'recipient',guildId:'g1',esoServer:'pc_na'}),/revoked/i);
   }finally{await closeDatabase(db);}

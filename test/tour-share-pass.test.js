@@ -78,7 +78,7 @@ test('Tour Pass card exposes only independent self-paced start information copy 
   const embed=payload.embeds[0].toJSON();
   assert.match(embed.description,/Private destinations/i);
   const labels=payload.components.flatMap(row=>row.toJSON().components.map(component=>component.label));
-  assert.deepEqual(labels,['Start Self-Paced Tour','Tour Information','Copy Tour to My AddressBook','Report a Problem']);
+  assert.deepEqual(labels,['Start Self-Paced Tour','Tour Information','Copy Tour to My Address Book','Report a Problem']);
 });
 
 test('Tour Information responds with an accessible private route', async () => {
@@ -218,7 +218,7 @@ test('Tour Pass copy preview updates an existing private information screen',asy
     let method,response;
     await handlers.button({...base,customId:`hu:pass:tour:copy:${created.token}`,reply:p=>{method='reply';response=p;},update:p=>{method='update';response=p;}});
     assert.equal(method,'update');
-    assert.match(JSON.stringify(response?.embeds),/Copy Tour to My AddressBook/);
+    assert.match(JSON.stringify(response?.embeds),/Copy Tour to My Address Book/);
   }finally{await closeDatabase(db);}
 });
 

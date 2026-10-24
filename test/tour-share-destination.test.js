@@ -140,5 +140,5 @@ test('removal from a private thread after preview prevents posting through cache
  removed=true;
  const post=interaction('hu:pass:tour:post:1:private',rows);
  await handleTourShareDestination(post,{tours:{get:async()=>assert.fail('removed member must be denied before pass creation')}});
- assert.match(post.updates[0].content,/Both you and AddressBook must have access to this private thread/);
+ assert.match(post.updates[0].content,/Both you and HearthBound must have access to this private thread/);
 });

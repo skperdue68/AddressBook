@@ -76,10 +76,10 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
     if (url.pathname === '/auth/logout') return redirect(response, '/admin', { 'set-cookie': 'addressbook_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0' });
     const context = await sessionContext(request, url);
     if (!context) return redirect(response, `/auth/discord?returnTo=${encodeURIComponent(url.pathname)}`);
-    if (context.forbidden) return send(response, 403, page('Access unavailable', '<p>You do not have Housing Moderator access to an AddressBook guild.</p>'));
+    if (context.forbidden) return send(response, 403, page('Access unavailable', '<p>You do not have Housing Moderator access to a HearthBound guild.</p>'));
     if (context.choices) {
       const choices = context.choices.map(item => `<li><a href="${(url.pathname==='/'||url.pathname.startsWith('/app'))?'/app':'/admin'}?guildId=${encodeURIComponent(item.guild.id)}">${escape(item.guild.name || item.guild.id)}</a> <small>${escape(item.esoServer || 'ESO environment not configured')}</small></li>`).join('');
-      return send(response, 200, page('Choose Discord Server', `<p>You have access to more than one AddressBook guild. Choose the server you want to use.</p><ul>${choices}</ul>`, context.session));
+      return send(response, 200, page('Choose Discord Server', `<p>You have access to more than one HearthBound guild. Choose the server you want to use.</p><ul>${choices}</ul>`, context.session));
     }
     if (context.selectionCookie) {
       const cleanPath = url.pathname === '/admin' ? '/admin' : `${url.pathname}${url.search.replace(/([?&])guildId=[^&]*&?/, '$1').replace(/[?&]$/, '')}`;
@@ -174,7 +174,7 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
     if (url.pathname === '/admin/audit.csv') {
       if (request.method !== 'GET') return send(response, 405, page('Method not allowed', '<p>Audit downloads require GET.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer }), { allow: 'GET' });
       const csv = await service.exportAudit({ ...common, action: String(url.searchParams.get('action') || '').trim() || null, entityType: String(url.searchParams.get('entityType') || '').trim() || null, target: String(url.searchParams.get('target') || '').trim() || null });
-      response.writeHead(200, { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="addressbook-audit-${String(guild.id).replace(/[^a-zA-Z0-9_-]/g, '')}.csv"` });
+      response.writeHead(200, { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="hearthbound-audit-${String(guild.id).replace(/[^a-zA-Z0-9_-]/g, '')}.csv"` });
       return response.end(csv);
     }
     if (url.pathname === '/admin/audit') {
@@ -247,16 +247,16 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
       return send(response, 200, page('Pending Review', body + navigation, session, { guildId: guild.id, guildName: guild.name, esoServer }, { moderation: true }));
     }
     if (url.pathname === '/admin/backup') {
-      const body = `<p>Use the portable JSON export to inspect or retain this guild's data. It is not a complete database backup and cannot be restored through this page.</p><p><a href="/admin/export">Download portable JSON export</a></p><h2>Current scope</h2><ul><li><strong>Guild:</strong> ${escape(guild.name || guild.id)}</li><li><strong>ESO environment:</strong> ${escape(esoServer || 'Not configured')}</li><li><strong>Included:</strong> Server and compatible Global records, with their comments and tour stops. Private houses and tours are excluded.</li><li><strong>Excluded:</strong> All Private records, plus unrelated guilds and environments.</li></ul><h2>Backend backup guidance</h2><ul><li><strong>SQLite:</strong> stop AddressBook before copying the configured database file.</li><li><strong>MariaDB:</strong> use <code>mariadb-dump</code> with the database credentials outside AddressBook; do not expose credentials through this web console.</li></ul><p>A full database backup includes Private data regardless of visibility. Keep at least one independent backup before migrations, upgrades, or environment reassignment.</p>`;
+      const body = `<p>Use the portable JSON export to inspect or retain this guild's data. It is not a complete database backup and cannot be restored through this page.</p><p><a href="/admin/export">Download portable JSON export</a></p><h2>Current scope</h2><ul><li><strong>Guild:</strong> ${escape(guild.name || guild.id)}</li><li><strong>ESO environment:</strong> ${escape(esoServer || 'Not configured')}</li><li><strong>Included:</strong> Server and compatible Global records, with their comments and tour stops. Private houses and tours are excluded.</li><li><strong>Excluded:</strong> All Private records, plus unrelated guilds and environments.</li></ul><h2>Backend backup guidance</h2><ul><li><strong>SQLite:</strong> stop HearthBound before copying the configured database file.</li><li><strong>MariaDB:</strong> use <code>mariadb-dump</code> with the database credentials outside HearthBound; do not expose credentials through this web console.</li></ul><p>A full database backup includes Private data regardless of visibility. Keep at least one independent backup before migrations, upgrades, or environment reassignment.</p>`;
       return send(response, 200, page('Backup & Export', body, session, { guildId: guild.id, guildName: guild.name, esoServer }));
     }
     if (url.pathname === '/admin/export') {
       if (url.searchParams.get('view') === '1') {
-        const body = `<p>Download a JSON snapshot for the current Discord guild and exact ESO environment. It is not a complete database backup.</p><ul><li><strong>Guild:</strong> ${escape(guild.name || guild.id)}</li><li><strong>ESO environment:</strong> ${escape(esoServer || 'Not configured')}</li><li><strong>Included:</strong> Server and compatible Global records, with their comments and stops. Private houses and tours are excluded.</li><li><strong>Excluded:</strong> All Private records, plus unrelated guilds and environments.</li></ul><p>Private entries remain searchable only by their owner in normal member workflows. The export preserves stable numeric AddressBook and Discord IDs plus readable companion names.</p><p><a href="/admin/export">Download JSON export</a></p>`;
+        const body = `<p>Download a JSON snapshot for the current Discord guild and exact ESO environment. It is not a complete database backup.</p><ul><li><strong>Guild:</strong> ${escape(guild.name || guild.id)}</li><li><strong>ESO environment:</strong> ${escape(esoServer || 'Not configured')}</li><li><strong>Included:</strong> Server and compatible Global records, with their comments and stops. Private houses and tours are excluded.</li><li><strong>Excluded:</strong> All Private records, plus unrelated guilds and environments.</li></ul><p>Private entries remain searchable only by their owner in normal member workflows. The export preserves stable numeric HearthBound and Discord IDs plus readable companion names.</p><p><a href="/admin/export">Download JSON export</a></p>`;
         return send(response, 200, page('Export Data', body, session, { guildId: guild.id, guildName: guild.name, esoServer }));
       }
       const json = await service.exportGuild(common);
-      response.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'content-disposition': `attachment; filename="addressbook-${guild.id}-${esoServer}.json"` });
+      response.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'content-disposition': `attachment; filename="hearthbound-${guild.id}-${esoServer}.json"` });
       return response.end(json);
     }
     return send(response, 404, page('Not found', '<p>That administration page does not exist.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer }));

@@ -1,7 +1,7 @@
 import {createHash} from 'node:crypto';
 import {one} from '../db/database.js';
 import {ContentPolicyService} from './content-policy-service.js';
-export const activityLabels={registered_house:'registered a house',updated_house:'updated a house',created_tour:'created a housing tour',updated_tour:'updated a housing tour',started_tour:'started a housing tour',resumed_tour:'resumed a housing tour',advanced_tour:'continued a housing tour',searched_houses:'searched houses',searched_tours:'browsed housing tours',viewed_house:'opened a house',viewed_tour:'opened a housing tour',random_house:'discovered a Random House',viewed_featured:'browsed Featured Housing',used_personal:'used My Address Book',opened_portal:'used the web portal',opened_bot:'used Hearthbound on Discord'};
+export const activityLabels={registered_house:'registered a house',updated_house:'updated a house',created_tour:'created a housing tour',updated_tour:'updated a housing tour',started_tour:'started a housing tour',resumed_tour:'resumed a housing tour',advanced_tour:'continued a housing tour',searched_houses:'searched houses',searched_tours:'browsed housing tours',viewed_house:'opened a house',viewed_tour:'opened a housing tour',random_house:'discovered a Random House',viewed_featured:'browsed Featured Housing',used_personal:'used My Address Book',opened_portal:'used the web portal',opened_bot:'used HearthBound on Discord'};
 const clean=v=>String(v||'').replace(/[\u0000-\u001f\u007f]/g,'').slice(0,100);
 const retention=90*86400000;
 export class UsageActivityService{
@@ -18,7 +18,7 @@ export class UsageActivityService{
   await this.db.query(`${sql} INTO usage_events(event_key,occurred_at,actor_id,actor_name,origin_guild_id,origin_guild_name,eso_server,source,kind,target_kind,target_id) VALUES(?,?,?,?,?,?,?,?,?,?,?)`,[createHash('sha256').update(String(eventKey)).digest('hex'),new Date(this.clock()).toISOString(),String(actor.id),clean(actor.name||actor.displayName||actor.globalName||'A member'),originGuildId?String(originGuildId):null,originGuildId?clean(originGuildName||'A Discord server'):null,esoServer,source,kind,targetKind,targetId]);
   return true;
  }
- async tryRecord(event){try{return await this.recordUsage(event);}catch{this.logger.error('Hearthbound usage recording failed; original action was preserved.');return false;}}
+ async tryRecord(event){try{return await this.recordUsage(event);}catch{this.logger.error('HearthBound usage recording failed; original action was preserved.');return false;}}
  async listActivity(c,{server='',kind='',cursor=null,limit=25}={}){
   const n=Math.max(1,Math.min(50,Math.floor(Number(limit)||25))),clauses=['occurred_at>=?'],args=[new Date(this.clock()-retention).toISOString()];
   if(server){clauses.push('origin_guild_id=?');args.push(String(server).slice(0,32));}if(Object.hasOwn(activityLabels,kind)){clauses.push('kind=?');args.push(kind);}

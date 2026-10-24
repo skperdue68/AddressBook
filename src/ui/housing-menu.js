@@ -187,7 +187,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     }
     if(!guilds.isHousingChannelAllowed(i)&&!guilds.canBypassHousingChannel(i)){
       const settings=guilds.getSettings(i.guildId);
-      await i.reply({content:`AddressBook interactions can only be used in <#${settings.bot_channel_id}>.`,flags:MessageFlags.Ephemeral});
+      await i.reply({content:`HearthBound interactions can only be used in <#${settings.bot_channel_id}>.`,flags:MessageFlags.Ephemeral});
       return false;
     }
     return true;
@@ -625,9 +625,9 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
 
   async function registrationHousePayload(i,savedHouseId){
     const access=await accessContexts.forHouse({userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId),savedHouseId:Number(savedHouseId)});
-    if(!access.canView||access.record?.status!=='active')return {content:'That house is no longer active or available. The saved registration is retained.',embeds:[],components:buttonRows([{customId:'hu:my',label:'My AddressBook',style:'primary'}])};
+    if(!access.canView||access.record?.status!=='active')return {content:'That house is no longer active or available. The saved registration is retained.',embeds:[],components:buttonRows([{customId:'hu:my',label:'My Address Book',style:'primary'}])};
     const enriched=await saved.getVisible(Number(savedHouseId),{userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)});
-    if(!enriched)return {content:'That house is no longer active or available.',embeds:[],components:buttonRows([{customId:'hu:my',label:'My AddressBook',style:'primary'}])};
+    if(!enriched)return {content:'That house is no longer active or available.',embeds:[],components:buttonRows([{customId:'hu:my',label:'My Address Book',style:'primary'}])};
     const house=legacySavedRow(enriched);return destinationMenuPayload(await withHouseCardContext(i,house),{canEdit:canEditSaved(i,house),backId:'hu:my'});
   }
   async function startRegistrationTour(i,savedHouseId){
@@ -1382,7 +1382,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       if(!isAdmin(i))return i.reply({content:'Only Housing Moderators can export guild data.',flags:MessageFlags.Ephemeral});
       try {
         const json=await dataExport.toJson({guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId),includePrivate:false});
-        return i.reply({content:'Guild-scoped AddressBook export. Private records and audit history are excluded.',files:[{attachment:Buffer.from(json),name:`addressbook-${i.guildId}-${guilds.getEsoServer(i.guildId)}.json`}],flags:MessageFlags.Ephemeral});
+        return i.reply({content:'Guild-scoped HearthBound export. Private records and audit history are excluded.',files:[{attachment:Buffer.from(json),name:`hearthbound-${i.guildId}-${guilds.getEsoServer(i.guildId)}.json`}],flags:MessageFlags.Ephemeral});
       } catch(error) { return i.reply({content:error.message,flags:MessageFlags.Ephemeral}); }
     }
     if(id==='hu:admin:maintenance'){
@@ -1578,7 +1578,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       try{
         const result=await environments.selectInitial({guildId:i.guildId,esoServer,actorId:i.user.id,names:{guildName:i.guild?.name,actorGlobalName:i.user.globalName||i.user.username,actorDisplayName:i.member?.displayName}});
         await guilds.ensureSettings(i.guildId);
-        const content=result.selected?`AddressBook is now configured for **${esoServerLabel(result.esoServer)}**.`:`Another member completed setup first. This server is now configured for ${esoServerLabel(result.esoServer)}.`;
+        const content=result.selected?`HearthBound is now configured for **${esoServerLabel(result.esoServer)}**.`:`Another member completed setup first. This server is now configured for ${esoServerLabel(result.esoServer)}.`;
         const payload={...homePayload({isAdmin:isAdmin(i),esoServer:result.esoServer}),content};
         return deferred?i.editReply(payload):i.update(payload);
       }catch(error){const payload=environmentSetupPayload({message:error.message});return deferred?i.editReply(payload):i.update(payload);}
@@ -1664,7 +1664,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       if(tool==='export'){
         try{
           const json=await dataExport.toJson({guildId:i.guildId,esoServer:server,includePrivate:false});
-          return i.reply({content:'Guild-scoped AddressBook export. Private records and audit history are excluded.',files:[{attachment:Buffer.from(json),name:`addressbook-${i.guildId}-${server}.json`}],flags:MessageFlags.Ephemeral});
+          return i.reply({content:'Guild-scoped HearthBound export. Private records and audit history are excluded.',files:[{attachment:Buffer.from(json),name:`hearthbound-${i.guildId}-${server}.json`}],flags:MessageFlags.Ephemeral});
         }catch(error){return i.reply({content:error.message,flags:MessageFlags.Ephemeral});}
       }
       if(tool==='maintenance')return i.update(maintenancePayload({stale:await maintenance.stale({guildId:i.guildId,esoServer:server}),duplicates:await maintenance.duplicates({guildId:i.guildId,esoServer:server})}));
@@ -1782,7 +1782,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
           const stateToken=token();savedSearchStates.set(stateToken,{userId:i.user.id,advancedToken:target,name,created:Date.now()});
           return successfulSearchResponse(i,savedSearchConflictPayload({token:stateToken,name}));
         }
-        return searchResults(i,s.filters,{searchType:s.title||'Search Houses',mode:'modal',scope:s.scope||'all',includeNonPlayerHomes:s.includeNonPlayer,backId:'hu:home',alwaysPicker:true,advancedToken:target,content:'Search saved to My AddressBook.'});
+        return searchResults(i,s.filters,{searchType:s.title||'Search Houses',mode:'modal',scope:s.scope||'all',includeNonPlayerHomes:s.includeNonPlayer,backId:'hu:home',alwaysPicker:true,advancedToken:target,content:'Search saved to My Address Book.'});
       }catch(error){return i.reply({content:error.message,flags:MessageFlags.Ephemeral});}
     }
     if(id.startsWith('hu:modal:report:')){
@@ -1804,7 +1804,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
           tags:parseTagInput(i.fields.getTextInputValue('tags'))
         });
         const row=legacySavedRow(result.house),pending=result.house.status==='pending'?' It is awaiting Housing Moderator approval and will not appear in normal searches until approved.':'';
-        const message=result.existing?'You already have this ESO destination saved at that visibility.':`House copied to your **${visibility==='private'?'Private':visibility==='public'?'Server':'Global'}** AddressBook.${pending}`;
+        const message=result.existing?'You already have this ESO destination saved at that visibility.':`House copied to your **${visibility==='private'?'Private':visibility==='public'?'Server':'Global'}** HearthBound collection.${pending}`;
         return modalResponse(i,{...destinationMenuPayload(await withHouseCardContext(i,row),{canEdit:true,backId:'hu:home'}),content:message});
       }catch(error){return i.reply({content:error.message,flags:MessageFlags.Ephemeral});}
     }
