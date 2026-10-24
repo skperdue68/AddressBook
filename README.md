@@ -1,6 +1,6 @@
-# Hearthbound
+# HearthBound
 
-Formerly **AddressBook**. `/housing` remains a compatibility alias.
+Formerly **AddressBook**; the repository is now [HearthBound](https://github.com/skperdue68/HearthBound). `/housing` remains a compatibility alias.
 
 **Version 1.0.62** · A menu-driven Discord bot for Elder Scrolls Online housing.
 
@@ -76,6 +76,7 @@ Use [`.env.example`](.env.example) as the complete settings reference.
 | `WEB_ADMIN_ENABLED` | Existing web-console switch; OAuth and session settings are also required |
 | `WEB_PORTAL_ENABLED` | Enable the member portal even when administration remains in Discord |
 | `WEB_PORTAL_URL` | Public portal URL used by the Open Web Portal button in Discord |
+| `WEB_SESSION_DAYS` | Remember Discord sign-in for this many days (default 30; range 1–365) |
 | `BOT_OWNER_IDS` | Comma/space-separated Discord user IDs with owner capabilities, including catalog additions |
 
 For quick development command updates, use `DEPLOY_GLOBAL=false` with `DISCORD_GUILD_ID`. Use `DEPLOY_GLOBAL=true` for global registration. `DISCORD_CLEANUP_GUILD_IDS` can identify additional legacy guild command locations to clear.
@@ -90,15 +91,16 @@ Each Discord server selects an ESO environment: PC NA/EU, Xbox NA/EU, PlayStatio
 - **Server:** Available only in the originating Discord server and environment.
 - **Private:** Owner-only, with revocable access available through Share Passes.
 
-Hearthbound cannot bypass ESO visitor permissions. Environment changes require confirmation and revoke affected passes. See the [member guide](docs/member-guide.md) for detailed access rules.
+HearthBound cannot bypass ESO visitor permissions. Environment changes require confirmation and revoke affected passes. See the [member guide](docs/member-guide.md) for detailed access rules.
 
 ## Documentation
 
 - [Member guide](docs/member-guide.md): search, houses, tours, Featured Housing, Share Passes, and privacy.
 - [Administration and operations](docs/administration.md): permissions, web console, databases, exports, and legacy recovery.
-- [Upgrade instructions](INSTALL-v1.0.61.txt): installing v1.0.61 and configuring bot owners.
-- [User and administrator guide (Word)](AddressBook_v1.0.58_User_Admin_Guide.docx): general operation, written for v1.0.58.
-- [Detailed current-state reference](docs/AddressBook-v1.0.0-Current-State.md): additional technical and behavioral detail.
+- [Production upgrade instructions](docs/upgrade-v1.0.62.md): Linux deployment, schema 12, verification, and recovery.
+- [HearthBound user and administrator guide (Word)](HearthBound_User_Admin_Guide.docx): current Discord, member portal, web administration, and operations.
+- [Current feature reference](docs/HearthBound-current-state.md): supported web and Discord workflows and access rules.
+- [Historical documentation](docs/historical-documentation.md): older AddressBook releases and design records.
 
 ## Development
 

@@ -1,123 +1,129 @@
-# Administration and operations
+# HearthBound administration and operations
 
-[Back to README](../README.md)
+[Back to README](../README.md) · [Member guide](member-guide.md) · [Word user and administrator guide](../HearthBound_User_Admin_Guide.docx)
 
-## Administration interface
+HearthBound provides Discord housing discovery and tours plus a Discord-authenticated member portal. The web portal serves ordinary members and administrators; administration is a protected area inside that workspace. `/hearth` is the primary Discord command and `/housing` is an equivalent compatibility alias.
 
-Administration can be exposed in Discord, in the companion web console, or in both places. Set `ADMIN_INTERFACE=both` (the default), `ADMIN_INTERFACE=discord`, or `ADMIN_INTERFACE=web`. Web-only mode keeps the Discord Administration entry for tools not yet offered on the web: settings, roles, environment changes, legacy tours, featured housing, Share Pass activity, and Server/Global Moderator workflows. It directs Health, Audit Log, Maintenance, Pending Review, Problem Reports, and Export to the web console. Web-only mode requires the web console to be enabled and configured.
+## Access and privacy
 
+The portal header identifies the selected Discord server and exact ESO environment. **Your Access** lists every applicable role rather than only the highest role. Current Discord membership, configured Server roles, individual grants, environment-specific Global grants, and configured bot owners determine access. Native Discord Administrator permission alone does not grant HearthBound administration.
 
-## Moderation and permissions
+| Role | What it permits |
+| --- | --- |
+| Member | Browse accessible content and manage their own houses and tours. |
+| Server Administrator | Manage Server houses and Server tours for their server; review eligible requests and submissions. |
+| Global Administrator | Manage Global houses and Global or Server tours in the specifically approved ESO environment. It does not independently grant Server-house editing or Server-request approval. |
+| Bot Owner | All configured HearthBound role capabilities, Global grant management, and official house catalog additions. |
 
-### Bot owners
+**Private houses and tours remain owner-only**, including against Server administrators, Global administrators, and bot owners. Explicit Share Pass access is narrower than normal editing access and never grants administrative editing rights. Tour editing does not automatically grant access to its underlying houses. Server/Global administrative exports exclude Private records. Full database backups contain Private data and must be stored separately and securely.
 
-Set `BOT_OWNER_IDS` in `.env` to one numeric Discord user ID or a comma-separated list, then restart. These people automatically receive all AddressBook role permissions in configured servers and Global administrator access in every supported ESO environment. This does not assign Discord roles or bypass Discord’s own permissions. Web administration still verifies current server membership. Private houses and tours remain owner-only, including for bot owners.
+Bot owners are configured through `BOT_OWNER_IDS` using numeric Discord user IDs, separated by commas or whitespace. No Discord roles are assigned. Restart after changing owner configuration. The portal cannot revoke a configured owner; change the environment setting and restart. Existing independent roles or grants remain valid after removing an owner ID.
 
-```env
-BOT_OWNER_IDS=123456789012345678,234567890123456789
-```
+Server staff can use configured Discord roles, individual approved grants, or both. The Discord native role picker supports name search; HearthBound stores IDs so role renames retain access. The web settings form uses numeric role IDs and accepts at most 25 per role category. Trusted submitters follow the registration policy without receiving general administration. Shared-tour roles allow appropriate Discord Shared Server tours without granting administration.
 
-Owners use Help → Moderator Access → Global Moderator Access to review requests and manage Global grants. Approved Global administrators remain environment-specific and do not automatically receive owner authority. Remove an owner through `.env` and restart; the bot’s grant-revocation controls cannot remove configured ownership. Removing an owner ID does not remove a separate ordinary role/grant they already hold.
+If no Server staff role and no individual grant exists, the existing bootstrap setup behavior permits initial settings configuration. It does not grant general tour editing or permission to approve Server moderator requests.
 
-`GLOBAL_MODERATOR_APPROVER_USER_IDS` remains supported for additional approval-only users. It does not automatically give those users administrative or moderation permissions. Existing Server grants remain supported. Configure Server staff with the native Discord role picker: search by role name; AddressBook stores role IDs so renaming a role preserves its assignment.
+## Enabling the portal
 
+Keep existing Discord and database credentials. Configure your deployed `.env` or systemd environment:
 
-Tour editing uses AddressBook's permissions. A configured Server Housing Moderator can edit other creators' Server tours only in that tour's own Discord server. An approved Global Housing Moderator can edit Global tours and other servers' Server tours, within the ESO environment covered by their grant. Use **Housing Tours → Edit Tour** to find these administrative editing targets. Private tours and houses remain accessible only to their creator/owner, unless that owner explicitly shares them through a Share Pass. Administrator roles never override this restriction. Global permissions are refreshed on each interaction, including saving an edit form, so revocation blocks previously opened editors.
-
-Guild administrative functions accept up to 25 configured roles through Discord's searchable native role picker. Holding any configured role grants that function.
-
-- **Housing Moderator** manages Server content, pending review, server settings, reports, and guild-level tour privileges.
-- **Housing Trusted Submitter** receives trusted submission treatment without general administration access.
-- **Housing Tours** may start Shared Server tours without receiving moderation access.
-- **Global Housing Moderator** manages Global content only in each specifically approved ESO environment.
-
-When neither Housing Moderator roles nor individual Server grants are configured, AddressBook permits bootstrap settings configuration. Bootstrap access cannot approve Server Moderator requests and does not grant tour-editing authority. Discord Administrator permission is not an AddressBook moderation entitlement.
-
-Members submit Server and Global requests from **Help → Moderator Access**. Review Server requests under **Administration → Server Moderator Requests**, including when other administration tools use the web console. A configured Housing Moderator role or an approved individual Server grant permits review; self-approval and stale request revisions are rejected. Administrators can list and revoke grants there. Revocation preserves independent role access. Server grants apply only to that guild and persist if its ESO environment changes. Global status alone cannot approve Server requests. IDs in `GLOBAL_MODERATOR_APPROVER_USER_IDS` are bot-wide approvers: they can review all environment queues, but every resulting moderator grant is tied to one ESO environment. The setting accepts comma-separated Discord user IDs:
-
-```env
-GLOBAL_MODERATOR_APPROVER_USER_IDS=123456789012345678,234567890123456789
-```
-
-
-## Database support
-
-AddressBook requires Node.js 22 or newer. SQLite is the default and uses Node's built-in SQLite support. MariaDB is optional.
-
-
-## Operational tools
-
-These tools help maintain a long-running AddressBook installation:
-
-- **Audit Log** provides Housing Moderators with a paginated, guild-scoped history of changes. Action and Entity type filters narrow the results and totals; **Download matching audit entries (CSV)** exports all matching entries, including entries beyond the visible page, with stable IDs and readable identity fields.
-- **Backup & Export** provides a portable JSON export and SQLite/MariaDB backup guidance for the current guild and exact ESO environment. The JSON includes accessible Server and Global records, with their comments and stops; all Private houses and tours are excluded. It excludes unrelated guilds and environments and is not a complete database backup; older Private entries without an originating guild remain in a full database backup.
-- **Administration Health** reports historical reminder delivery health, orphaned tour stops, duplicate destinations, environment mismatches, stale progress, stale houses, and duplicate-entry groups without exposing secrets or private event content.
-- **Maintenance** lets moderators mark catalog houses verified and merge only exact-context duplicate saved entries. Merges preserve comments and compatible tour stops, archive the redundant entry, and write an audit record.
-
-Maintenance repairs are transactional. AddressBook never merges entries merely because they share an ESO owner or house number; the destination, visibility, guild or owner context, and active status must all match.
-
-### Optional web administration console
-
-AddressBook remains Discord-first for members. An optional web console is available for Housing Moderators who prefer larger tables and easier administrative review. It provides Overview, Audit Log, Maintenance, Pending Review, Problem Reports, and Backup & Export pages without creating a second member workflow. It uses Discord OAuth2 and rechecks guild roles and the exact ESO environment server-side. Guild exports exclude Private records; only owners can view their Private houses and tours.
-
-Use HTTP only on the same machine through loopback; use HTTPS for remote access:
-
-```env
-WEB_ADMIN_ENABLED=true
+```dotenv
 ADMIN_INTERFACE=both
+WEB_ADMIN_ENABLED=true
+WEB_PORTAL_ENABLED=true
+WEB_PORTAL_URL=https://YOUR_PORTAL_HOST/app
 WEB_ADMIN_HOST=127.0.0.1
 WEB_ADMIN_PORT=8787
-WEB_SESSION_SECRET=use-a-long-random-secret
-DISCORD_OAUTH_CLIENT_ID=your_discord_application_id
-DISCORD_OAUTH_CLIENT_SECRET=your_discord_oauth_secret
-DISCORD_OAUTH_REDIRECT_URI=https://admin.example.com/auth/callback
+WEB_SESSION_SECRET=YOUR_STABLE_RANDOM_SECRET
+WEB_SESSION_DAYS=30
+DISCORD_OAUTH_CLIENT_ID=YOUR_DISCORD_APPLICATION_ID
+DISCORD_OAUTH_CLIENT_SECRET=YOUR_DISCORD_OAUTH_CLIENT_SECRET
+DISCORD_OAUTH_REDIRECT_URI=https://YOUR_PORTAL_HOST/auth/callback
 ```
 
-Register the exact redirect URI in the Discord application. Keep the console bound to localhost when using a reverse proxy, and do not expose it without HTTPS and a strong session secret. The Administration Overview now shows read-only integrity, freshness, duplicate, and historical reminder-health metrics. Export Data provides a read-only explanation page before downloading a JSON snapshot scoped to the current guild and exact ESO environment; Private records are excluded. Pending Review lists eligible Server and Global submissions in groups of 25 with Previous and Next controls. Approval or rejection returns to the same page. Problem Reports lists the selected guild and environment's actionable reports in groups of 25 and supports Mark reviewing, Resolve, and Dismiss. Private Share Pass reports remain redacted unless the moderator already has normal access to their target. Maintenance supports marking stale houses verified or merging exact-context duplicate entries. The Audit Log is paginated with explicit Previous and Next navigation plus Action and Entity type filters that now apply to the displayed entries and total; audit entries are scoped to the current guild, including historical entries from earlier ESO environments. Download matching audit entries (CSV) exports every matching entry across pages with spreadsheet-safe IDs and text. Every action requires a signed CSRF token, current Housing Moderator access, and a confirmation form; actions are audited with readable actor identity, guild, environment, and record identity. Maintenance excludes Private houses and cannot verify or merge them. Private submissions still bypass the web review queue.
+Register that exact callback URI in the Discord Developer Portal and forward the public HTTPS hostname to the loopback listener through your reverse proxy. The portal starts after the bot connects to Discord. `WEB_PORTAL_URL` enables the Open Web Portal link in Discord Home and Help when the portal is enabled. For a local test or SSH tunnel, an exact loopback HTTP callback is supported; use HTTPS for normal remote access.
 
-To use the console on the same computer as AddressBook, set `DISCORD_OAUTH_REDIRECT_URI=http://127.0.0.1:8787/auth/callback` and register that **exact** redirect URI in the Discord application's OAuth2 settings. Copy `.env.example` to `.env`, enable `WEB_ADMIN_ENABLED=true`, enter a long random `WEB_SESSION_SECRET`, and fill in `DISCORD_OAUTH_CLIENT_ID` and `DISCORD_OAUTH_CLIENT_SECRET`. Keep `ADMIN_INTERFACE=both` to offer the web tools in both places, or choose `web` to move the six migrated tools to the browser while retaining Discord-only administration in the bot. Start the bot with `npm start` and open `http://127.0.0.1:8787/admin` on that computer. Sign in with a Discord account that has the configured Housing Moderator role. If you moderate more than one guild, AddressBook displays a Choose Discord Server page showing each server and its ESO environment before loading administration. The selected server is stored in the signed session; use Change Server in the navigation to switch later. The server, role, and environment are rechecked on every request. The web server starts after the bot connects to Discord.
+`ADMIN_INTERFACE=both` is the default. `discord` retains Discord administration and allows the member portal when explicitly enabled with `WEB_PORTAL_ENABLED=true`. `web` directs the migrated operational tools to the web while retaining Discord-only tools such as environment/channel/timezone changes, legacy recovery and Share Pass workflows. Web administration is also available when enabled in `both` mode. `WEB_ADMIN_ENABLED=true` remains required for `ADMIN_INTERFACE=web`.
 
-After Discord sign-in, AddressBook returns only to local `/admin` pages. External or malformed return paths are replaced with `/admin`, keeping the sign-in callback on the administration console.
+Generate a strong secret with `openssl rand -hex 32`. `WEB_SESSION_SECRET` belongs to HearthBound; it does not match a Discord or database secret. Keep it stable across restarts. A systemd-provided environment variable takes precedence over `.env`; update the actual source rather than creating conflicting copies. Do not commit `.env` or share its contents.
 
-With Docker Compose, use the same `.env` settings and run `docker compose up -d --build`. Compose publishes the configured web port only on the Docker host's `127.0.0.1`, while binding the listener inside the container. Open `http://127.0.0.1:8787/admin` **on the Docker host**. For access from another computer, publish it through an HTTPS reverse proxy and register the proxy's exact `https://…/auth/callback` URI in Discord; keep the Compose host port bound to loopback. If `WEB_ADMIN_PORT` differs from `8787`, use that port in the local URL and redirect URI.
+## Remembered Discord login
 
-For occasional access from your own computer to a remote server, open an SSH tunnel with `ssh -L 8787:127.0.0.1:8787 your-user@your-server`, keep that connection open, and visit `http://127.0.0.1:8787/admin` on your computer. Register the loopback redirect URI shown above; the browser's OAuth callback travels through the tunnel. Use the configured web port in both places if it is not `8787`.
+Sign-in lasts 30 days by default, including browser closes and service restarts. `WEB_SESSION_DAYS` accepts a whole number from 1 to 365 for newly issued sessions. The signed session and browser cookie share the same duration. Expiry is fixed from issuance, or from a new server selection; it is not renewed indefinitely by every page view.
 
-```env
-DB_TYPE=sqlite
-DATABASE_PATH=./data/eso-housing.sqlite
+Current membership and permissions are still checked on each protected request. Sign Out clears the current browser cookie. Changing `WEB_SESSION_SECRET` invalidates all existing logins. Existing eight-hour sessions retain their old expiry; sign out and back in once after installing the remembered-login update. Changing the lifetime or secret requires a service restart. No schema migration or command deployment is needed for that login update.
+
+## Web workspace and administration
+
+Ordinary members use Overview, Search Houses, Register New House, Housing Tours, Random House, Featured Housing, My Address Book, Statistics, Recent Activity, and Help. Administrators see the additional authorized tools. Forms are bound to their original server and environment; reopen a form if you switch context in another tab. Every write checks permissions and CSRF server-side.
+
+### Reviews and reports
+
+Pending Review lists eligible shared registrations in pages of 25. Approve or Reject preserves the current queue page. Private registrations bypass the shared review queue. Problem Reports offers Mark reviewing, Resolve, and Dismiss. A stale or already-reviewed record is rejected. Private Share Pass report context remains redacted unless normal access exists.
+
+### Access and Settings
+
+The web form manages registration policy and Server administrator, trusted submitter and Shared-tour role IDs. Policies are Open (ordinary shared submissions become active), Approval (untrusted shared submissions wait for review), or Roles (only eligible submitters may register shared content). Private submissions remain active and personal.
+
+Open Moderator Access to review Server requests and revoke individual grants. Approval requires current Server administrator access; users cannot approve their own request and stale revisions are rejected. Revoking a grant does not revoke independent Discord role access. Members request access through Discord Help, and administrators can review through web or Discord.
+
+Bot owners additionally see Global request and grant controls on the web access page. Global grants remain ESO-environment-specific. The legacy `GLOBAL_MODERATOR_APPROVER_USER_IDS` setting remains available for approval-only users through existing Discord workflows; it does not make them owners or Global moderators.
+
+### Featured Housing Settings
+
+Add or reorder an eligible saved house or tour using its saved record ID and an optional position from 1 to 5. Remove selections from the curated list when needed. Only eligible Server/Global content in the current environment can be featured. Houses rotate on persisted seven-day cycles, including manual choices; manual changes do not reset that cycle. Tours remain curated. Back to Administration returns to the management area.
+
+### Maintenance and exports
+
+Health shows database connection and bounded integrity/freshness/duplicate metrics; it does not certify that a backup exists. Maintenance can mark eligible catalog houses verified or merge exact-context duplicate saved entries. Merges preserve compatible comments/stops and audit the change; Private records are excluded.
+
+Audit Log provides paginated, guild-scoped administrative history and filterable CSV export with readable companion identities. Its privacy filtering uses current eligible Server/Global targets and omits unsafe historical/free-form metadata. Security and moderation audit records are separate from the community usage feed.
+
+Backup and Export offers a portable guild/environment JSON snapshot of eligible Server/Global records, comments and stops. All Private records are excluded. This is not a full database backup and cannot replace a database dump for recovery. Take an independent database backup before schema upgrades, transfers or environment reassignment.
+
+## Owner only official house catalog
+
+Only IDs configured in `BOT_OWNER_IDS` can add newly released official ESO houses. Global/Server administration and Discord Administrator status do not grant this tool. On the web, open House Catalog; in Discord, use Administration, Add Official House.
+
+Enter the real positive in-game house ID and official name, with optional zone, classification, house type, limits, acquisition/pricing and verification/source metadata. The compact Discord form covers the core fields; the web form exposes the extended optional metadata. Unknown values stay blank. Preview and explicitly confirm the addition. Existing IDs are rejected rather than overwritten; similar names trigger a warning. This adds a shared official definition, not a player's furnished house registration.
+
+New definitions are available for registration without a code release. Owner-added definitions retain provenance and survive startup seeds and supported database transfers. If a packaged definition later conflicts, HearthBound retains the owner definition and emits a bounded review warning. Catalog changes are audited. This workflow does not offer deletion or overwriting of existing definitions.
+
+## Statistics and global recent activity
+
+Statistics are scoped to the selected server and environment. They distinguish the current member's Private count, Server/Global registration counts, distinct registering members, ESO owners and distinct eligible tour appearances. Community rankings exclude Private records. Average tour length and represented official house types are current data facts, not visit telemetry from ESO.
+
+Recent Activity deliberately spans connected servers for signed-in members. It shows the member name, action, originating server or Personal session, source and timestamp, newest first. Filter by server or action. New starts, resumes, updates and meaningful progress are distinguished; duplicate deliveries are deduplicated. Private actions use generic text and no Private target reference, destination or search text. Content links are reauthorized against current visibility. This is not the administrative audit log.
+
+Usage begins after deployment; old history is not reconstructed. The raw window is 90 days. Cleanup runs at startup and hourly in batches of 1,000; expired records are excluded from views/totals immediately even if physical cleanup needs additional batches. Usage write failures are logged without failing the original successful action.
+
+## Debian systemd deployment
+
+The current repository is `https://github.com/skperdue68/HearthBound`. Existing folders and database names may retain their AddressBook-era names. Both commands use the same handler; redeploy slash commands only when command definitions change.
+
+For an existing Git installation, stop the actual service, back up its configuration and live database, then update as the application owner:
+
+```bash
+sudo systemctl stop hearthbound
+cd /YOUR/EXISTING/APPLICATION/DIRECTORY
+git status --short
+git fetch origin
+git switch master
+git pull --ff-only origin master
+npm ci
+sudo systemctl start hearthbound
+sudo systemctl status hearthbound --no-pager
+sudo journalctl -u hearthbound -n 100 --no-pager
 ```
 
-For MariaDB, set `DB_TYPE=mariadb` and the `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and password settings. AddressBook creates the configured database when it is missing if the database account has `CREATE DATABASE` permission, then applies the required schema.
+If tracked local changes appear, preserve them before pulling; do not reset them. Keep the existing systemd User, WorkingDirectory, ExecStart, EnvironmentFile and database settings. Set the Git remote to the new repository URL if desired with `git remote set-url origin https://github.com/skperdue68/HearthBound.git`. If the unit has not been renamed, use its actual name, such as `addressbook`, instead of `hearthbound`. A unit-file change requires `sudo systemctl daemon-reload`; an ordinary application/configuration update does not.
 
-## Guarded database transfer
+Follow the [production upgrade guide](upgrade-v1.0.62.md) for schema 12, backup, smoke checks and recovery. Pulling code alone does not alter the database; starting the upgraded application or running `npm run db:init` applies versioned migrations to the configured backend. Do not migrate the old Windows development database into production.
 
-`MIGRATE` performs a one-time, destructive transfer to the backend named by `DB_TYPE`:
+## Database support and transfer
 
-- `DB_TYPE=mariadb`: SQLite to MariaDB
-- `DB_TYPE=sqlite`: MariaDB to SQLite
+SQLite and MariaDB are supported. Preserve `DB_TYPE` and its existing path/host/name/user/password configuration; normal upgrades keep `MIGRATE=false`. Schema 12 adds usage events and owner catalog provenance while retaining existing housing, tours, grants, progress and historical event records. Scheduled-event menus and reminder execution remain retired.
 
-```env
-MIGRATE=true
-MIGRATE_CONFIRM=ERASE_TARGET_DATABASE
-```
+`MIGRATE=true` with `MIGRATE_CONFIRM=ERASE_TARGET_DATABASE` is a separate destructive backend transfer, not a schema upgrade. It validates the source, erases the destination, copies and checks persistent data, writes a completion marker and exits. SQLite-to-MariaDB and reverse transfer are selected through `DB_TYPE`. Active transient tour sessions and Share Pass session links are intentionally not transferred. Only use after independent verified backups, then return `MIGRATE=false` before normal start.
 
-AddressBook validates the source before erasing the destination, copies persistent data in dependency order, verifies table counts and environment relationships, writes a completion marker, and exits. Active tour sessions and Share Pass session links are intentionally not transferred. Set `MIGRATE=false` before normal restart. Always make an independent backup first.
-
-Schema version 11 adds Server Moderator requests, individual Server grants, and persisted Featured House cycles for SQLite and MariaDB. Startup migration is additive and preserves houses, tours, historical event/RSVP/reminder records, and tour progress. Scheduled event menus and reminder execution are retired; old event controls return a retirement message. Normal Self-Paced and Shared tours continue to work.
-
-Featured Houses rotate on persisted seven-day intervals, including manual selections. Manual changes do not reset the timer. Upgrades retain the existing eligible selection for the first week; empty lists populate immediately. Selection uses up to five distinct eligible Server/Global player destinations in the guild’s exact environment. Featured Tours do not rotate. Two-way transfer preserves the new tables and accepts pre-v11 sources without those tables. Always back up the database before upgrading or transferring.
-
-
-## Legacy data
-
-Upgrading an older database can leave records without a known ESO environment. The first guild selection deterministically claims eligible guild-originated Server and Global records. My AddressBook offers a separate preview and confirmation to assign a member's remaining unassigned Private houses and tours to the current environment.
-
-Housing Moderators can open **Administration → Legacy Tours** to recover Unassigned Server tours belonging to that Discord server and Global tours originating there. Recovery previews retained and removed stops, rejects stale confirmations, and records the action in the audit log. Private tours are never exposed to moderators, and tours without provable guild ownership cannot be claimed. Incompatible stops are removed only after confirmation and the remaining route is renumbered.
-
-
-## Private content in administrative tools
-
-Administrator roles never grant access to another creator's Private tours or houses. Administrative JSON exports omit all Private records and their comments/stops, and do not embed audit history. Explicit owner-scoped exports can include only that owner's Private records.
-
-The audit UI and CSV export show only entries whose targets can be verified as current Server/Global records for this server, plus guild actions. They use current public names and omit historical free-form details; deleted, Private, pass, report, and unknown targets are omitted because their metadata cannot be safely disclosed. Private report context is redacted independently of authority over a related public house. Full database backups still contain Private data and must be handled separately from role-based application exports.
+Older records without a known ESO environment use the existing preview/confirmation recovery workflows. A member assigns their own unassigned Private records through My Address Book; administrators recover only provably guild-linked Server/Global tours through Discord Legacy Tours. Incompatible stops are removed only after confirmed recovery. Never expose or claim another creator's Private records.

@@ -1,3 +1,4 @@
+import {sessionLifetimeSeconds} from './session.js';
 import { adminInterfaceMode } from '../config/admin-interface.js';
 
 export function webAdminConfig(env = process.env) {
@@ -12,5 +13,5 @@ export function webAdminConfig(env = process.env) {
   const oauth = { clientId: String(env.DISCORD_OAUTH_CLIENT_ID || env.DISCORD_CLIENT_ID || '').trim(), clientSecret: String(env.DISCORD_OAUTH_CLIENT_SECRET || '').trim(), redirectUri: String(env.DISCORD_OAUTH_REDIRECT_URI || '').trim() };
   const missing = Object.entries(oauth).filter(([, value]) => !value).map(([key]) => key);
   if (missing.length) throw new Error(`Missing web administration OAuth configuration: ${missing.join(', ')}`);
-  return { enabled: true, host: String(env.WEB_ADMIN_HOST || '127.0.0.1'), port: Math.max(1, Number(env.WEB_ADMIN_PORT || 8787)), sessionSecret, oauth };
+  return { enabled: true, host: String(env.WEB_ADMIN_HOST || '127.0.0.1'), port: Math.max(1, Number(env.WEB_ADMIN_PORT || 8787)), sessionSecret, sessionDays:sessionLifetimeSeconds(env)/86400, oauth };
 }

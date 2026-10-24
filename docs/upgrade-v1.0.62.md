@@ -1,6 +1,6 @@
-# Upgrade to Hearthbound 1.0.62 (schema 12)
+# Upgrade to HearthBound 1.0.62 (schema 12)
 
-Hearthbound is the new name for AddressBook. The repository, existing database, data paths, environment variables and deployment service can retain their existing names. `/hearth` is the main Discord command; `/housing` remains an alias. No production database was changed while developing this PR.
+HearthBound is the new name for AddressBook. The repository is now `https://github.com/skperdue68/HearthBound`. Existing database names, application/data paths, environment variables and deployment service can retain their existing names. `/hearth` is the main Discord command; `/housing` remains an alias. No production database was changed while developing this PR.
 
 ## Before starting the upgraded release
 1. Stop the existing bot using your normal Linux service/container controls. Run only one instance while upgrading.
@@ -25,7 +25,7 @@ SELECT COUNT(*) AS recorded_actions FROM usage_events;
 The version should be **12**. Activity starts empty and accumulates after deployment. Old usage is not reconstructed. Owner-added catalog records are retained across restarts and packaged seed updates. Review any startup/schema error before allowing normal traffic; do not delete migration records to retry blindly.
 
 ## Portal and command setup
-Keep existing Discord OAuth credentials and `WEB_SESSION_SECRET`. For a member portal independent of the admin presentation mode:
+Keep existing Discord OAuth credentials and `WEB_SESSION_SECRET`. Sign-in is remembered for 30 days by default; `WEB_SESSION_DAYS` accepts 1–365 for newly issued sessions. Sign out and back in once to replace an existing eight-hour session after installing the login update. For a member portal independent of the admin presentation mode:
 
 ```dotenv
 WEB_PORTAL_ENABLED=true

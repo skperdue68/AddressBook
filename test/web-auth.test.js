@@ -33,7 +33,7 @@ test('signed web session rejects tampering and expires', () => {
   const [payload, signature] = cookie.split('.');
   const tampered = `${payload.slice(0, -1)}${payload.endsWith('A') ? 'B' : 'A'}.${signature}`;
   assert.equal(readSession(tampered, 1000, 'secret'), null);
-  assert.equal(readSession(cookie, 1000 + 9 * 60 * 60 * 1000, 'secret'), null);
+  assert.equal(readSession(cookie, 1000 + 31 * 24 * 60 * 60 * 1000, 'secret'), null);
 });
 
 test('Discord authorize URL contains required OAuth parameters', () => {

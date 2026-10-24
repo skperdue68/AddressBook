@@ -1,16 +1,16 @@
-# Member guide
+# HearthBound member guide
 
 [Back to README](../README.md)
 
 ## Getting started
 
-First-time users can choose **Show Me Around** for a seven-screen introduction covering search and filters, flexible house registration, copy-ready ESO links, My AddressBook, tour modes, Share Passes, visibility, environment boundaries, and reporting. Each screen can open the real feature it describes after recording onboarding completion; Back from its first feature screen returns to the same introduction page, including from Search after clearing filters. Help can replay the introduction later. **Help & Learning** also includes a release-specific **What’s New** guide and shortcuts to Search, Houses, Tours, Sharing, and Administration. Acknowledging release notes does not reset or alter the original completed/skipped onboarding status.
+First-time users can choose **Show Me Around** for a seven-screen introduction covering search and filters, flexible house registration, copy-ready ESO links, My Address Book, tour modes, Share Passes, visibility, environment boundaries, and reporting. Each screen can open the real feature it describes after recording onboarding completion; Back from its first feature screen returns to the same introduction page, including from Search after clearing filters. Help can replay the introduction later. **Help & Learning** also includes a release-specific **What’s New** guide and shortcuts to Search, Houses, Tours, Sharing, and Administration. Acknowledging release notes does not reset or alter the original completed/skipped onboarding status.
 
 
 
 ## ESO environments
 
-Every Discord server must choose one ESO environment the first time `/housing` is used:
+Every Discord server must choose one ESO environment the first time `/hearth` is used:
 
 - PC NA
 - PC EU
@@ -35,7 +35,7 @@ For example, a PC NA Global house, tour, comment thread, Share Pass, active run,
 
 Search Houses initially displays all accessible houses and then lets the member open Filters. Available filters include house or nickname, owner, tags or themes, zone, architectural style, ESO classification, size or type, visibility, Non-Player Homes, and houses not already used by an applicable Server or Global tour. Attribute values are paginated so Discord's 25-option component limit does not discard results.
 
-Filtered results can be saved by name and reopened from **My AddressBook → Saved Searches**. Saved searches can be run, renamed, replaced with the current filters, or deleted. They store criteria rather than result IDs, so every run applies the current Discord server, ESO environment, and access permissions. Invalid or future-version filter data fails closed instead of becoming an unfiltered search.
+Filtered results can be saved by name and reopened from **My Address Book → Saved Searches**. Saved searches can be run, renamed, replaced with the current filters, or deleted. They store criteria rather than result IDs, so every run applies the current Discord server, ESO environment, and access permissions. Invalid or future-version filter data fails closed instead of becoming an unfiltered search.
 
 **Random House** selects from the complete accessible result set, including results beyond the current 25-item Discord page. **Another Surprise** avoids immediately repeating the same destination when another result is available.
 
@@ -59,18 +59,18 @@ Unfurnished Preview
 Housing Link
 ```
 
-AddressBook cannot bypass ESO visitor permissions.
+HearthBound cannot bypass ESO visitor permissions.
 
 Comments attach to the environment-specific ESO destination, not to one visibility entry. Matching Global, Server, and Private entries for the same ESO owner and official house share their comment history inside that environment.
 
-Every accessible player or Non-Player house includes **Personal Actions**. A member can independently mark a destination as a Favorite and set one visit state: Want to Visit, Visited, or neither. These private preferences do not change house visibility or grant access. My AddressBook provides paginated Favorites, Want to Visit, Visited, and Saved Searches lists, and inaccessible destinations are removed from personal list results at read time.
+Every accessible player or Non-Player house includes **Personal Actions**. A member can independently mark a destination as a Favorite and set one visit state: Want to Visit, Visited, or neither. These private preferences do not change house visibility or grant access. My Address Book provides paginated Favorites, Want to Visit, Visited, and Saved Searches lists, and inaccessible destinations are removed from personal list results at read time.
 
 
 ## Tours
 
 Tour dropdowns list names alphabetically without separating uppercase and lowercase names. Sorting happens before pagination.
 
-Tour creators can edit their own accessible tours. AddressBook's configured Server Housing Moderators can also edit Server tours belonging to their Discord server. Approved Global Housing Moderators can use **Housing Tours → Edit Tour** to edit anyone's Global or Server tours within their authorized ESO environment, including Server tours belonging to other Discord servers. Private tours and houses remain owner-only; administrator roles do not grant access to them. Administrative editing does not grant Share Pass creation or tour playback access. Discord's Administrator permission does not grant AddressBook tour-editing rights.
+Tour creators can edit their own accessible tours. HearthBound's configured Server Housing Moderators can also edit Server tours belonging to their Discord server. Approved Global Housing Moderators can use **Housing Tours → Edit Tour** to edit anyone's Global or Server tours within their authorized ESO environment, including Server tours belonging to other Discord servers. Private tours and houses remain owner-only; administrator roles do not grant access to them. Administrative editing does not grant Share Pass creation or tour playback access. Discord's Administrator permission does not grant HearthBound tour-editing rights.
 
 - A **Global Tour** is available only in the same ESO environment and contains Global houses from that environment.
 - A **Server Tour** contains Global houses from the same environment and Server houses from the current Discord server.
@@ -85,7 +85,7 @@ Self Paced tours create a private active run for one member. Shared tours post t
 
 Housing Moderators can curate up to five eligible Global or Server player houses and tours as Featured Housing. Featured House cards include copy-ready Jump in ESO and Housing Link values. Non-Player/base houses are never selected. Featured entries are limited to the guild's exact ESO environment and are automatically hidden when the underlying content is no longer active, visible, or eligible. If a Server house or tour moves to another Discord guild, its old guild's Featured list stops displaying it. Featured Houses rotate every seven days, including manually selected houses. Selection prefers destinations outside the previous weekly list, fills up to five distinct destinations when available, and preserves its deadline across restarts. Manual changes and expiration controls do not postpone it. Existing eligible selections on upgrade get their first refresh seven days after initialization; an empty list fills immediately. Featured Tours remain manually selected.
 
-Self-Paced starts are recorded in My AddressBook → Tour Progress. Members can resume, move to the previous or next stop, restart a run, and review completion history. When several runs exist, active and completed routes are paginated five at a time, with a working Resume or View Route button for every entry. Resuming a run from a later active list page preserves that page through stop controls, details, comments, and the tour list; Back returns to the same active list page. Completion History also retains the active list page while browsing completed routes and houses, so returning to Tour Progress resumes at that page. The current progress card shows the complete house, population limit, owner, tour-specific notes, jump values, and optional expanded catalog details without requiring a separate Open House action.
+Self-Paced starts are recorded in My Address Book → Tour Progress. Members can resume, move to the previous or next stop, restart a run, and review completion history. When several runs exist, active and completed routes are paginated five at a time, with a working Resume or View Route button for every entry. Resuming a run from a later active list page preserves that page through stop controls, details, comments, and the tour list; Back returns to the same active list page. Completion History also retains the active list page while browsing completed routes and houses, so returning to Tour Progress resumes at that page. The current progress card shows the complete house, population limit, owner, tour-specific notes, jump values, and optional expanded catalog details without requiring a separate Open House action.
 
 Completion History remembers its list page while a member opens a route, browses its completed stops, or opens a completed house. Back returns to the page of routes they came from.
 
@@ -99,7 +99,7 @@ To share a House or Tour Pass:
 3. Optionally select an accessible active thread, or choose **Post in This Channel**.
 4. Review the destination and confirm with **Post House Pass** or **Post Tour Pass**. Nothing is posted before this confirmation.
 
-Forum and media channels require an existing thread/post because Discord does not allow direct messages in their parent channel. Thread lists are paginated; only unlocked active threads accessible to both you and AddressBook are listed. You can also paste a channel/thread link, mention, or ID. Archived unlocked threads remain available by link and may reopen when posted to. Both you and AddressBook need View Channel and the relevant sending permission; the bot also needs Embed Links and Read Message History. Cancel exits without issuing a pass.
+Forum and media channels require an existing thread/post because Discord does not allow direct messages in their parent channel. Thread lists are paginated; only unlocked active threads accessible to both you and HearthBound are listed. You can also paste a channel/thread link, mention, or ID. Archived unlocked threads remain available by link and may reopen when posted to. Both you and HearthBound need View Channel and the relevant sending permission; the bot also needs Embed Links and Read Message History. Cancel exits without issuing a pass.
 
 A House or Tour Share Pass uses an opaque token; only its hash is stored. Reposting rotates the token, and revoking a pass blocks future access. A private house can be shared once without changing its normal visibility.
 
@@ -136,7 +136,7 @@ Reordering Featured Housing retains an entry’s expiration date.
 
 Featured Housing reorder controls stay with the selected entry after each move and stop at the end of its own House or Tour list. Changing an expiration keeps the entry in position and selected.
 
-See the [current-state reference](AddressBook-v1.0.0-Current-State.md) and [user and administrator guide](../AddressBook_v1.0.58_User_Admin_Guide.docx) for additional detail.
+See the [current feature reference](HearthBound-current-state.md) and [HearthBound user and administrator guide](../HearthBound_User_Admin_Guide.docx) for additional detail.
 
 ## Registration and tour shortcuts
 
@@ -146,10 +146,26 @@ Search results still support multiple selection across pages. Previously selecte
 
 ## Requesting moderator access
 
-Open **Help → Moderator Access**. **Request Server Moderator Access** applies to the current Discord server and is reviewed by its current AddressBook Server administrators. **Request Global Moderator Access** uses the existing centralized approval workflow for the current ESO environment. Neither grant exposes another member’s Private houses or tours.
+Open **Help → Moderator Access**. **Request Server Moderator Access** applies to the current Discord server and is reviewed by its current HearthBound Server administrators. **Request Global Moderator Access** uses the existing centralized approval workflow for the current ESO environment. Neither grant exposes another member’s Private houses or tours.
 
 ## Main menu
 
 The main screen is ordered Search Houses, Search Housing Tours, Register New House, Random House, Featured Housing, My Address Book, Administration (when authorized), and Help. Random House chooses from accessible registered Global, Server, and your own Private houses in the current ESO environment; it excludes Non-Player catalog homes and other users’ Private houses. Another Random House avoids the previous destination when alternatives exist. Back returns Home. It is no longer a search-results action.
 
 Featured Housing is also available directly from Home. Opening a featured house or tour retains a path to that list and Home. Administrators configure Featured Housing where they do now; its management screen has Back to Administration.
+
+## The HearthBound web portal
+
+Use **Open Web Portal** on the Discord main menu or in Help, or visit your server's configured portal URL. Sign in with Discord and choose a server. The header shows the selected server and ESO environment. **Your Access** lists every applicable role: Member, Server Administrator with server name, Global Administrator with environment, and Bot Owner. Both `/hearth` and the `/housing` compatibility alias open the same Discord menu.
+
+The portal remembers sign-in for 30 days by default. Sign Out clears this browser's login; membership and permissions are still checked on protected requests. Administrators can configure `WEB_SESSION_DAYS`. A browser that clears cookies or uses private browsing may require another sign-in.
+
+**Search Houses** searches accessible house names, ESO owners, nicknames, and zones. Filter by visibility, open a house for details and copy-ready jump/preview/housing links, or edit a house you manage. **Register New House** selects an official catalog house and ESO owner, then Private, Server, or Global visibility. Shared submissions follow the server's registration and approval policy. A missing official house is reported clearly; a bot owner can add a new release to the catalog. After saving an active house, use **Create tour with this house** or **Add to your tour**.
+
+**Housing Tours** lists tours alphabetically. Create a tour, set its name, description, and visibility, select houses, and arrange stops by dragging or with Move up and Move down. The displayed order is the draft order; **Save tour** commits it atomically. Cancel discards the draft. A stale save is rejected if another editor changed the route; reopen it before reapplying edits. The picker displays up to 25 accessible matches; additional houses can be added from their detail page after saving the draft. Global tours accept Global houses; Server tours accept houses from their source server plus Global houses; Private tours may additionally use their creator's Private houses.
+
+Start or resume a self-paced web tour, complete the current stop and advance, or deliberately **Restart** a completed tour. Existing progress is reconciled when stops change. Shared leader-controlled Discord tours remain available in Discord. **Random House**, **Featured Housing**, and **My Address Book** provide discovery and personal collection views; featured house selections rotate weekly.
+
+**Statistics** separates your Private count, Server registrations, Global registrations, and accessible community tours. Official-house rankings distinguish registrations, distinct registering Discord members, normalized ESO owners, and distinct tour appearances. Private records are excluded from community rankings. Fun facts include represented official house types and average shared-tour length; these are not counts of in-game visits.
+
+**Recent Activity** shows recorded Discord and web usage across connected servers, newest first, with the member, originating server, and source. Filter by server or activity type and use Older activity for pagination. Private activity uses generic descriptions such as using My Address Book; Private destination references and search text are not stored in the public feed. Content links still require current access. History begins after deployment and retains a 90-day window; no historic usage is fabricated.
