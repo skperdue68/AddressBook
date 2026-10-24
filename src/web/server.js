@@ -54,7 +54,7 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
 
   async function route(request, response) {
     const url = new URL(request.url, 'http://localhost');
-    if(['/assets/workspace.css','/assets/tour-editor.js','/assets/hearthbound-logo.png'].includes(url.pathname)){
+    if(['/assets/workspace.css','/assets/tour-editor.js','/assets/hearthbound-logo.png','/assets/account-menu.css','/assets/account-menu.js'].includes(url.pathname)){
       if(request.method!=='GET')return send(response,405,'Method not allowed',{allow:'GET'});
       const asset=url.pathname.split('/').pop();return send(response,200,await readFile(new URL(`./assets/${asset}`,import.meta.url)),{'content-type':asset.endsWith('.png')?'image/png':asset.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8','x-content-type-options':'nosniff'});
     }
@@ -87,6 +87,18 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
     }
     const { session, guild, esoServer } = context;
     if(context.memberContext)session.accessContext=context.memberContext;
+    if(workspace && url.pathname === '/app/guide') {
+      if(request.method !== 'GET')return send(response,405,'Method not allowed',{allow:'GET'});
+      if(!context.memberContext)return send(response,403,'This member context is unavailable.');
+      const guide=await readFile(new URL('../../HearthBound_User_Admin_Guide.docx',import.meta.url));
+      return send(response,200,guide,{
+        'content-type':'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'content-disposition':'attachment; filename="HearthBound_User_Admin_Guide.docx"',
+        'content-length':guide.length,
+        'cache-control':'private, no-store',
+        'x-content-type-options':'nosniff'
+      });
+    }
     if(workspace&&(url.pathname==='/'||url.pathname==='/app'||url.pathname.startsWith('/app/'))){return handleWorkspaceRoute({request,response,url,session,context:context.memberContext,workspace,readBody,send,redirect});}
     const common = { guildId: guild.id, esoServer };
     const reportMutation = /^\/admin\/reports\/(\d+)\/(review|resolve|dismiss)$/.exec(url.pathname);
