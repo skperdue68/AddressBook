@@ -1,0 +1,6 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {openDatabase,migrate,closeDatabase} from '../src/db/database.js';
+import {WebWorkspaceService} from '../src/services/web-workspace-service.js';
+import {renderWorkspace} from '../src/web/workspace-render.js';
+test('members enter workspace without administration and renderer shows every scoped role safely',async()=>{const db=openDatabase({DB_TYPE:'sqlite',DATABASE_PATH:':memory:'});try{await migrate(db);await db.query("INSERT INTO guild_settings(guild_id,eso_server,staff_role_ids) VALUES('g','pc_na','[\"staff\"]')");const svc=new WebWorkspaceService(db,{env:{BOT_OWNER_IDS:'1'}});const c=await svc.authorizeContext({userId:'member',guildId:'g',esoServer:'pc_na',memberRoleIds:[],guildName:'<Guild>'});assert.equal(c.isServerAdmin,false);assert.equal(c.roles[0].label,'Member');const own=await svc.authorizeContext({...c,userId:'1'});const html=renderWorkspace({title:'Home',body:'',user:{username:'<name>'},context:own,active:'home'});assert.match(html,/Bot Owner/);assert.match(html,/Global Administrator/);assert.match(html,/Server Administrator/);assert.match(html,/PC NA/);assert.doesNotMatch(html,/<name>|<Guild>/);assert.match(html,/Your Access/);assert.match(html,/Private/);}finally{await closeDatabase(db)}});
+

@@ -1,6 +1,7 @@
 import { SlashCommandBuilder } from 'discord.js';
 
 export const commandBuilders = [
-  new SlashCommandBuilder().setName('housing').setDescription('Open the AddressBook home menu')
+  new SlashCommandBuilder().setName('hearth').setDescription('Open Hearthbound: discover houses and housing tours'),
+  new SlashCommandBuilder().setName('housing').setDescription('Open Hearthbound (compatibility alias for /hearth)')
 ];
 export const commandJson = commandBuilders.map(c=>c.toJSON());

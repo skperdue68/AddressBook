@@ -25,7 +25,7 @@ test('first-use introduction has five choices and seven feature-guided screens',
   assert.ok(labels(onboardingPayload({page:7})).includes('Finish'));
   assert.ok(labels(onboardingPayload({page:1})).includes('Try Search'));
   assert.ok(labels(onboardingPayload({page:2})).includes('Register a House'));
-  assert.ok(labels(onboardingPayload({page:4})).includes('Open My AddressBook'));
+  assert.ok(labels(onboardingPayload({page:4})).includes('Open My Address Book'));
   assert.ok(labels(onboardingPayload({page:5})).includes('Browse Tours'));
   const tour=onboardingPayload({page:5}).embeds[0].toJSON();
   assert.match(JSON.stringify(tour),/Self-Paced/i);

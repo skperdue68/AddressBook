@@ -11,7 +11,7 @@ export class WebAdminService {
   constructor(db, services = {}) {
     this.db = db;
     this.guilds = services.guilds || new GuildService(db);
-    this.health = services.health || new AdminHealthService(db, { version: '1.0.61' });
+    this.health = services.health || new AdminHealthService(db, { version: '1.0.62' });
     this.audit = services.audit || new AuditLogService(db);
     this.maintenance = services.maintenance || new HouseMaintenanceService(db);
     this.reports = services.reports || new HousingReportService(db);

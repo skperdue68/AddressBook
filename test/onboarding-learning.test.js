@@ -53,5 +53,5 @@ test('Help & Learning exposes replay, What’s New, and bounded topic shortcuts'
 });
 
 test('current release notes explain bot ownership and the new Home actions',()=>{
- const text=JSON.stringify(whatsNewPayload());assert.match(text,/BOT_OWNER_IDS/);assert.match(text,/Random House/);assert.match(text,/Featured Housing/);assert.match(text,/whatsnew:ack:1\.0\.61/);
+ const text=JSON.stringify(whatsNewPayload());assert.match(text,/BOT_OWNER_IDS/);assert.match(text,/Random House/);assert.match(text,/Featured Housing/);assert.match(text,/whatsnew:ack:1\.0\.62/);
 });
