@@ -1,3 +1,4 @@
+import {houseMetadata} from './house-details.js';
 import {escape} from './render.js';
 import {csrfField,input,linkButton,scopeLabel} from './workspace-render.js';
 import {buildJumpScript,buildHousingLink,buildHousePreviewScript} from '../utils/eso.js';
@@ -10,7 +11,7 @@ const textArea=(label,name,value='',limit=2000)=>`<label>${escape(label)}<textar
 const visibility=(name='visibility',current='private',allowed=['private','public','global'])=>`<label>Visibility<select name="${name}">${allowed.map(v=>`<option value="${v}" ${v===current?'selected':''}>${scopeLabel(v)}</option>`).join('')}</select></label>`;
 const personalLinks=()=>`<div class="actions personal-nav" role="navigation" aria-label="My Address Book views">${[['Your houses','/app/personal'],['Your tours','/app/tours?mine=1'],['Favorites','/app/personal/favorites'],['Want to Visit','/app/personal/wantToVisit'],['Visited','/app/personal/visited'],['Recently viewed','/app/personal/recent'],['Pending','/app/personal/pending'],['Tour progress','/app/progress'],['Saved searches','/app/searches'],['Share Passes','/app/passes'],['Legacy records','/app/recovery/personal']].map(([label,url])=>linkButton(label,url)).join('')}</div>`;
 export const houseHref=h=>h.scope==='official'?`/app/official/${Number(h.house_id)}`:`/app/houses/${Number(h.id)}`;
-export const houseMetadata=h=>`<details class="panel"><summary>Official house details</summary><dl>${[['Classification','classification'],['House type','house_type'],['Style','style'],['Zone','zone'],['Subzone','subzone'],['Furnishings','furnishing_limit'],['Furnishings with ESO Plus','furnishing_limit_plus'],['Special furnishings','special_furnishing_limit'],['Collectibles','collectible_limit'],['Special collectibles','special_collectible_limit'],['Population','population_limit'],['Gold price','gold_price'],['Crowns unfurnished','crown_price_unfurnished'],['Crowns furnished','crown_price_furnished'],['Requirements','requirements'],['Availability','availability'],['Last verified','last_verified']].filter(([,k])=>h[k]!==null&&h[k]!==undefined&&h[k]!=='').map(([label,key])=>`<dt>${label}</dt><dd>${escape(h[key])}</dd>`).join('')}</dl></details>`;
+export {houseMetadata} from './house-details.js';
 const collection=rows=>rows.length?rows.map(h=>`<div class="activity"><div><a href="${houseHref(h)}">${escape(h.display_name||h.house_name)}</a><p>${escape(h.eso_owner||'Unfurnished official house')} · ${escape(h.zone||'')}</p></div></div>`).join(''):'<p>No houses here yet.</p>';
 export function filterData(values){
  const raw={};for(const key of ['query','name','nickname','owner','tag','zone','houseType','classification','style'])if(values[key])raw[key]=String(values[key]);

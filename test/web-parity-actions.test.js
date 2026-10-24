@@ -3,6 +3,20 @@ import assert from 'node:assert/strict';
 import {fixture} from './workspace-fixture.js';
 import {closeDatabase,one} from '../src/db/database.js';
 
+test('add-to-tour choices include eligible administrator-managed tours while protecting Private ownership',async()=>{
+ const {db,svc,c}=await fixture();try{
+  const admin=await svc.authorizeContext({...c,userId:'1'}),house=await svc.registerHouse(admin,{houseId:1,esoOwner:'@Shared',visibility:'global'});
+  const shared=await svc.saveTourDraft(c,{details:{name:'Member shared route',visibility:'public'},stopIds:[]});
+  await svc.saveTourDraft(c,{details:{name:'Hidden private route',visibility:'private'},stopIds:[]});
+  assert.deepEqual((await svc.houseTourChoices(admin,house.id)).map(t=>t.id),[shared.id]);
+  await svc.addHouseToTour(admin,house.id,shared.id);
+  assert.deepEqual(await svc.houseTourChoices(admin,house.id),[]);
+  const ownPrivate=await svc.registerHouse(c,{houseId:2,esoOwner:'@Private'});
+  assert.deepEqual((await svc.houseTourChoices(c,ownPrivate.id)).map(t=>t.name),['Hidden private route']);
+  await assert.rejects(()=>svc.houseTourChoices(admin,ownPrivate.id),/not available/);
+ }finally{await closeDatabase(db);}
+});
+
 test('visibility impact includes incompatible source server and Private creator',async()=>{
  const {db,svc,c}=await fixture();try{
   const owner=await svc.authorizeContext({...c,userId:'1'}),h=await svc.registerHouse(owner,{houseId:1,esoOwner:'@Shared',visibility:'global'});

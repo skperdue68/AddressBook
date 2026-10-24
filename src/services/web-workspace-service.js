@@ -43,6 +43,12 @@ export class WebWorkspaceService{
  }
  async updateHouse(context,id,fields){const c=await this.fresh(context),h=await this.getHouse(c,id);if(!this.policy.canEditHouse(h,c))throw new Error('House is not available for editing.');return this.saved.update(id,{houseId:fields.houseId?Number(fields.houseId):undefined,esoOwner:fields.esoOwner,displayName:fields.displayName,description:fields.description,tags:fields.tags},c.userId);}
  async personalCollection(c,{page=1}={}){const result=await this.listHouses(c,{personal:true,page});return {...result,houses:result.rows};}
+ async houseTourChoices(context,houseId){
+  const c=await this.fresh(context),h=await this.getHouse(c,houseId);if(h.status!=='active')return [];
+  const unavailable=await this.db.query('SELECT ts.tour_id FROM tour_stops ts JOIN saved_houses s ON s.id=ts.saved_house_id WHERE s.destination_id=? UNION SELECT tour_id FROM tour_stops GROUP BY tour_id HAVING count(*)>=250',[h.destination_id]);
+  const excluded=new Set(unavailable.map(r=>Number(r.tour_id)));
+  return (await this.listTours(c)).filter(t=>t.canEdit&&!excluded.has(Number(t.id))&&tourAllowsHouseScope(t,h.scope)&&(h.scope!=='private'||h.owner_user_id===t.creator_id)&&(h.scope!=='public'||h.guild_id===(t.source_guild_id||t.guild_id||t.origin_guild_id)));
+ }
  async randomHouse(c){const rows=await this.db.query("SELECT id FROM saved_houses WHERE eso_server=? AND status='active' AND (scope='global' OR (scope='public' AND guild_id=?) OR (scope='private' AND owner_user_id=?))",[c.esoServer,c.guildId,c.userId]);return rows.length?this.getHouse(c,rows[Math.floor(Math.random()*rows.length)].id):null;}
  featured(c){return this.featuredService.list({guildId:c.guildId,esoServer:c.esoServer});}
  async listTours(c,{mine=false,q=''}={}){const rows=await this.tours.list({creatorId:c.userId,guildId:c.guildId,esoServer:c.esoServer,includeOtherServers:c.isGlobalAdmin});return rows.filter(t=>(this.policy.canViewTour(t,c)||this.policy.canEditTour(t,c))&&(!mine||t.creator_id===c.userId)&&(!q||t.name.toLowerCase().includes(String(q).toLowerCase()))).map(t=>({...t,canEdit:this.policy.canEditTour(t,c),canView:this.policy.canViewTour(t,c)}));}
