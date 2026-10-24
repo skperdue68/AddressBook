@@ -57,6 +57,8 @@ Current membership and permissions are still checked on each protected request. 
 
 Ordinary members use Overview, Search Houses, Register New House, Housing Tours, Random House, Featured Housing, My Address Book, Statistics, Recent Activity, and Help. Administrators see the additional authorized tools. Forms are bound to their original server and environment; reopen a form if you switch context in another tab. Every write checks permissions and CSRF server-side.
 
+The circular Discord avatar opens an account dropdown showing identity, selected context and current access. It includes navigation shortcuts, Sign out and **Download guide (Word)**. The same guide download is available under Help & Access to all authenticated portal members. The fixed `/app/guide` endpoint serves `HearthBound_User_Admin_Guide.docx` from the application root after checking current membership; keep that tracked document in deployments. Initials provide a fallback for missing or failed avatars. Older sessions can sign out and back in to refresh their Discord profile.
+
 ### Reviews and reports
 
 Pending Review lists eligible shared registrations in pages of 25. Approve or Reject preserves the current queue page. Private registrations bypass the shared review queue. Problem Reports offers Mark reviewing, Resolve, and Dismiss. A stale or already-reviewed record is rejected. Private Share Pass report context remains redacted unless normal access exists.
