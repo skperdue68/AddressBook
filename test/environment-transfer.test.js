@@ -80,6 +80,6 @@ test('grant and cycle data transfers both directions and v10 sources remain comp
  await transferUnifiedData(a,b);assert.equal((await b.query('SELECT request_revision FROM server_moderators'))[0].request_revision,2);
  await transferUnifiedData(b,a);assert.equal((await a.query('SELECT previous_destination_ids FROM featured_house_cycles'))[0].previous_destination_ids,'[4,5]');
  for(const table of ['server_moderators','server_moderator_requests','featured_house_cycles'])await a.query(`DROP TABLE ${table}`);
- await a.query('DELETE FROM schema_migrations WHERE version=11');await transferUnifiedData(a,b);
+ await a.query('DELETE FROM schema_migrations WHERE version>=11');await transferUnifiedData(a,b);
  assert.equal((await b.query('SELECT COUNT(*) n FROM server_moderators'))[0].n,0);
 });

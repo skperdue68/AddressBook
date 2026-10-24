@@ -2,7 +2,7 @@ import { createHousingMenu } from './ui/housing-menu.js';
 import { IdentityService } from './services/identity-service.js';
 
 /**
- * AddressBook registers only /housing.  All interaction behavior lives in the
+ * Hearthbound registers /hearth and the /housing compatibility alias.  All interaction behavior lives in the
  * Housing menu layer so database access cannot bypass the repository/service
  * scoping rules.
  */
@@ -20,7 +20,7 @@ export function createHandlers(db){
     async autocomplete(i){ await identities.syncInteraction(i); return i.respond([]); },
     async chat(i){
       await identities.syncInteraction(i);
-      if(i.commandName!=='housing')return;
+      if(!['hearth','housing'].includes(i.commandName))return;
       const result=await housingMenu.chat(i);
       await identities.refreshInternalNames();
       return result;

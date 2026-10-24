@@ -18,7 +18,7 @@ test('home includes My AddressBook without replacing the established entry point
 test('My AddressBook renders personal counts and dashboard actions',()=>{
   const payload=myAddressBookPayload({houses:18,tours:4,pending:2,recent:3});
   const json=payload.embeds[0].toJSON();
-  assert.match(json.title,/My AddressBook/);
+  assert.match(json.title,/My Address Book/);
   assert.deepEqual(json.fields.map(field=>[field.name,field.value]),[
     ['🏠 My Houses','**18**'],['🗺️ My Tours','**4**'],
     ['⏳ Pending','**2**'],['🕘 Recently Viewed','**3**'],

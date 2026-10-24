@@ -1,3 +1,4 @@
+import {migrateWorkspace} from './workspace-schema.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -286,6 +287,7 @@ export async function migrate(db){
       applied.add(10);
     }
     if(!applied.has(11)){for(const sql of SQLITE_SCHEMA_V11)await db.query(sql);await db.query('INSERT INTO schema_migrations(version) VALUES (11)');applied.add(11);}
+    await migrateWorkspace(db);applied.add(12);
     const latest=Math.max(0,...applied,1);
     if(latest>SQLITE_SCHEMA_VERSION) throw new Error(`Database schema version ${latest} is newer than this AddressBook release (${SQLITE_SCHEMA_VERSION}).`);
     return;
@@ -396,6 +398,7 @@ export async function migrate(db){
     applied.add(10);
   }
   if(!applied.has(11)){for(const sql of SCHEMA_V11)await db.query(sql);await db.query('INSERT INTO schema_migrations(version) VALUES (11)');applied.add(11);}
+  await migrateWorkspace(db);applied.add(12);
   const latest=Math.max(0,...applied);
   if(latest>SCHEMA_VERSION) throw new Error(`Database schema version ${latest} is newer than this AddressBook release (${SCHEMA_VERSION}).`);
 }
