@@ -1,3 +1,5 @@
+import {UsageActivityService} from './services/usage-activity-service.js';
+import {WebWorkspaceService} from './services/web-workspace-service.js';
 import {resolveCurrentGuildMembership} from './web/guild-membership.js';
 import 'dotenv/config';
 import { Client, Events, GatewayIntentBits, MessageFlags } from 'discord.js';
@@ -31,12 +33,15 @@ const worker=new EngagementWorker({featured:new FeaturedContentService(db),inter
 const webConfig=webAdminConfig();
 const webAdmin=webConfig.enabled?new WebAdminService(db):null;
 let webServer=null;
+const usage=new UsageActivityService(db,{isGuildActive:id=>client.guilds.cache.has(String(id))});
+const usageCleanup=setInterval(()=>usage.purgeExpired().catch(()=>console.error('Usage history cleanup failed.')),3600000);usageCleanup.unref();
 
 client.once(Events.ClientReady,async c=>{
   try{await handlers.ready(c);}catch(err){console.error('AddressBook could not refresh Discord names at startup:',err);}
   await worker.start();
+  await usage.purgeExpired().catch(()=>console.error('Usage history cleanup failed.'));
   if(webAdmin){
-    webServer=createWebAdminServer({service:webAdmin,config:webConfig,resolveOAuthIdentity:async tokens=>{
+    webServer=createWebAdminServer({service:webAdmin,workspace:Object.assign(new WebWorkspaceService(db),{usage}),config:webConfig,resolveOAuthIdentity:async tokens=>{
       const response=await fetch('https://discord.com/api/users/@me',{headers:{authorization:`Bearer ${tokens.access_token}`}});
       if(!response.ok)throw new Error('Discord identity lookup failed.');
       const user=await response.json(),guilds=[];
@@ -77,6 +82,7 @@ async function shutdown(){
   if(shuttingDown)return;
   shuttingDown=true;
   worker.stop();
+  clearInterval(usageCleanup);
   if(webServer)await new Promise(resolve=>webServer.close(()=>resolve()));
   client.destroy();
   await closeDatabase(db).catch(()=>{});

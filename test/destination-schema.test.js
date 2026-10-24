@@ -52,7 +52,7 @@ test('v3 upgrade consolidates matching destinations and preserves comments',asyn
   const db=openDatabase({DB_TYPE:'sqlite',DATABASE_PATH:dbPath});
   try{
     await migrate(db);
-    assert.equal(Number((await one(db,'SELECT max(version) v FROM schema_migrations')).v),11);
+    assert.equal(Number((await one(db,'SELECT max(version) v FROM schema_migrations')).v),12);
     const duplicate=await db.query('SELECT id,destination_id FROM saved_houses WHERE house_id=? ORDER BY id',[62]);
     assert.equal(duplicate.length,2);
     assert.equal(duplicate[0].destination_id,duplicate[1].destination_id);

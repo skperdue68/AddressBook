@@ -1,0 +1,3 @@
+import {openDatabase,migrate} from '../src/db/database.js';
+import {WebWorkspaceService} from '../src/services/web-workspace-service.js';
+export async function fixture(){const db=openDatabase({DB_TYPE:'sqlite',DATABASE_PATH:':memory:'});await migrate(db);await db.query("INSERT INTO guild_settings(guild_id,eso_server,staff_role_ids,registration_policy) VALUES('g','pc_na','[\"staff\"]','approval')");await db.query("INSERT INTO houses(house_id,name,normalized_name,zone) VALUES(1,'House One','house one','Zone'),(2,'House Two','house two','Zone')");const svc=new WebWorkspaceService(db,{env:{BOT_OWNER_IDS:'1'}}),c=await svc.authorizeContext({userId:'u',guildId:'g',esoServer:'pc_na',memberRoleIds:[],guildName:'Guild'});return {db,svc,c};}

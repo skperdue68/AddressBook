@@ -1,3 +1,5 @@
+import {readFile} from 'node:fs/promises';
+import {handleWorkspaceRoute} from './workspace-routes.js';
 import http from 'node:http';
 import { buildDiscordAuthorizeUrl, consumeOAuthState, createOAuthState, exchangeDiscordCode } from './oauth.js';
 import { createSession, readSession } from './session.js';
@@ -17,7 +19,7 @@ const readBody = request => new Promise((resolve, reject) => {
   request.on('error', reject);
 });
 
-export function createWebAdminServer({ service, config = {}, resolveOAuthIdentity, resolveGuildMembership, fetchImpl = fetch, now = () => Date.now() } = {}) {
+export function createWebAdminServer({ service, workspace = null, config = {}, resolveOAuthIdentity, resolveGuildMembership, fetchImpl = fetch, now = () => Date.now() } = {}) {
   if (!service) throw new Error('WebAdminService is required.');
   const cfg = { sessionSecret: config.sessionSecret || process.env.WEB_SESSION_SECRET, oauth: config.oauth || { clientId: process.env.DISCORD_OAUTH_CLIENT_ID || process.env.DISCORD_CLIENT_ID, clientSecret: process.env.DISCORD_OAUTH_CLIENT_SECRET, redirectUri: process.env.DISCORD_OAUTH_REDIRECT_URI } };
   const identityResolver = resolveOAuthIdentity || (async tokens => {
@@ -37,7 +39,10 @@ export function createWebAdminServer({ service, config = {}, resolveOAuthIdentit
       const settings = service.guilds?.getSettings ? service.guilds.getSettings(guild.id) : { eso_server: current.esoServer || guild.esoServer || null };
       const esoServer = settings?.eso_server || current.esoServer || guild.esoServer || null;
       const authorization = await service.authorizeGuild({ userId: session.id, guildId: guild.id, requestedGuildId: guild.id, esoServer, requestedEsoServer: esoServer, memberRoleIds: current.roleIds || [] });
-      if (authorization.allowed) choices.push({ guild: { ...guild, ...current }, settings, esoServer });
+      let memberContext=null;
+      if(workspace&&esoServer){try{memberContext=await workspace.authorizeContext({userId:session.id,guildId:guild.id,guildName:current.name||guild.name,esoServer,memberRoleIds:current.roleIds||[]});}catch{/* unavailable context */}}
+      const memberRoute=url.pathname==='/'||url.pathname==='/app'||url.pathname.startsWith('/app/');
+      if (memberRoute?!!memberContext:authorization.allowed) choices.push({ guild: { ...guild, ...current }, settings, esoServer, memberContext });
     }
     const requestedGuildId = url.searchParams.get('choose') === '1' ? '' : String(url.searchParams.get('guildId') || session.selectedGuildId || '');
     if (!requestedGuildId && choices.length > 1) return { session, choices };
@@ -49,6 +54,10 @@ export function createWebAdminServer({ service, config = {}, resolveOAuthIdentit
 
   async function route(request, response) {
     const url = new URL(request.url, 'http://localhost');
+    if(['/assets/workspace.css','/assets/tour-editor.js','/assets/hearthbound-logo.png'].includes(url.pathname)){
+      if(request.method!=='GET')return send(response,405,'Method not allowed',{allow:'GET'});
+      const asset=url.pathname.split('/').pop();return send(response,200,await readFile(new URL(`./assets/${asset}`,import.meta.url)),{'content-type':asset.endsWith('.png')?'image/png':asset.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8','x-content-type-options':'nosniff'});
+    }
     if (url.pathname === '/auth/discord') {
       const { state } = createOAuthState(url.searchParams.get('returnTo') || '/admin', now(), cfg.sessionSecret);
       return redirect(response, buildDiscordAuthorizeUrl(state, cfg.oauth));
@@ -69,14 +78,16 @@ export function createWebAdminServer({ service, config = {}, resolveOAuthIdentit
     if (!context) return redirect(response, `/auth/discord?returnTo=${encodeURIComponent(url.pathname)}`);
     if (context.forbidden) return send(response, 403, page('Access unavailable', '<p>You do not have Housing Moderator access to an AddressBook guild.</p>'));
     if (context.choices) {
-      const choices = context.choices.map(item => `<li><a href="/admin?guildId=${encodeURIComponent(item.guild.id)}">${escape(item.guild.name || item.guild.id)}</a> <small>${escape(item.esoServer || 'ESO environment not configured')}</small></li>`).join('');
-      return send(response, 200, page('Choose Discord Server', `<p>You have Housing Moderator access to more than one AddressBook guild. Choose which server you want to administer.</p><ul>${choices}</ul>`, context.session));
+      const choices = context.choices.map(item => `<li><a href="${(url.pathname==='/'||url.pathname.startsWith('/app'))?'/app':'/admin'}?guildId=${encodeURIComponent(item.guild.id)}">${escape(item.guild.name || item.guild.id)}</a> <small>${escape(item.esoServer || 'ESO environment not configured')}</small></li>`).join('');
+      return send(response, 200, page('Choose Discord Server', `<p>You have access to more than one AddressBook guild. Choose the server you want to use.</p><ul>${choices}</ul>`, context.session));
     }
     if (context.selectionCookie) {
       const cleanPath = url.pathname === '/admin' ? '/admin' : `${url.pathname}${url.search.replace(/([?&])guildId=[^&]*&?/, '$1').replace(/[?&]$/, '')}`;
       return redirect(response, cleanPath, { 'set-cookie': context.selectionCookie });
     }
     const { session, guild, esoServer } = context;
+    if(context.memberContext)session.accessContext=context.memberContext;
+    if(workspace&&(url.pathname==='/'||url.pathname==='/app'||url.pathname.startsWith('/app/'))){return handleWorkspaceRoute({request,response,url,session,context:context.memberContext,workspace,readBody,send,redirect});}
     const common = { guildId: guild.id, esoServer };
     const reportMutation = /^\/admin\/reports\/(\d+)\/(review|resolve|dismiss)$/.exec(url.pathname);
     if (reportMutation) {

@@ -2,11 +2,11 @@ import crypto from 'node:crypto';
 
 const states = new Map();
 const safeAdminReturn = value => {
-  const path = String(value);
-  if (path.length > 2048 || !path.startsWith('/admin') || path.includes('\\') || /[\u0000-\u001f\u007f]/.test(path)) return '/admin';
+  const path = String(value)==='/'?'/app':String(value);
+  if (path.length > 2048 || !/^\/(admin|app)(\/|\?|$)/.test(path) || path.includes('\\') || /[\u0000-\u001f\u007f]/.test(path)) return '/admin';
   try {
     const url = new URL(path, 'http://addressbook.invalid');
-    if (url.origin === 'http://addressbook.invalid' && (url.pathname === '/admin' || url.pathname.startsWith('/admin/')) && !url.hash) return path;
+    if (url.origin === 'http://addressbook.invalid' && /^\/(admin|app)(\/|$)/.test(url.pathname) && !url.hash) return path;
   } catch { /* invalid return path */ }
   return '/admin';
 };

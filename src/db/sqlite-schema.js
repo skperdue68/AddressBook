@@ -1,4 +1,4 @@
-export const SQLITE_SCHEMA_VERSION = 11;
+export const SQLITE_SCHEMA_VERSION = 12;
 
 export const SQLITE_SCHEMA_V8 = [
   ['last_seen_tour_version', "TEXT"],

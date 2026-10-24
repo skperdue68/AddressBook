@@ -1,11 +1,13 @@
-# AddressBook
+# Hearthbound
 
-**Version 1.0.61** · A menu-driven Discord bot for Elder Scrolls Online housing.
+Formerly **AddressBook**. `/housing` remains a compatibility alias.
+
+**Version 1.0.62** · A menu-driven Discord bot for Elder Scrolls Online housing.
 
 Discover houses, save addresses, leave comments, and organize guided tours. Members access everything through one command:
 
 ```text
-/housing
+/hearth
 ```
 
 [Installation](#installation) · [Configuration](#configuration) · [Features](#features) · [Documentation](#documentation)
@@ -17,6 +19,9 @@ Discover houses, save addresses, leave comments, and organize guided tours. Memb
 - **Housing tours:** Create Global, Server, or Private routes; run them self-paced or lead a shared tour.
 - **Share Passes:** Share revocable access to a house or tour. Choose a channel, optionally select an existing active thread, then confirm before posting.
 - **Featured Housing:** Featured Houses rotate every seven days; manually curate houses between refreshes and keep Featured Tours selected.
+- **Member web portal:** Sign in with Discord to register houses, manage your collection and edit tours with drag/drop and keyboard ordering. Your Access shows each effective role and its server/environment.
+- **Community insights:** Explore registration/member/ESO-owner/tour statistics and newest-first global Discord/web activity, with member and originating server names. Private activity is generic.
+- **Official house catalog:** Only configured bot owners can add newly released houses through Discord or the web, without a code release.
 - **Administration:** Review submissions and reports, manage roles and Server Moderator requests, inspect audit history, and export data through Discord or an optional web console.
 
 Home offers Search Houses, Search Housing Tours, Register New House, Random House, Featured Housing, My Address Book, authorized Administration, and Help.
@@ -44,7 +49,7 @@ Requires **Node.js 22 or newer** and a Discord bot application. SQLite is the de
    npm start
    ```
 
-6. Run `/housing` in Discord and select the server's ESO environment.
+6. Run `/hearth` in Discord and select the server's ESO environment.
 
 For Docker, configure `.env`, then run:
 
@@ -54,7 +59,7 @@ docker compose up -d --build
 
 Compose persists SQLite data under `./data`. MariaDB is not bundled. See the [administration guide](docs/administration.md) for web console access with Docker.
 
-Upgrading an existing installation? Back up your application, `.env`, and database first. See the [v1.0.61 upgrade instructions](INSTALL-v1.0.61.txt).
+Upgrading an existing installation? Back up your application, `.env`, and database first. See the [v1.0.62 Linux/production upgrade instructions](docs/upgrade-v1.0.62.md).
 
 ## Configuration
 
@@ -68,7 +73,10 @@ Use [`.env.example`](.env.example) as the complete settings reference.
 | `DATABASE_PATH` | SQLite database location |
 | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | MariaDB connection settings |
 | `ADMIN_INTERFACE` | `both` (default), `discord`, or `web` |
-| `WEB_ADMIN_ENABLED` | Enable the optional web console; OAuth and session settings are also required |
+| `WEB_ADMIN_ENABLED` | Existing web-console switch; OAuth and session settings are also required |
+| `WEB_PORTAL_ENABLED` | Enable the member portal even when administration remains in Discord |
+| `WEB_PORTAL_URL` | Public portal URL used by the Open Web Portal button in Discord |
+| `BOT_OWNER_IDS` | Comma/space-separated Discord user IDs with owner capabilities, including catalog additions |
 
 For quick development command updates, use `DEPLOY_GLOBAL=false` with `DISCORD_GUILD_ID`. Use `DEPLOY_GLOBAL=true` for global registration. `DISCORD_CLEANUP_GUILD_IDS` can identify additional legacy guild command locations to clear.
 
@@ -82,7 +90,7 @@ Each Discord server selects an ESO environment: PC NA/EU, Xbox NA/EU, PlayStatio
 - **Server:** Available only in the originating Discord server and environment.
 - **Private:** Owner-only, with revocable access available through Share Passes.
 
-AddressBook cannot bypass ESO visitor permissions. Environment changes require confirmation and revoke affected passes. See the [member guide](docs/member-guide.md) for detailed access rules.
+Hearthbound cannot bypass ESO visitor permissions. Environment changes require confirmation and revoke affected passes. See the [member guide](docs/member-guide.md) for detailed access rules.
 
 ## Documentation
 

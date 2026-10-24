@@ -28,7 +28,7 @@ test('SQLite health snapshot uses bounded counts and never claims a backup exist
     assert.deepEqual(snapshot.duplicates,{duplicateGroups:0});
     const all=await new AdminHealthService(db,{version:'0.8.0'}).snapshot({guildId:'g1',allEnvironments:true,isApprover:true});
     assert.equal(all.globalModeratorRequests,2);
-    assert.equal(snapshot.lastMigration.version,11);
+    assert.equal(snapshot.lastMigration.version,12);
     assert.match(snapshot.backupReminder,/not recorded|configure.*backup/i);
     const rendered=JSON.stringify(adminHealthPayload(snapshot));
     for(const secret of ['password','token_hash','DB_PASSWORD','SecretDISCORD'])assert.equal(rendered.includes(secret),false);

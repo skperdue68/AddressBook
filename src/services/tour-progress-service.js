@@ -41,11 +41,12 @@ export class TourProgressService {
     const first = await one(this.db, 'SELECT id FROM tour_stops WHERE tour_id=? ORDER BY position,id LIMIT 1', [Number(tourId)]);
     if (!first) throw new Error('This tour has no stops.');
     const current = await one(this.db, 'SELECT * FROM tour_progress WHERE discord_user_id=? AND tour_id=? AND eso_server=?', [String(userId), Number(tourId), tour.eso_server]);
-    if (current) return current;
+    if (current) return {...current,_startedNew:false};
     const now = asDate(this.db, this.now());
     const conflict = this.db.type === 'sqlite' ? 'ON CONFLICT(discord_user_id,tour_id,eso_server) DO NOTHING' : 'ON DUPLICATE KEY UPDATE id=id';
-    await this.db.query(`INSERT INTO tour_progress(discord_user_id,discord_global_name,discord_display_name,tour_id,tour_name,eso_server,status,current_stop_id,share_pass_id,run_started_at,last_activity_at) VALUES(?,?,?,?,?,?,?,?,?,?,?) ${conflict}`, [String(userId), globalName, displayName, Number(tourId), tour.name, tour.eso_server, 'active', Number(first.id), sharePassId == null ? null : Number(sharePassId), now, now]);
-    return one(this.db, 'SELECT * FROM tour_progress WHERE discord_user_id=? AND tour_id=? AND eso_server=?', [String(userId), Number(tourId), tour.eso_server]);
+    const inserted=await this.db.query(`INSERT INTO tour_progress(discord_user_id,discord_global_name,discord_display_name,tour_id,tour_name,eso_server,status,current_stop_id,share_pass_id,run_started_at,last_activity_at) VALUES(?,?,?,?,?,?,?,?,?,?,?) ${conflict}`, [String(userId), globalName, displayName, Number(tourId), tour.name, tour.eso_server, 'active', Number(first.id), sharePassId == null ? null : Number(sharePassId), now, now]);
+    const result=await one(this.db, 'SELECT * FROM tour_progress WHERE discord_user_id=? AND tour_id=? AND eso_server=?', [String(userId), Number(tourId), tour.eso_server]);
+    return {...result,_startedNew:Number(inserted.affectedRows)>0&&(this.db.type==='sqlite'||Number(inserted.insertId)>0)};
   }
 
   async advance({ progressId, userId, guildId = null, esoServer = null } = {}) {
