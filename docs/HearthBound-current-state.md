@@ -9,3 +9,7 @@ The portal includes house registration/editing, alphabetical tour browsing, atom
 Discord login is remembered for 30 days by default with configurable `WEB_SESSION_DAYS`. Keep `WEB_SESSION_SECRET` stable; current membership and permissions are still rechecked. Database schema migrations run against the configured backend at startup; no old local database should replace the live Linux data.
 
 Older versioned documents and engineering plans describe historical releases, not the current interface. See [historical documentation](historical-documentation.md).
+
+## Expanded web workflows
+
+See the [HearthBound web workflow guide](web-workflows.md) for personal collections, saved searches, comments, reports, deletion, self-paced tours, sharing and administration. Controls and navigation follow current HearthBound permissions; other members’ Private records remain protected.

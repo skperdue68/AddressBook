@@ -1,4 +1,5 @@
-import { ActionRowBuilder, StringSelectMenuBuilder, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } from 'discord.js';
+import {portalPublicUrl} from '../web/portal-url.js';
 import { cleanDestinationEmbed, buttonRows } from './housing-ui.js';
 import { destinationLabel } from '../utils/labels.js';
 import { discordDescription, discordTitle } from '../utils/text-limits.js';
@@ -53,9 +54,15 @@ export function tourShareLinkModal(tourId,kind='tour'){
   return new ModalBuilder().setCustomId(`hu:modal:${kind}destination:${tourId}`).setTitle('Choose Channel or Thread').addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('destination').setLabel('Channel / thread link, mention, or ID').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(250)));
 }
 
-export function houseShareCardPayload(house,{token,sharerName='A housing visitor'}={}){
+function webPassLink(payload,kind,token,portalUrl){
+  if(!portalUrl)return payload;
+  const url=new URL(`/app/shared/${kind}/${encodeURIComponent(token)}`,portalUrl).href;
+  const button=new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel(kind==='tour'?'Open Web Tour':'Open Web House').setURL(url);
+  const last=payload.components.at(-1);if(last&&last.components.length<5)last.addComponents(button);else payload.components.push(new ActionRowBuilder().addComponents(button));return payload;
+}
+export function houseShareCardPayload(house,{token,sharerName='A housing visitor',portalUrl=portalPublicUrl()}={}){
   const embed=cleanDestinationEmbed(house).setDescription(`${house.scope==='private'?'🔒 This Private entry remains excluded from normal search and browsing.\n\n':''}Shared by **${sharerName}** through a revocable HearthBound Share Pass.`);
-  return {embeds:[embed],components:buttonRows([{customId:`hu:pass:house:view:${token}`,label:'View Shared House',style:'success'},{customId:`hu:pass:house:report:${token}`,label:'Report a Problem',style:'secondary'}])};
+  return webPassLink({embeds:[embed],components:buttonRows([{customId:`hu:pass:house:view:${token}`,label:'View Shared House',style:'success'},{customId:`hu:pass:house:report:${token}`,label:'Report a Problem',style:'secondary'}])},'house',token,portalUrl);
 }
 
 export function housePassManagementPayload(rows,{page=0,pages=1}={}){
@@ -95,19 +102,19 @@ export function houseCopyMetadataModal(preview,{token,visibility}={}){
   );
 }
 
-export function tourShareCardPayload(tour,{token,sharerName='A housing visitor',stopCount=0}={}){
+export function tourShareCardPayload(tour,{token,sharerName='A housing visitor',stopCount=0,portalUrl=portalPublicUrl()}={}){
   const visibility=tour.visibility==='global'?'Global':tour.visibility==='public'?'Server':'Private';
   const embed=new EmbedBuilder().setColor(0x2b7ddd).setTitle(discordTitle(`🗺️ ${tour.name}`)).setDescription(discordDescription([
     tour.description||'A shared HearthBound housing tour.',
     '',`**Tour visibility:** ${visibility}`,`**Stops:** ${stopCount}`,`**Shared by:** ${sharerName}`,
     '',tour.visibility==='private'?'Private destinations are available only while using this Tour Pass and remain excluded from normal search.':'Private destinations, if any, are available only during the tour.'
   ].join('\n')));
-  return {embeds:[embed],components:buttonRows([
+  return webPassLink({embeds:[embed],components:buttonRows([
     {customId:`hu:pass:tour:start:${token}`,label:'Start Self-Paced Tour',style:'success'},
     {customId:`hu:pass:tour:info:${token}`,label:'Tour Information',style:'primary'},
     {customId:`hu:pass:tour:copy:${token}`,label:'Copy Tour to My Address Book',style:'secondary'},
     {customId:`hu:pass:tour:report:${token}`,label:'Report a Problem',style:'secondary'}
-  ])};
+  ])},'tour',token,portalUrl);
 }
 
 export function tourCopyPreviewPayload(preview,{token}={}){

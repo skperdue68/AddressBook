@@ -1,3 +1,4 @@
+import {DiscordWorkspace} from './web/discord-workspace.js';
 import {UsageActivityService} from './services/usage-activity-service.js';
 import {WebWorkspaceService} from './services/web-workspace-service.js';
 import {resolveCurrentGuildMembership} from './web/guild-membership.js';
@@ -41,7 +42,8 @@ client.once(Events.ClientReady,async c=>{
   await worker.start();
   await usage.purgeExpired().catch(()=>console.error('Usage history cleanup failed.'));
   if(webAdmin){
-    webServer=createWebAdminServer({service:webAdmin,workspace:Object.assign(new WebWorkspaceService(db),{usage}),config:webConfig,resolveOAuthIdentity:async tokens=>{
+    const workspace=Object.assign(new WebWorkspaceService(db),{usage,discord:new DiscordWorkspace(c),invalidateSettings:guildId=>{webAdmin.guilds.invalidate(guildId);handlers.invalidateSettings(guildId);}});
+    webServer=createWebAdminServer({service:webAdmin,workspace,config:webConfig,resolveOAuthIdentity:async tokens=>{
       const response=await fetch('https://discord.com/api/users/@me',{headers:{authorization:`Bearer ${tokens.access_token}`}});
       if(!response.ok)throw new Error('Discord identity lookup failed.');
       const user=await response.json(),guilds=[];

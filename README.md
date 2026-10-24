@@ -105,3 +105,7 @@ HearthBound cannot bypass ESO visitor permissions. Environment changes require c
 ## Development
 
 Run the automated checks with `npm test`. Destination tests simulate Discord requests; verify the channel and thread flow in a test server with your actual permissions before deployment.
+
+## Expanded web workflows
+
+See the [HearthBound web workflow guide](docs/web-workflows.md) for personal collections, saved searches, comments, reports, deletion, self-paced tours, sharing and administration. Controls and navigation follow current HearthBound permissions; other members’ Private records remain protected.

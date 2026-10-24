@@ -43,7 +43,7 @@ DISCORD_OAUTH_REDIRECT_URI=https://YOUR_PORTAL_HOST/auth/callback
 
 Register that exact callback URI in the Discord Developer Portal and forward the public HTTPS hostname to the loopback listener through your reverse proxy. The portal starts after the bot connects to Discord. `WEB_PORTAL_URL` enables the Open Web Portal link in Discord Home and Help when the portal is enabled. For a local test or SSH tunnel, an exact loopback HTTP callback is supported; use HTTPS for normal remote access.
 
-`ADMIN_INTERFACE=both` is the default. `discord` retains Discord administration and allows the member portal when explicitly enabled with `WEB_PORTAL_ENABLED=true`. `web` directs the migrated operational tools to the web while retaining Discord-only tools such as environment/channel/timezone changes, legacy recovery and Share Pass workflows. Web administration is also available when enabled in `both` mode. `WEB_ADMIN_ENABLED=true` remains required for `ADMIN_INTERFACE=web`.
+`ADMIN_INTERFACE=both` is the default. `discord` retains Discord administration and allows the member portal when explicitly enabled with `WEB_PORTAL_ENABLED=true`. `web` directs the migrated operational tools to the web while retaining live Discord session controls in Discord. Environment/channel/timezone changes, legacy recovery and Share Pass workflows are also available through the member portal. Web administration is also available when enabled in `both` mode. `WEB_ADMIN_ENABLED=true` remains required for `ADMIN_INTERFACE=web`.
 
 Generate a strong secret with `openssl rand -hex 32`. `WEB_SESSION_SECRET` belongs to HearthBound; it does not match a Discord or database secret. Keep it stable across restarts. A systemd-provided environment variable takes precedence over `.env`; update the actual source rather than creating conflicting copies. Do not commit `.env` or share its contents.
 
@@ -69,7 +69,7 @@ The web form manages registration policy and Server administrator, trusted submi
 
 Open Moderator Access to review Server requests and revoke individual grants. Approval requires current Server administrator access; users cannot approve their own request and stale revisions are rejected. Revoking a grant does not revoke independent Discord role access. Members request access through Discord Help, and administrators can review through web or Discord.
 
-Bot owners additionally see Global request and grant controls on the web access page. Global grants remain ESO-environment-specific. The legacy `GLOBAL_MODERATOR_APPROVER_USER_IDS` setting remains available for approval-only users through existing Discord workflows; it does not make them owners or Global moderators.
+Bot owners additionally see Global request and grant controls on the web access page. Global grants remain ESO-environment-specific. The legacy `GLOBAL_MODERATOR_APPROVER_USER_IDS` setting remains available for approval-only users through Discord and a dedicated web approval page; it does not make them owners or Global moderators.
 
 ### Featured Housing Settings
 
@@ -128,4 +128,8 @@ SQLite and MariaDB are supported. Preserve `DB_TYPE` and its existing path/host/
 
 `MIGRATE=true` with `MIGRATE_CONFIRM=ERASE_TARGET_DATABASE` is a separate destructive backend transfer, not a schema upgrade. It validates the source, erases the destination, copies and checks persistent data, writes a completion marker and exits. SQLite-to-MariaDB and reverse transfer are selected through `DB_TYPE`. Active transient tour sessions and Share Pass session links are intentionally not transferred. Only use after independent verified backups, then return `MIGRATE=false` before normal start.
 
-Older records without a known ESO environment use the existing preview/confirmation recovery workflows. A member assigns their own unassigned Private records through My Address Book; administrators recover only provably guild-linked Server/Global tours through Discord Legacy Tours. Incompatible stops are removed only after confirmed recovery. Never expose or claim another creator's Private records.
+Older records without a known ESO environment use the existing preview/confirmation recovery workflows. A member assigns their own unassigned Private records through My Address Book; administrators recover only provably guild-linked Server/Global tours through Legacy Tours in Discord or web recovery. Incompatible stops are removed only after confirmed recovery. Never expose or claim another creator's Private records.
+
+## Expanded web workflows
+
+See the [HearthBound web workflow guide](web-workflows.md) for personal collections, saved searches, comments, reports, deletion, self-paced tours, sharing and administration. Controls and navigation follow current HearthBound permissions; other members’ Private records remain protected.

@@ -18,7 +18,7 @@ export class TourProgressService {
   }
 
   async #row(progressId, userId, conn = this.db) {
-    const row = await one(conn, 'SELECT * FROM tour_progress WHERE id=? AND discord_user_id=?', [Number(progressId), String(userId)]);
+    const row = await one(conn, 'SELECT * FROM tour_progress WHERE id=? AND discord_user_id=? FOR UPDATE', [Number(progressId), String(userId)]);
     if (!row) throw new Error('Tour progress was not found for this user.');
     return row;
   }
@@ -49,9 +49,10 @@ export class TourProgressService {
     return {...result,_startedNew:Number(inserted.affectedRows)>0&&(this.db.type==='sqlite'||Number(inserted.insertId)>0)};
   }
 
-  async advance({ progressId, userId, guildId = null, esoServer = null } = {}) {
+  async advance({ progressId, userId, guildId = null, esoServer = null, expectedStopId = undefined } = {}) {
     return withTransaction(this.db, async conn => {
       const progress = await this.#row(progressId, userId, conn);
+      if (expectedStopId !== undefined && Number(progress.current_stop_id) !== Number(expectedStopId)) throw new Error('This tour progress changed. Reload the player.');
       if (guildId != null || esoServer != null) await this.#tour(progress.tour_id, { userId, guildId, esoServer }, conn);
       await this.#ready(progress,{userId,guildId,esoServer},conn);
       if (progress.status === 'completed') return progress;
@@ -75,15 +76,18 @@ export class TourProgressService {
     });
   }
 
-  async back({ progressId, userId, guildId = null, esoServer = null } = {}) {
-    const progress = await this.#row(progressId, userId);
-    if (guildId != null || esoServer != null) await this.#tour(progress.tour_id, { userId, guildId, esoServer });
-    await this.#ready(progress,{userId,guildId,esoServer});
-    const current = await one(this.db, 'SELECT position FROM tour_stops WHERE id=? AND tour_id=?', [Number(progress.current_stop_id), Number(progress.tour_id)]);
+  async back({ progressId, userId, guildId = null, esoServer = null, expectedStopId = undefined } = {}) {
+    return withTransaction(this.db,async conn=>{
+    const progress = await this.#row(progressId, userId,conn);
+    if (expectedStopId !== undefined && Number(progress.current_stop_id) !== Number(expectedStopId)) throw new Error('This tour progress changed. Reload the player.');
+    if (guildId != null || esoServer != null) await this.#tour(progress.tour_id, { userId, guildId, esoServer },conn);
+    await this.#ready(progress,{userId,guildId,esoServer},conn);
+    const current = await one(conn, 'SELECT position FROM tour_stops WHERE id=? AND tour_id=?', [Number(progress.current_stop_id), Number(progress.tour_id)]);
     if (!current || current.position <= 1) return progress;
-    const previous = await one(this.db, 'SELECT id FROM tour_stops WHERE tour_id=? AND position<? ORDER BY position DESC LIMIT 1', [Number(progress.tour_id), Number(current.position)]);
-    await this.db.query("UPDATE tour_progress SET status='active',current_stop_id=?,last_activity_at=? WHERE id=?", [Number(previous.id), asDate(this.db, this.now()), Number(progress.id)]);
-    return one(this.db, 'SELECT * FROM tour_progress WHERE id=?', [Number(progress.id)]);
+    const previous = await one(conn, 'SELECT id FROM tour_stops WHERE tour_id=? AND position<? ORDER BY position DESC LIMIT 1', [Number(progress.tour_id), Number(current.position)]);
+    await conn.query("UPDATE tour_progress SET status='active',current_stop_id=?,last_activity_at=? WHERE id=?", [Number(previous.id), asDate(this.db, this.now()), Number(progress.id)]);
+    return one(conn, 'SELECT * FROM tour_progress WHERE id=?', [Number(progress.id)]);
+    });
   }
 
   async restart({ progressId, userId, guildId = null, esoServer = null } = {}) {

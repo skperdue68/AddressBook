@@ -92,8 +92,8 @@ export class SavedHouseService{
     return this.get(id);
   }
   async setStatus(id,status,actorId){ await this.db.query('UPDATE saved_houses SET status=?,updated_by=? WHERE id=?',[status,actorId,Number(id)]); return this.get(id); }
-  async delete(id,actorId=null){
-    return withTransaction(this.db,async conn=>{
+  async delete(id,actorId=null,connection=null){
+    const remove=async conn=>{
       const current=await this.get(id,conn); if(!current)return false;
       const linked=await conn.query('SELECT DISTINCT tour_id FROM tour_stops WHERE saved_house_id=?',[Number(id)]);
       const tourIds=linked.map(r=>Number(r.tour_id));
@@ -101,20 +101,24 @@ export class SavedHouseService{
       for(const tourId of tourIds){ const rows=await conn.query('SELECT id FROM tour_stops WHERE tour_id=? ORDER BY position,id',[tourId]); for(let n=0;n<rows.length;n++)await conn.query('UPDATE tour_stops SET position=? WHERE id=?',[n+1,rows[n].id]); }
       if(actorId)await conn.query('INSERT INTO audit_log(guild_id,actor_id,action,entity_type,entity_id,entity_name,details) VALUES(?,?,?,?,?,?,?)',[current.guild_id||current.origin_guild_id||null,String(actorId),'delete_house','saved_house',String(id),current.display_name||current.house_name||`Saved House #${id}`,JSON.stringify({scope:current.scope,affectedTourIds:tourIds})]);
       return Number(r.affectedRows||0)>0;
-    });
+    };
+    return connection?remove(connection):withTransaction(this.db,remove);
   }
-  async previewScopeChange(id,newScope,{targetStatus='active'}={}){
+  async previewScopeChange(id,newScope,{targetStatus='active',targetGuildId=null,targetOwnerUserId=null,connection=this.db}={}){
     if(!['private','public','global'].includes(newScope))throw new Error('Invalid house scope.');
-    const current=await this.get(id); if(!current)throw new Error('Saved house not found.');
-    const rows=await this.db.query(`SELECT t.id tour_id,t.name tour_name,t.visibility,t.house_source,ts.id stop_id,ts.position
+    const current=await this.get(id,connection); if(!current)throw new Error('Saved house not found.');
+    const rows=await connection.query(`SELECT t.id tour_id,t.name tour_name,t.visibility,t.house_source,t.guild_id,t.source_guild_id,t.creator_id,ts.id stop_id,ts.position
       FROM tour_stops ts JOIN tours t ON t.id=ts.tour_id WHERE ts.saved_house_id=? ORDER BY t.name,ts.position`,[Number(id)]);
-    const affected=rows.filter(r=>targetStatus!=='active'||!tourAllowsHouseScope(r,newScope));
+    const guildId=targetGuildId||current.guild_id,ownerId=targetOwnerUserId||current.owner_user_id||current.created_by;
+    const affected=rows.filter(r=>targetStatus!=='active'||!tourAllowsHouseScope(r,newScope)||(newScope==='public'&&(r.source_guild_id||r.guild_id)!==guildId)||(newScope==='private'&&r.creator_id!==ownerId));
     return {house:current,newScope,affectedTours:[...new Map(affected.map(r=>[Number(r.tour_id),{id:Number(r.tour_id),name:r.tour_name,visibility:r.visibility,houseSource:r.house_source}])).values()],affectedStops:affected};
   }
-  async changeScope(id,newScope,{actorId,targetGuildId=null,targetEsoServer=null,targetOwnerUserId=null,status='active'}={}){
-    const preview=await this.previewScopeChange(id,newScope,{targetStatus:status});
+  async changeScope(id,newScope,{actorId,targetGuildId=null,targetEsoServer=null,targetOwnerUserId=null,status='active',validate=null}={}){
     return withTransaction(this.db,async conn=>{
-      const current=await this.get(id,conn); if(!current)throw new Error('Saved house not found.');
+      await one(conn,'SELECT id FROM saved_houses WHERE id=? FOR UPDATE',[Number(id)]);
+      const preview=await this.previewScopeChange(id,newScope,{targetStatus:status,targetGuildId,targetOwnerUserId:targetOwnerUserId||actorId,connection:conn});
+      const current=preview.house;
+      if(validate)await validate(preview,conn);
       if(newScope==='public'||newScope==='global'){
         const target=requireEsoServer(targetEsoServer);
         if(target!==current.eso_server)throw new Error(`This destination belongs to ${esoServerLabel(current.eso_server)}, but this Discord server uses ${esoServerLabel(target)}.`);
