@@ -26,7 +26,7 @@ export class ServerModeratorService{
   return serialized(this.db,()=>withTransaction(this.db,async conn=>{
    const ids=[String(guildId),String(userId)];
    const settings=await one(conn,'SELECT guild_id FROM guild_settings WHERE guild_id=? FOR UPDATE',[ids[0]]);
-   if(!settings)throw new Error('Configure AddressBook for this server first.');
+   if(!settings)throw new Error('Configure HearthBound for this server first.');
    if((await this.access({guildId,userId},conn)).hasGrant)throw new Error('You already have Server Moderator access.');
    const old=await one(conn,'SELECT * FROM server_moderator_requests WHERE guild_id=? AND discord_user_id=? FOR UPDATE',ids);
    if(old?.status==='pending')throw new Error('You already have a pending Server Moderator request.');
@@ -40,7 +40,7 @@ export class ServerModeratorService{
   if(!['approve','deny'].includes(decision))throw new Error('Invalid review decision.');
   return serialized(this.db,()=>withTransaction(this.db,async conn=>{
    await one(conn,'SELECT guild_id FROM guild_settings WHERE guild_id=? FOR UPDATE',[String(guildId)]);
-   if(!(await this.access({guildId,...reviewer},conn)).canReviewRequests)throw new Error('Current AddressBook Server Moderator access is required.');
+   if(!(await this.access({guildId,...reviewer},conn)).canReviewRequests)throw new Error('Current HearthBound Server Moderator access is required.');
    const req=await one(conn,'SELECT * FROM server_moderator_requests WHERE guild_id=? AND id=? FOR UPDATE',[String(guildId),Number(requestId)]);
    if(!req||req.status!=='pending'||Number(req.revision)!==Number(revision))throw new Error('This request is stale or no longer pending. Refresh requests.');
    if(req.discord_user_id===String(reviewer.userId))throw new Error('You cannot review your own request.');
@@ -54,7 +54,7 @@ export class ServerModeratorService{
  }
  async revoke({guildId,userId,reviewer}){return serialized(this.db,()=>withTransaction(this.db,async conn=>{
   await one(conn,'SELECT guild_id FROM guild_settings WHERE guild_id=? FOR UPDATE',[String(guildId)]);
-  if(!(await this.access({guildId,...reviewer},conn)).canReviewRequests)throw new Error('Current AddressBook Server Moderator access is required.');
+  if(!(await this.access({guildId,...reviewer},conn)).canReviewRequests)throw new Error('Current HearthBound Server Moderator access is required.');
   const r=await conn.query('DELETE FROM server_moderators WHERE guild_id=? AND discord_user_id=?',[String(guildId),String(userId)]);
   if(r.affectedRows){await conn.query("UPDATE server_moderator_requests SET status='revoked',reviewed_by=?,reviewed_at=CURRENT_TIMESTAMP WHERE guild_id=? AND discord_user_id=? AND status='approved'",[String(reviewer.userId),String(guildId),String(userId)]);await this.audit(conn,guildId,reviewer.userId,'revoke_server_moderator',userId);}
   return !!r.affectedRows;

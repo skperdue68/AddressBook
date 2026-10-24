@@ -9,13 +9,13 @@ import { homePayload, myAddressBookPayload } from '../src/ui/housing-ui.js';
 
 const labels=payload=>payload.components.flatMap(row=>row.components).map(component=>component.data.label).filter(Boolean);
 
-test('home includes My AddressBook without replacing the established entry points',()=>{
+test('home includes My Address Book without replacing the established entry points',()=>{
   assert.deepEqual(labels(homePayload()),[
     'Search Houses','Search Housing Tours','Register New House','Random House','Featured Housing','My Address Book','Help'
   ]);
 });
 
-test('My AddressBook renders personal counts and dashboard actions',()=>{
+test('My Address Book renders personal counts and dashboard actions',()=>{
   const payload=myAddressBookPayload({houses:18,tours:4,pending:2,recent:3});
   const json=payload.embeds[0].toJSON();
   assert.match(json.title,/My Address Book/);

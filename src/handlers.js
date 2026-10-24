@@ -2,7 +2,7 @@ import { createHousingMenu } from './ui/housing-menu.js';
 import { IdentityService } from './services/identity-service.js';
 
 /**
- * Hearthbound registers /hearth and the /housing compatibility alias.  All interaction behavior lives in the
+ * HearthBound registers /hearth and the /housing compatibility alias.  All interaction behavior lives in the
  * Housing menu layer so database access cannot bypass the repository/service
  * scoping rules.
  */

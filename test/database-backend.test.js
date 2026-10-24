@@ -47,7 +47,7 @@ import { TourService } from '../src/services/tour-service.js';
 import { TourSessionService } from '../src/services/tour-session-service.js';
 import { GlobalModeratorService } from '../src/services/global-moderator-service.js';
 
-test('sqlite backend supports AddressBook v0.4 house, comment, tour, session, and moderator flows',async()=>{
+test('sqlite backend supports HearthBound v0.4 house, comment, tour, session, and moderator flows',async()=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'addressbook-sqlite-flow-'));
   const db=openDatabase({DB_TYPE:'sqlite',DATABASE_PATH:path.join(dir,'addressbook.sqlite')});
   try{

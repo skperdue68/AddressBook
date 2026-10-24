@@ -15,7 +15,7 @@ export function parseTourDestination(value,guildId){
   return id[1]||id[2];
 }
 async function members(i){
-  if(!i.guild)throw new Error('Open AddressBook in a Discord server.');
+  if(!i.guild)throw new Error('Open HearthBound in a Discord server.');
   const [user,bot]=await Promise.all([i.guild.members.fetch({user:i.user.id,force:true}),i.guild.members.fetchMe({force:true})]);
   return {user,bot};
 }
@@ -25,15 +25,15 @@ async function privateAccess(channel,member){
   try{return !!await channel.members.fetch({member:member.id,force:true});}catch{return false;}
 }
 export async function validateTourDestination(channel,i,actors){
-  if(!visible(channel,i,actors))throw new Error('You and AddressBook both need View Channel access to that destination.');
+  if(!visible(channel,i,actors))throw new Error('You and HearthBound both need View Channel access to that destination.');
   const thread=!!channel.isThread?.();
   if(!thread&&!directTypes.has(channel.type))throw new Error('Select an existing thread / post within this forum or media channel.');
   if(typeof channel.send!=='function')throw new Error('That destination cannot receive messages.');
   if(thread&&channel.locked)throw new Error('That thread is locked. Choose an unlocked thread.');
   const send=thread?P.SendMessagesInThreads:P.SendMessages;
   if(!has(channel,actors.user,[P.ViewChannel,send]))throw new Error(`You need ${thread?'Send Messages in Threads':'Send Messages'} permission in that destination.`);
-  if(!has(channel,actors.bot,[P.ViewChannel,send,P.EmbedLinks,P.ReadMessageHistory]))throw new Error(`AddressBook needs View Channel, ${thread?'Send Messages in Threads':'Send Messages'}, Embed Links, and Read Message History in that destination.`);
-  if(thread&&(!await privateAccess(channel,actors.user)||!await privateAccess(channel,actors.bot)))throw new Error('Both you and AddressBook must have access to this private thread. Invite AddressBook to it first.');
+  if(!has(channel,actors.bot,[P.ViewChannel,send,P.EmbedLinks,P.ReadMessageHistory]))throw new Error(`HearthBound needs View Channel, ${thread?'Send Messages in Threads':'Send Messages'}, Embed Links, and Read Message History in that destination.`);
+  if(thread&&(!await privateAccess(channel,actors.user)||!await privateAccess(channel,actors.bot)))throw new Error('Both you and HearthBound must have access to this private thread. Invite HearthBound to it first.');
   return channel;
 }
 async function fetchDestination(i,id){
@@ -80,7 +80,7 @@ export async function handleTourShareDestination(i,{sharePasses,tours,guilds,loa
     const channelId=action==='thread'?String(i.values?.[0]||''):parts[5];
     const channel=resolved||await fetchDestination(i,channelId);
     if(action==='thread'&&(!channel.isThread?.()||channel.parentId!==parts[5]))throw new Error('Choose a thread within the selected channel.');
-    if(!visible(channel,i,actors))throw new Error('You and AddressBook both need View Channel access to that destination.');
+    if(!visible(channel,i,actors))throw new Error('You and HearthBound both need View Channel access to that destination.');
     await validateTourDestination(channel,i,actors);
     if(action!=='post')return i.editReply(tourShareDestinationPayload(tourId,channel,kind));
     // Load the current record before issuing a token; the service rechecks sharing access.
@@ -95,7 +95,7 @@ export async function handleTourShareDestination(i,{sharePasses,tours,guilds,loa
       const options={token:created.token,sharerName:actors.user.displayName||i.user.username,stopCount:stops.length};
       message=await channel.send(kind==='tour'?tourShareCardPayload(record,options):houseShareCardPayload(record,options));
     }catch(error){await sharePasses[revoke](created.pass.id,{actorId:i.user.id,reason:'Discord posting failed'}).catch(()=>{});throw error;}
-    const components=buttonRows([{customId:back,label:kind==='tour'?'Back to Tours':'Back to AddressBook',style:'secondary'}]);
+    const components=buttonRows([{customId:back,label:kind==='tour'?'Back to Tours':'Back to HearthBound',style:'secondary'}]);
     try{await sharePasses[mark](created.pass.id,{guildId:i.guildId,channelId:channel.id,messageId:message.id,channelName:channel.name});}
     catch{return i.editReply({content:`${title} posted in <#${channel.id}>, but its message details could not be saved. Please do not repost it. You can still revoke the pass in Administration.`,embeds:[],components});}
     return i.editReply({content:`${title} posted in <#${channel.id}>. ${kind==='tour'?'Each visitor starts an independent private self-paced tour.':'It remains active until you revoke it.'}`,embeds:[],components});

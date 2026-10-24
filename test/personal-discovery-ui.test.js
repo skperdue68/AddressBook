@@ -47,7 +47,7 @@ test('saved and Non-Player cards expose Personal Actions without crowding compon
   for(const payload of [saved,official])for(const row of payload.components)assert.ok(row.toJSON().components.length<=5);
 });
 
-test('My AddressBook exposes personal discovery sections and their counts',()=>{
+test('My Address Book exposes personal discovery sections and their counts',()=>{
   const payload=ui.myAddressBookPayload({favorites:3,wantToVisit:2,visited:7,savedSearches:4});
   assert.ok(labels(payload).includes('Favorites'));
   assert.ok(labels(payload).includes('Want to Visit'));

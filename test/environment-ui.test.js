@@ -51,7 +51,7 @@ test('/housing gates an unconfigured guild and the first setup selection opens t
   }finally{await closeDatabase(db);}
 });
 
-test('My AddressBook shows legacy assignment only when Unassigned records exist',()=>{
+test('My Address Book shows legacy assignment only when Unassigned records exist',()=>{
   const labels=payload=>componentJson(payload).flatMap(row=>row.components).map(component=>component.label).filter(Boolean);
   assert.equal(labels(myAddressBookPayload({legacy:{houses:0,tours:0},esoServer:'pc_na'})).some(label=>label.startsWith('Assign to')),false);
   assert.ok(labels(myAddressBookPayload({legacy:{houses:2,tours:1},esoServer:'pc_na'})).includes('Assign to PC NA'));

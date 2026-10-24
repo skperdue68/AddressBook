@@ -102,7 +102,7 @@ export async function runConfiguredMigration(env=process.env){
     if(fs.existsSync(marker))fs.unlinkSync(marker);
     return null;
   }
-  if(fs.existsSync(marker))throw new Error(`Migration already completed (${marker}). Set MIGRATE=false and start AddressBook once before requesting another migration.`);
+  if(fs.existsSync(marker))throw new Error(`Migration already completed (${marker}). Set MIGRATE=false and start HearthBound once before requesting another migration.`);
   const sqlitePath=path.resolve(String(env.SQLITE_MIGRATION_PATH||env.DATABASE_PATH||'./data/eso-housing.sqlite'));
   if(settings.direction==='sqlite-to-mariadb'&&!fs.existsSync(sqlitePath))throw new Error(`SQLite migration source not found: ${sqlitePath}`);
   let source,target;
@@ -115,7 +115,7 @@ export async function runConfiguredMigration(env=process.env){
       await migrate(target);
     }else{
       source=openDatabase({...env,DB_TYPE:'mariadb'});
-      // This query validates that the configured source is an existing AddressBook database.
+      // This query validates that the configured source is an existing HearthBound database.
       await source.query('SELECT version FROM schema_migrations ORDER BY version');
       await migrate(source);
       target=openDatabase({DB_TYPE:'sqlite',DATABASE_PATH:sqlitePath});

@@ -19,7 +19,7 @@ const migration=await runConfiguredMigration();
 if(migration){
   console.log(`Database migration completed: ${migration.direction}`);
   console.table(migration.summary);
-  console.log('Set MIGRATE=false, then start AddressBook again.');
+  console.log('Set MIGRATE=false, then start HearthBound again.');
   process.exit(0);
 }
 
@@ -37,7 +37,7 @@ const usage=new UsageActivityService(db,{isGuildActive:id=>client.guilds.cache.h
 const usageCleanup=setInterval(()=>usage.purgeExpired().catch(()=>console.error('Usage history cleanup failed.')),3600000);usageCleanup.unref();
 
 client.once(Events.ClientReady,async c=>{
-  try{await handlers.ready(c);}catch(err){console.error('AddressBook could not refresh Discord names at startup:',err);}
+  try{await handlers.ready(c);}catch(err){console.error('HearthBound could not refresh Discord names at startup:',err);}
   await worker.start();
   await usage.purgeExpired().catch(()=>console.error('Usage history cleanup failed.'));
   if(webAdmin){
@@ -55,9 +55,9 @@ client.once(Events.ClientReady,async c=>{
     },resolveGuildMembership:({userId,guildId})=>resolveCurrentGuildMembership({client:c,guilds:webAdmin.guilds,userId,guildId})
     });
     await new Promise((resolve,reject)=>{webServer.once('error',reject);webServer.listen(webConfig.port,webConfig.host,resolve);});
-    console.log(`AddressBook web administration listening on ${webConfig.host}:${webConfig.port}`);
+    console.log(`HearthBound web administration listening on ${webConfig.host}:${webConfig.port}`);
   }
-  console.log(`AddressBook ready as ${c.user.tag}`);
+  console.log(`HearthBound ready as ${c.user.tag}`);
 });
 client.on(Events.InteractionCreate,async i=>{
   try{
@@ -69,7 +69,7 @@ client.on(Events.InteractionCreate,async i=>{
   }catch(err){
     console.error(err);
     const message=/database|connect|pool|socket|ECONN/i.test(String(err?.message||''))
-      ?'AddressBook cannot reach its database right now. Please try again shortly.'
+      ?'HearthBound cannot reach its database right now. Please try again shortly.'
       :`Error: ${err.message}`;
     const payload={content:message,flags:MessageFlags.Ephemeral};
     if(i.replied||i.deferred) await i.followUp(payload).catch(()=>{});

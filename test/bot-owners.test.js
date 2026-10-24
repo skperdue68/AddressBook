@@ -11,7 +11,7 @@ const interaction=id=>({guildId:'g',channelId:'other',user:{id},member:{roles:{c
 test('owner configuration accepts one or multiple Discord IDs and rejects names',async()=>{
  const {botOwnerIds}=await import('../src/config/bot-owners.js');assert.deepEqual([...botOwnerIds({BOT_OWNER_IDS:owner})],[owner]);assert.deepEqual([...botOwnerIds({BOT_OWNER_IDS:`${owner}, ${second} ${owner}`})],[owner,second]);assert.throws(()=>botOwnerIds({BOT_OWNER_IDS:'role-name'}),/Discord.*ID|BOT_OWNER_IDS/i);assert.equal(botOwnerIds({}).size,0);
 });
-test('owners receive every AddressBook role permission and role-free web access',async t=>{
+test('owners receive every HearthBound role permission and role-free web access',async t=>{
  const db=await fixture(t),guilds=new GuildService(db,{env});await guilds.ensureSettings('g');const i=interaction(owner);await guilds.ensureModeratorAccess(i);
  for(const method of ['isModerator','canAdmin','hasTrustedSubmitterRole','hasHousingToursRole','canBypassHousingChannel','canRunSharedPublicTour'])assert.equal(guilds[method](i),true,method);
  assert.deepEqual(guilds.canRegister(i),{allowed:true,status:'active'});assert.equal((await guilds.serverModerators.access({guildId:'g',userId:owner,roleIds:[]})).canReviewRequests,true);

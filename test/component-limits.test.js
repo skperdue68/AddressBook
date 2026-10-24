@@ -10,7 +10,7 @@ function inspect(payload){
   return json;
 }
 
-test('core AddressBook payloads stay within Discord component limits',()=>{
+test('core HearthBound payloads stay within Discord component limits',()=>{
   const preview={destination:{houseName:'Villa',esoOwner:'Owner'},choices:[{visibility:'global',label:'Global',enabled:true},{visibility:'public',label:'Server',enabled:true},{visibility:'private',label:'Private',enabled:true}]};
   const environmentPreview={fromEsoServer:'pc_na',toEsoServer:'pc_eu',fingerprint:'f'.repeat(64),counts:{serverHouses:1,globalHouses:1,serverTours:1,globalTours:1,destinationsClaimed:1,destinationsReused:1,destinationsCreated:1,removedStops:2,housePasses:1,tourPasses:1,sessions:1,unresolvedRecords:1}};
   const legacyTourPreview={tourId:Number.MAX_SAFE_INTEGER,name:'Legacy Tour',visibility:'public',creator_id:'1234567890123456789',esoServer:'pc_na',fingerprint:'f'.repeat(64),counts:{stops:3,retainedStops:2,removedStops:1}};

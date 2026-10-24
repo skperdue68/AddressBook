@@ -28,15 +28,15 @@ function embed(title,description){ return new EmbedBuilder().setColor(color).set
 
 function appendPortalLink(payload,url){if(!url)return payload;const link=new ButtonBuilder().setLabel('Open Web Portal').setStyle(ButtonStyle.Link).setURL(url);const last=payload.components.at(-1);if(last&&last.components.length<5)last.addComponents(link);else if(payload.components.length<5)payload.components.push(new ActionRowBuilder().addComponents(link));return payload;}
 function homeButtonRows(isAdmin){return buttonRows(homeButtonSpecs(isAdmin),2);}
-export function homePayload({isAdmin=false,version='1.0.62',esoServer=null,adminInterface=adminInterfaceMode(),portalUrl=portalPublicUrl()}={}){ const environment=esoServer?`\n\n**ESO environment:** ${esoServerLabel(esoServer)}`:''; const adminNote=adminInterface==='web'?'\n\n**Administration:** Use the companion web console.':''; return appendPortalLink({embeds:[embed('🏠 Hearthbound',`Your ESO housing directory and tour guide.\n\nFind saved homes, keep a Private address book, share Server or Global destinations, and lead or follow housing tours—all without memorizing commands.${environment}${adminNote}`).setFooter({text:`Hearthbound • Version ${version} • Start anytime with /hearth`})],components:homeButtonRows(isAdmin)},portalUrl); }
+export function homePayload({isAdmin=false,version='1.0.62',esoServer=null,adminInterface=adminInterfaceMode(),portalUrl=portalPublicUrl()}={}){ const environment=esoServer?`\n\n**ESO environment:** ${esoServerLabel(esoServer)}`:''; const adminNote=adminInterface==='web'?'\n\n**Administration:** Use the companion web console.':''; return appendPortalLink({embeds:[embed('🏠 HearthBound',`Your ESO housing directory and tour guide.\n\nFind saved homes, keep a Private address book, share Server or Global destinations, and lead or follow housing tours—all without memorizing commands.${environment}${adminNote}`).setFooter({text:`HearthBound • Version ${version} • Start anytime with /hearth`})],components:homeButtonRows(isAdmin)},portalUrl); }
 
 export function environmentSetupPayload({message=null}={}){
   const select=new StringSelectMenuBuilder().setCustomId('hu:environment:setup').setPlaceholder('Choose this Discord server’s ESO environment…').addOptions(esoServerOptions().map(option=>({label:option.label,value:option.value,description:`Use ${option.label} houses, tours, and Global results`})));
-  const description=[message,'Hearthbound needs this Discord server’s ESO environment before anyone can use housing features. Global content is shared only with other Discord servers using the exact same environment.','Any member may complete this one-time setup. Housing Moderators can preview a later change in Administration.'].filter(Boolean).join('\n\n');
-  return {embeds:[embed('🌍 Hearthbound Setup Required',description)],components:[new ActionRowBuilder().addComponents(select)]};
+  const description=[message,'HearthBound needs this Discord server’s ESO environment before anyone can use housing features. Global content is shared only with other Discord servers using the exact same environment.','Any member may complete this one-time setup. Housing Moderators can preview a later change in Administration.'].filter(Boolean).join('\n\n');
+  return {embeds:[embed('🌍 HearthBound Setup Required',description)],components:[new ActionRowBuilder().addComponents(select)]};
 }
 export function onboardingPayload({page=0}={}){
-  if(page===0)return {embeds:[embed('🏠 Welcome to Hearthbound','Find and share ESO player housing destinations, save your own Private list, and follow housing tours. Choose a starting point or take the guided introduction.')],components:buttonRows([
+  if(page===0)return {embeds:[embed('🏠 Welcome to HearthBound','Find and share ESO player housing destinations, save your own Private list, and follow housing tours. Choose a starting point or take the guided introduction.')],components:buttonRows([
     {customId:'hu:find',label:'Find a House',style:'primary'},
     {customId:'hu:register',label:'Register a House',style:'success'},
     {customId:'hu:tours:start',label:'Start a Tour',style:'primary'},
@@ -47,10 +47,10 @@ export function onboardingPayload({page=0}={}){
     1:{title:'Introduction 1 of 7 — Find the Right House',description:'Search begins with all homes you can access. Open Filters when you want to narrow the list.',fields:[['What you can search','House or nickname, owner, tags, themes, zone, architectural style, ESO classification, size/type, and visibility.'],['Useful switches','Include Non-Player Homes or find houses not already included in a Server or Global tour.']]},
     2:{title:'Introduction 2 of 7 — Register in Seconds',description:'Save a destination without memorizing a complicated format.',fields:[['Flexible destination input','Paste an ESO Housing Link, a jump command, `("@Owner", 62)`, or enter an owner and part of the official house name.'],['Choose visibility','Global shares within the exact ESO environment, Server stays in this Discord server, and Private belongs only to you.']]},
     3:{title:'Introduction 3 of 7 — Visit and Explore',description:'House cards keep the useful ESO actions together and easy to copy.',fields:[['Copy-ready commands','Jump in ESO, Unfurnished Preview, and Housing Link each appear in a separate code block.'],['Helpful context','See house details, who submitted it, its visibility, comments, and every visible tour that includes it.']]},
-    4:{title:'Introduction 4 of 7 — Your Hearthbound',description:'My Address Book is your private dashboard for work you created or recently used.',fields:[['Keep moving','Open My Houses, My Tours, Pending submissions, Recently Viewed, or resume an active tour.'],['Older data','If an older house or tour has no ESO environment, preview and assign your eligible legacy records here.']]},
+    4:{title:'Introduction 4 of 7 — Your HearthBound',description:'My Address Book is your private dashboard for work you created or recently used.',fields:[['Keep moving','Open My Houses, My Tours, Pending submissions, Recently Viewed, or resume an active tour.'],['Older data','If an older house or tour has no ESO environment, preview and assign your eligible legacy records here.']]},
     5:{title:'Introduction 5 of 7 — Build and Follow Tours',description:'Create a tour manually or build one from filtered search results, then arrange its route and stop notes.',fields:[['Self-Paced','Each visitor advances privately at their own speed and can resume progress later.'],['Shared','The route appears in a channel for the group, while only the tour leader controls navigation.']]},
     6:{title:'Introduction 6 of 7 — Share Without Going Public',description:'A Share Pass can post a house or tour to a channel without changing its normal visibility.',fields:[['Stay in control','Revoke passes when they are no longer needed. Tour Pass visitors receive independent Self-Paced sessions.'],['Make your own copy','When a pass is the only reason you can see someone else’s Private house, Copy House lets you review and save an editable entry of your own.']]},
-    7:{title:'Introduction 7 of 7 — Visibility and Safety',description:'Hearthbound keeps discovery boundaries predictable: Global, then Server, then Private.',fields:[['Environment boundary','Global content is shared only between Discord servers configured for the exact same ESO environment.'],['Community tools','Report misleading, inappropriate, or inaccessible listings. Housing and Global Moderators receive the applicable review queues.']]}
+    7:{title:'Introduction 7 of 7 — Visibility and Safety',description:'HearthBound keeps discovery boundaries predictable: Global, then Server, then Private.',fields:[['Environment boundary','Global content is shared only between Discord servers configured for the exact same ESO environment.'],['Community tools','Report misleading, inappropriate, or inaccessible listings. Housing and Global Moderators receive the applicable review queues.']]}
   };
   const onboardingActions={
     1:{customId:'hu:onboarding:go:search:1',label:'Try Search'},
@@ -119,7 +119,7 @@ export function environmentChangeChoicePayload(currentEsoServer){
 
 export function environmentChangePreviewPayload(preview){
   const c=preview.counts||{};
-  const description=`**Current:** ${esoServerLabel(preview.fromEsoServer)}\n**Proposed:** ${esoServerLabel(preview.toEsoServer)}\n\nThis is a destructive administrative change. Hearthbound will recalculate the impact at confirmation and refuse stale previews.`;
+  const description=`**Current:** ${esoServerLabel(preview.fromEsoServer)}\n**Proposed:** ${esoServerLabel(preview.toEsoServer)}\n\nThis is a destructive administrative change. HearthBound will recalculate the impact at confirmation and refuse stale previews.`;
   const e=embed('🌍 ESO Environment Change Preview',description).addFields(
     {name:'Houses',value:`Server: **${c.serverHouses||0}**\nOrigin-linked Global: **${c.globalHouses||0}**\nOrigin-linked Private: **${c.privateHouses||0}**`,inline:true},
     {name:'Tours',value:`Server: **${c.serverTours||0}**\nOrigin-linked Global: **${c.globalTours||0}**\nOrigin-linked Private: **${c.privateTours||0}**`,inline:true},
@@ -142,13 +142,13 @@ export function myPendingPayload({houses=[],requests=[],serverRequests=[]}={}){
 }
 export function toursPayload(count=0,{backId='hu:home'}={}){ return {embeds:[embed('🗺️ Housing Tours',`There ${count===1?'is':'are'} **${count}** tour${count===1?'':'s'} available to you.\n\nStart one, browse the route, or build and manage tours without remembering tour commands.`)],components:buttonRows([...toursButtonSpecs().map(spec=>spec.customId==='hu:home'?{...spec,customId:backId}:spec),{customId:'hu:help:learning',label:'Help & Learning',style:'secondary'}])}; }
 export function helpPayload({backId='hu:home',portalUrl=portalPublicUrl()}={}){
-  const e=embed('❓ Hearthbound Help','**Start with `/hearth`.** The menus will walk you through almost everything the bot can do.')
+  const e=embed('❓ HearthBound Help','**Start with `/hearth`.** The menus will walk you through almost everything the bot can do.')
     .addFields(
       {name:'🔎 Search Houses',value:'Search Global houses in this ESO environment, this server’s Server houses, your Private houses, and optionally Non-Player Homes.'},
       {name:'➕ Register New House',value:'Register a house with Global, Server, or Private visibility. Global and Server submissions use this server’s registration policy; Private houses remain visible only to you.'},
       {name:'🗺️ Housing Tours',value:'Follow Global, Server, or Private tours in Self Paced or Shared mode. Eligible stops are selected automatically by visibility. Browse Featured Housing from this menu.'},
       {name:'📖 My Address Book',value:'Open your personal dashboard for your houses, tours, pending requests, recently viewed destinations, and persistent Self-Paced Tour Progress.'},
-      {name:'⚙️ Administration',value:'Authorized Housing Moderators can manage policy, roles, and the Hearthbound channel from the Administration button.'}
+      {name:'⚙️ Administration',value:'Authorized Housing Moderators can manage policy, roles, and the HearthBound channel from the Administration button.'}
     );
   if(portalUrl)e.addFields({name:'🌐 Web Portal',value:'Search and register houses, build tours, reorder stops and explore community activity in your browser. Sign in with Discord; the same access rules apply.'});
   return appendPortalLink({embeds:[e],components:buttonRows([{customId:'hu:help:moderators',label:'Moderator Access',style:'secondary'},{customId:'hu:help:learning',label:'Show Introduction Again',style:'primary'},{customId:backId,label:'Back',style:'secondary',emoji:'↩️'}])},portalUrl);
@@ -171,7 +171,7 @@ export function helpLearningPayload({latestVersion='1.0.62',seenVersion=null,ack
 
 export function whatsNewPayload({latestVersion='1.0.62',acknowledgedFeatures=[]}={}){
   const key=`whats-new-${latestVersion}`,seen=acknowledgedFeatures.includes(key);
-  const e=embed(`✨ What’s New in Hearthbound ${latestVersion}`,'Hearthbound is the new name for AddressBook. Use /hearth (/housing still works). The Discord Open Web Portal button opens member registration, drag/drop tour editing, statistics, and recent activity. Your Access shows scoped roles. Bot owners can add new official houses on Discord and web. Random House and Featured Housing remain on Home. Configure BOT_OWNER_IDS for automatic Hearthbound permissions across all ESO environments and Global administrator approval/revocation. Server roles and existing individual grants remain supported; Private content remains owner-only.');
+  const e=embed(`✨ What’s New in HearthBound ${latestVersion}`,'HearthBound connects your housing collection across Discord and the web. Use /hearth (/housing still works). The Discord Open Web Portal button opens member registration, drag/drop tour editing, statistics, and recent activity. Your Access shows scoped roles. Bot owners can add new official houses on Discord and web. Random House and Featured Housing remain on Home. Configure BOT_OWNER_IDS for automatic HearthBound permissions across all ESO environments and Global administrator approval/revocation. Server roles and existing individual grants remain supported; Private content remains owner-only.');
   return {embeds:[e],components:buttonRows([{customId:`hu:help:whatsnew:ack:${latestVersion}`,label:seen?'Seen ✓':'Acknowledge What’s New',style:'success',disabled:seen},{customId:'hu:help:learning',label:'Back to Help & Learning',style:'secondary',emoji:'↩️'}])};
 }
 
@@ -798,7 +798,7 @@ Trusted submitter role used by the selected registration policy. It does not gra
 export function adminSettingsPayload(settings){
   const channel=new ChannelSelectMenuBuilder().setCustomId('hu:admin:channel').setPlaceholder('Choose a channel, or clear to allow any channel…').setChannelTypes(ChannelType.GuildText).setMinValues(0).setMaxValues(1);
   if(settings.bot_channel_id)channel.setDefaultChannels(settings.bot_channel_id);
-  const e=embed('⚙️ Administration Settings',`These settings apply only to this Discord server.\n\n**Hearthbound channel:** ${settings.bot_channel_id?`<#${settings.bot_channel_id}>`:'Any channel'}\nOptionally limit normal Hearthbound commands and menu interactions to one channel.`);
+  const e=embed('⚙️ Administration Settings',`These settings apply only to this Discord server.\n\n**HearthBound channel:** ${settings.bot_channel_id?`<#${settings.bot_channel_id}>`:'Any channel'}\nOptionally limit normal HearthBound commands and menu interactions to one channel.`);
   return {embeds:[e],components:[new ActionRowBuilder().addComponents(channel),...buttonRows([{customId:'hu:admin',label:'Back to Administration',style:'secondary',emoji:'↩️'}])]};
 }
 
@@ -816,7 +816,7 @@ export function legacyTourRecoveryPayload(preview){
 
 export function adminOtherRolesPayload(settings){
   const roles=ids=>ids?.length?ids.map(id=>`<@&${id}>`).join(', '):'Not configured';
-  const e=embed('👥 Housing Administration — Other Roles',`Configure optional roles with narrowly scoped Hearthbound permissions.
+  const e=embed('👥 Housing Administration — Other Roles',`Configure optional roles with narrowly scoped HearthBound permissions.
 
 **Housing Tours Role:** ${roles(settings.tour_role_ids||[])}
 Members with this role, or the Housing Moderator role, may start and control Shared Server Tours. It grants no Administration, Server Directory moderation, pending-review, trusted-submitter, or channel-recovery privileges.`);
@@ -827,8 +827,8 @@ Members with this role, or the Housing Moderator role, may start and control Sha
 
 export function adminHealthPayload(snapshot){
   const channel=snapshot.channel?.id?(snapshot.channel.missing?`Missing or unavailable (${snapshot.channel.id})`:`${snapshot.channel.name||snapshot.channel.id}`):'Any channel';
-  const e=embed('🩺 Hearthbound Health', 'Operational checks and counts for this Discord server. Secrets and connection credentials are never displayed.').addFields(
-    {name:'Backend',value:`${snapshot.backend} — ${snapshot.connection}`,inline:true},{name:'Version',value:String(snapshot.version),inline:true},{name:'Hearthbound Channel',value:channel,inline:true},{name:'Registration Policy',value:String(snapshot.registrationPolicy),inline:true},
+  const e=embed('🩺 HearthBound Health', 'Operational checks and counts for this Discord server. Secrets and connection credentials are never displayed.').addFields(
+    {name:'Backend',value:`${snapshot.backend} — ${snapshot.connection}`,inline:true},{name:'Version',value:String(snapshot.version),inline:true},{name:'HearthBound Channel',value:channel,inline:true},{name:'Registration Policy',value:String(snapshot.registrationPolicy),inline:true},
     {name:'Configured Roles',value:`Moderator: ${snapshot.roleCounts.moderator}\nTrusted Submitter: ${snapshot.roleCounts.trusted}\nHousing Tours: ${snapshot.roleCounts.tours}`,inline:true},
     {name:'Queues',value:`Pending submissions: ${snapshot.pendingSubmissions}\nGlobal Moderator requests: ${snapshot.globalModeratorRequests}\nOpen reports: ${snapshot.openReports}`,inline:true},
     {name:'Share Passes',value:`House active/revoked: ${snapshot.passes.house.active}/${snapshot.passes.house.revoked}\nTour active/revoked: ${snapshot.passes.tour.active}/${snapshot.passes.tour.revoked}`},
@@ -846,7 +846,7 @@ export function auditLogPayload({ rows = [], page = 1, hasNext = false } = {}) {
     const when = row.created_at ? ` · ${row.created_at}` : '';
     return `**${row.action}** — ${target}\n${actor}${when}`;
   }).join('\n\n') : 'No audit entries are available for this page.';
-  return { embeds: [embed('📜 Hearthbound Audit Log', description)], components: buttonRows([
+  return { embeds: [embed('📜 HearthBound Audit Log', description)], components: buttonRows([
     { customId: `hu:admin:audit:prev:${Math.max(1, Number(page) - 1)}`, label: 'Previous', style: 'secondary', disabled: Number(page) <= 1 },
     { customId: `hu:admin:audit:next:${Number(page) + 1}`, label: 'Next', style: 'secondary', disabled: !hasNext },
     { customId: 'hu:admin:health', label: 'Health', style: 'primary' },
@@ -854,7 +854,7 @@ export function auditLogPayload({ rows = [], page = 1, hasNext = false } = {}) {
   ]) };
 }
 export function maintenancePayload({ stale = [], duplicates = [] } = {}) {
-  const e = embed('🧰 Hearthbound Maintenance', 'Review house freshness and duplicate-entry groups. Verification updates catalog freshness; merging archives only an exact-context duplicate and preserves comments and route history.');
+  const e = embed('🧰 HearthBound Maintenance', 'Review house freshness and duplicate-entry groups. Verification updates catalog freshness; merging archives only an exact-context duplicate and preserves comments and route history.');
   if (stale.length) e.addFields({ name: 'Stale houses', value: stale.slice(0, 10).map(row => `**${row.name || 'Unknown house'}** (#${row.house_id}) — ${row.last_verified || 'never verified'}`).join('\n') });
   if (duplicates.length) e.addFields({ name: 'Duplicate groups', value: duplicates.slice(0, 10).map(row => `Destination ${row.destination_id}: ${row.saved_house_ids || 'review required'}`).join('\n') });
   if (!stale.length && !duplicates.length) e.setDescription('No stale houses or duplicate groups were found for this server and ESO environment.');
@@ -868,7 +868,7 @@ export function adminSharePassesPayload(passes={house:{active:0,revoked:0},tour:
   return {embeds:[e],components:buttonRows([{customId:'hu:admin:health',label:'Health',style:'primary'},{customId:'hu:admin',label:'Back',style:'secondary'}])};
 }
 
-export function houseScopePayload(r,backId='hu:find'){ const current=r.scope==='personal'?'Private':r.scope==='server'?'Server':'Global'; return {embeds:[embed(`🔄 Change House Visibility — ${destinationLabel(r)}`,`Current visibility: **${current}**\n\nChanging visibility keeps the same house record, comments, and metadata. If the house is no longer eligible for a tour, Hearthbound will show the affected tours before making the change.`)],components:buttonRows([{customId:`hu:scope:set:global:${r.id}:${encodeURIComponent(backId)}`,label:'Global',style:'secondary'},{customId:`hu:scope:set:public:${r.id}:${encodeURIComponent(backId)}`,label:'Server',style:'success'},{customId:`hu:scope:set:private:${r.id}:${encodeURIComponent(backId)}`,label:'Private',style:'primary'},{customId:backId,label:'Back',style:'secondary',emoji:'↩️'}])}; }
+export function houseScopePayload(r,backId='hu:find'){ const current=r.scope==='personal'?'Private':r.scope==='server'?'Server':'Global'; return {embeds:[embed(`🔄 Change House Visibility — ${destinationLabel(r)}`,`Current visibility: **${current}**\n\nChanging visibility keeps the same house record, comments, and metadata. If the house is no longer eligible for a tour, HearthBound will show the affected tours before making the change.`)],components:buttonRows([{customId:`hu:scope:set:global:${r.id}:${encodeURIComponent(backId)}`,label:'Global',style:'secondary'},{customId:`hu:scope:set:public:${r.id}:${encodeURIComponent(backId)}`,label:'Server',style:'success'},{customId:`hu:scope:set:private:${r.id}:${encodeURIComponent(backId)}`,label:'Private',style:'primary'},{customId:backId,label:'Back',style:'secondary',emoji:'↩️'}])}; }
 export function globalModeratorRequestModal(){ return new ModalBuilder().setCustomId('hu:modal:globalmod:request').setTitle('Request Global Moderator Access').addComponents(textField('reason','Why do you need Global moderation here?',{required:true,paragraph:true,maxLength:1000})); }
 export function globalModeratorPayload({isApprover=false,isModerator=false,isOwner=false,pendingCount=0,esoServer=null,grants=[],requests=[]}={}){ const environment=esoServerLabel(esoServer),grantLabels=grants.map(r=>r.eso_server?esoServerLabel(r.eso_server):'Legacy grant (environment not assigned)'),requestLabels=requests.map(r=>esoServerLabel(r.eso_server)); const details=[`**Current ESO environment:** ${environment}`,`**Your ${environment} moderator status:** ${isModerator?'Active':'Not active'}`,`**Active environments:** ${isOwner?'All ESO environments (bot owner)':grantLabels.length?grantLabels.join(', '):'None'}`,`**Pending requests:** ${requestLabels.length?requestLabels.join(', '):'None'}`]; return {embeds:[embed('🌐 Global Housing Moderation',details.join('\n'))],components:buttonRows([{customId:'hu:globalmod:request',label:`Request ${environment} Access`,style:'primary',disabled:isModerator||requests.some(r=>r.eso_server===esoServer)},...(isApprover?[{customId:'hu:globalmod:requests',label:`Review Requests (${pendingCount})`,style:'success'},{customId:'hu:globalmod:list',label:'Manage Global Moderators',style:'secondary'}]:[]),{customId:'hu:help',label:'Back to Help',style:'secondary',emoji:'↩️'}])}; }
 

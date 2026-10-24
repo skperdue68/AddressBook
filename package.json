@@ -1,9 +1,9 @@
 {
-  "name": "addressbook-discord-bot",
+  "name": "hearthbound-discord-bot",
   "version": "1.0.62",
   "private": true,
   "type": "module",
-  "description": "AddressBook: a menu-driven Discord bot for ESO house discovery, private/public/global directories, comments, and guided housing tours.",
+  "description": "HearthBound: a menu-driven Discord bot for ESO house discovery, private/public/global directories, comments, and guided housing tours.",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",

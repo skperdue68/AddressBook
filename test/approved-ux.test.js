@@ -6,9 +6,9 @@ import { canControlTourSession } from '../src/ui/housing-menu.js';
 
 const fieldsOf = embed => embed.toJSON().fields || [];
 
-test('home explains AddressBook and displays the running version', () => {
+test('home explains HearthBound and displays the running version', () => {
   const embed = homePayload().embeds[0].toJSON();
-  assert.match(embed.title, /Hearthbound/);
+  assert.match(embed.title, /HearthBound/);
   assert.match(embed.description, /ESO housing/i);
   assert.match(embed.footer.text, /Version 1\.0\.62/);
 });

@@ -74,7 +74,7 @@ test('Browse Tours preflight returns to the selected tour with navigation', asyn
   }finally{await closeDatabase(db);}
 });
 
-test('My AddressBook reaches all active and completed tour runs', async () => {
+test('My Address Book reaches all active and completed tour runs', async () => {
   const { db, progress } = await fixture();
   try {
     await db.query("INSERT INTO guild_settings(guild_id,eso_server) VALUES('g1','pc_na')");
@@ -579,7 +579,7 @@ test('Shared Private spectators can comment on the current stop and revoked sess
   }finally{await closeDatabase(db);}
 });
 
-for(const action of ['resume','restart'])test(`My AddressBook ${action} rejects Shared visibility changes`,async()=>{
+for(const action of ['resume','restart'])test(`My Address Book ${action} rejects Shared visibility changes`,async()=>{
   const {db}=await fixture();
   try{
     await db.query("INSERT INTO guild_settings(guild_id,eso_server) VALUES('g1','pc_na')");

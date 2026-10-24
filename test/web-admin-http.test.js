@@ -99,7 +99,7 @@ test('unauthenticated admin request redirects to Discord OAuth', async () => {
   finally { await new Promise(resolve => server.close(resolve)); }
 });
 
-test('OAuth callback stays on AddressBook after an unsafe returnTo is supplied', async () => {
+test('OAuth callback stays on HearthBound after an unsafe returnTo is supplied', async () => {
   const { server, base } = await running();
   try {
     const login = await fetch(`${base}/auth/discord?returnTo=${encodeURIComponent('//outside.example/steal')}`, { redirect: 'manual' });
@@ -410,7 +410,7 @@ test('filtered audit CSV download uses the selected moderator guild', async () =
     const download = await fetch(`${base}/admin/audit.csv?action=house_updated&entityType=saved_house`, { headers: { cookie } });
     assert.equal(download.status, 200);
     assert.equal(download.headers.get('content-type'), 'text/csv; charset=utf-8');
-    assert.match(download.headers.get('content-disposition'), /attachment; filename="addressbook-audit-g1\.csv"/);
+    assert.match(download.headers.get('content-disposition'), /attachment; filename="hearthbound-audit-g1\.csv"/);
     assert.match(await download.text(), /house_updated/);
     assert.deepEqual(calls, [{ guildId: 'g1', esoServer: 'pc_na', action: 'house_updated', entityType: 'saved_house', target: null }]);
   } finally { await new Promise(resolve => server.close(resolve)); }
