@@ -16,6 +16,8 @@ Authorized editors can update the official house selection, ESO owner, nickname,
 
 Registration and visibility menus omit shared choices when the configured role policy does not allow you to submit them. Approval policy still permits a pending shared submission. After an active registration, add it to an eligible tour or create a tour with it.
 
+Every active house detail page includes **Add to existing tour**. Its selector includes compatible tours you can edit, including shared tours you manage through HearthBound administrator access. A Private house can only be added to its owner's Private tours; a Server house requires a tour with the matching source server. Destinations already on a route and tours with 250 stops are omitted. If no eligible tour exists, the page explains the restriction and offers to create one instead of hiding the section. Registered houses show official information grouped into Home & location, Furnishing capacity, and Purchase & availability.
+
 ## Searches and tour editing
 
 Advanced Search supports names, nicknames, ESO owners, tags, zones, types, classifications, styles and visibility, with optional unfurnished official houses and houses not on shared tours. Save filters, run a saved search, rename it or delete it from My Address Book. Reusing a saved search name requires explicit replacement confirmation.
