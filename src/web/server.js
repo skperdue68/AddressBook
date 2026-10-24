@@ -2,14 +2,14 @@ import {readFile} from 'node:fs/promises';
 import {handleWorkspaceRoute} from './workspace-routes.js';
 import http from 'node:http';
 import { buildDiscordAuthorizeUrl, consumeOAuthState, createOAuthState, exchangeDiscordCode } from './oauth.js';
-import { createSession, readSession } from './session.js';
+import { createSession, readSession, sessionLifetimeSeconds } from './session.js';
 import { csrfMatches } from './session.js';
 import { page, escape } from './render.js';
 
 const cookieValue = (request, name) => String(request.headers.cookie || '').split(';').map(item => item.trim()).find(item => item.startsWith(`${name}=`))?.slice(name.length + 1) || null;
 const send = (response, status, body, headers = {}) => { response.writeHead(status, { 'content-type': 'text/html; charset=utf-8', ...headers }); response.end(body); };
 const redirect = (response, location, headers = {}) => { response.writeHead(302, { location, ...headers }); response.end(); };
-const sessionCookie = (value, secure = false) => `addressbook_session=${value}; HttpOnly; SameSite=Lax;${secure ? ' Secure;' : ''} Path=/; Max-Age=28800`;
+const sessionCookie = (value, secure = false, lifetimeSeconds = sessionLifetimeSeconds()) => `addressbook_session=${value}; HttpOnly; SameSite=Lax;${secure ? ' Secure;' : ''} Path=/; Max-Age=${lifetimeSeconds}`;
 const pendingPage = value => Math.min(1000000, Math.max(1, Math.floor(Number(value) || 1)));
 const readBody = request => new Promise((resolve, reject) => {
   let data = '';
@@ -21,7 +21,7 @@ const readBody = request => new Promise((resolve, reject) => {
 
 export function createWebAdminServer({ service, workspace = null, config = {}, resolveOAuthIdentity, resolveGuildMembership, fetchImpl = fetch, now = () => Date.now() } = {}) {
   if (!service) throw new Error('WebAdminService is required.');
-  const cfg = { sessionSecret: config.sessionSecret || process.env.WEB_SESSION_SECRET, oauth: config.oauth || { clientId: process.env.DISCORD_OAUTH_CLIENT_ID || process.env.DISCORD_CLIENT_ID, clientSecret: process.env.DISCORD_OAUTH_CLIENT_SECRET, redirectUri: process.env.DISCORD_OAUTH_REDIRECT_URI } };
+  const cfg = { lifetimeSeconds:sessionLifetimeSeconds({WEB_SESSION_DAYS:config.sessionDays??process.env.WEB_SESSION_DAYS}), sessionSecret: config.sessionSecret || process.env.WEB_SESSION_SECRET, oauth: config.oauth || { clientId: process.env.DISCORD_OAUTH_CLIENT_ID || process.env.DISCORD_CLIENT_ID, clientSecret: process.env.DISCORD_OAUTH_CLIENT_SECRET, redirectUri: process.env.DISCORD_OAUTH_REDIRECT_URI } };
   const identityResolver = resolveOAuthIdentity || (async tokens => {
     const response = await fetchImpl('https://discord.com/api/users/@me', { headers: { authorization: `Bearer ${tokens.access_token}` } });
     if (!response.ok) throw new Error('Discord identity lookup failed.');
@@ -49,7 +49,7 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
     const selected = choices.find(item => String(item.guild.id) === requestedGuildId) || (!requestedGuildId && choices.length === 1 ? choices[0] : null);
     if (!selected) return { session, forbidden: true };
     const selectionChanged = url.searchParams.has('guildId') && String(session.selectedGuildId || '') !== String(selected.guild.id);
-    return { session, ...selected, selectionCookie: selectionChanged ? sessionCookie(createSession({ ...session, selectedGuildId: selected.guild.id }, now(), cfg.sessionSecret), String(cfg.oauth.redirectUri || '').startsWith('https://')) : null };
+    return { session, ...selected, selectionCookie: selectionChanged ? sessionCookie(createSession({ ...session, selectedGuildId: selected.guild.id }, now(), cfg.sessionSecret, cfg.lifetimeSeconds), String(cfg.oauth.redirectUri || '').startsWith('https://'), cfg.lifetimeSeconds) : null };
   }
 
   async function route(request, response) {
@@ -68,9 +68,9 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
       try {
         const tokens = await exchangeDiscordCode(url.searchParams.get('code'), cfg.oauth, fetchImpl);
         const identity = await identityResolver(tokens);
-        const cookie = createSession(identity, now(), cfg.sessionSecret);
+        const cookie = createSession(identity, now(), cfg.sessionSecret, cfg.lifetimeSeconds);
         const secure = String(cfg.oauth.redirectUri || '').startsWith('https://') ? ' Secure;' : '';
-        return redirect(response, returnTo, { 'set-cookie': sessionCookie(cookie, secure) });
+        return redirect(response, returnTo, { 'set-cookie': sessionCookie(cookie, secure, cfg.lifetimeSeconds) });
       } catch (error) { return send(response, 502, page('OAuth Error', `<p>${escape(error.message)}</p>`)); }
     }
     if (url.pathname === '/auth/logout') return redirect(response, '/admin', { 'set-cookie': 'addressbook_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0' });

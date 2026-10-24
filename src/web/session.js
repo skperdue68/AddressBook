@@ -11,9 +11,16 @@ export function csrfMatches(expected, supplied) {
   return crypto.timingSafeEqual(left, right);
 }
 
-export function createSession(user, now = Date.now(), secret = process.env.WEB_SESSION_SECRET) {
+export function sessionLifetimeSeconds(env=process.env){
+  const days=Number(String(env.WEB_SESSION_DAYS??'').trim()||30);
+  if(!Number.isSafeInteger(days)||days<1||days>365)throw new Error('WEB_SESSION_DAYS must be a whole number from 1 to 365.');
+  return days*24*60*60;
+}
+
+export function createSession(user, now = Date.now(), secret = process.env.WEB_SESSION_SECRET, lifetimeSeconds = sessionLifetimeSeconds()) {
   if (!secret) throw new Error('WEB_SESSION_SECRET is required for web administration sessions.');
-  const payload = b64(JSON.stringify({ ...user, csrf: crypto.randomBytes(24).toString('base64url'), iat: Number(now), exp: Number(now) + 8 * 60 * 60 * 1000 }));
+  if(!Number.isSafeInteger(lifetimeSeconds)||lifetimeSeconds<1||lifetimeSeconds>365*86400)throw new Error('Invalid session lifetime.');
+  const payload = b64(JSON.stringify({ ...user, csrf: crypto.randomBytes(24).toString('base64url'), iat: Number(now), exp: Number(now) + lifetimeSeconds * 1000 }));
   return `${payload}.${sign(payload, secret)}`;
 }
 
