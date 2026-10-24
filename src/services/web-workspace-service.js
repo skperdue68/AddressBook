@@ -20,6 +20,11 @@ export class WebWorkspaceService{
  authorizeContext(input){return this.policy.context(input);}
  fresh(c){return this.authorizeContext(c);}
  houseScopes(c){return c.settings.registration_policy!=='roles'||c.isServerAdmin||c.isOwner||JSON.parse(c.settings.registration_role_ids||'[]').some(r=>c.memberRoleIds.includes(r))?['private','public','global']:['private'];}
+ async tourHouseCandidates(context){
+  const c=await this.fresh(context);
+  const rows=await this.db.query(`SELECT s.id,s.house_id,s.scope,s.guild_id,s.owner_user_id,s.display_name,s.eso_owner,s.tags,h.name catalog_house_name,h.zone,h.classification,h.house_type,h.style FROM saved_houses s JOIN houses h ON h.house_id=s.house_id WHERE s.eso_server=? AND s.status='active' AND (s.scope='global' OR (s.scope='public' AND s.guild_id=?) OR (s.scope='private' AND s.owner_user_id=?))`,[c.esoServer,c.guildId,c.userId]);
+  return withCatalogHouseNames(rows).sort((a,b)=>tourNameOrder.compare(a.display_name||a.house_name,b.display_name||b.house_name)||Number(a.id)-Number(b.id));
+ }
  async listHouses(c,{q='',scope='',page=1,personal=false}={}){
   const clauses=['s.eso_server=?'],args=[c.esoServer];
   if(personal){clauses.push("s.status<>'archived' AND ((s.scope='private' AND s.owner_user_id=?) OR (s.scope<>'private' AND s.created_by=? AND (s.scope='global' OR s.guild_id=?)))");args.push(c.userId,c.userId,c.guildId);}

@@ -3,6 +3,19 @@ import assert from 'node:assert/strict';
 import {fixture} from './workspace-fixture.js';
 import {closeDatabase,one} from '../src/db/database.js';
 
+test('tour house candidates include more than 25 records with filter metadata and retain privacy boundaries',async()=>{
+ const {db,svc,c}=await fixture();try{
+  for(let n=0;n<30;n++)await svc.registerHouse(c,{houseId:1,esoOwner:`@Member${n}`,displayName:`House ${n}`,tags:['halloween','games']});
+  const owner=await svc.authorizeContext({...c,userId:'1'});
+  await svc.registerHouse(owner,{houseId:2,esoOwner:'@Secret',displayName:'Other private'});
+  await svc.registerHouse(owner,{houseId:2,esoOwner:'@Shared',visibility:'global'});
+  await db.query("INSERT INTO guild_settings(guild_id,eso_server,staff_role_ids) VALUES('other','pc_na','[]')");
+  const other=await svc.authorizeContext({...owner,guildId:'other'});await svc.registerHouse(other,{houseId:1,esoOwner:'@Foreign',visibility:'public'});
+  const rows=await svc.tourHouseCandidates(c);assert.equal(rows.length,31);assert.ok(rows.some(h=>h.display_name==='House 29'));assert.ok(rows.some(h=>JSON.parse(h.tags||'[]').includes('halloween')));assert.ok(rows.every(h=>h.zone==='Zone'));assert.ok(!rows.some(h=>['@Secret','@Foreign'].includes('@'+h.eso_owner)));
+  assert.equal((await svc.listHouses(c)).rows.length,25,'ordinary search remains paginated');
+ }finally{await closeDatabase(db);}
+});
+
 test('add-to-tour choices include eligible administrator-managed tours while protecting Private ownership',async()=>{
  const {db,svc,c}=await fixture();try{
   const admin=await svc.authorizeContext({...c,userId:'1'}),house=await svc.registerHouse(admin,{houseId:1,esoOwner:'@Shared',visibility:'global'});

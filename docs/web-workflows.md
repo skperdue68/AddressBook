@@ -41,3 +41,9 @@ Leader-controlled Discord session controls remain in Discord. Scheduled events r
 ## Deployment
 
 This update uses existing schema 12 tables; it does not require a new database migration or moving data between machines. Back up the production database as usual, pull the merged branch into the existing Linux checkout, run `npm ci`, and restart `hearthbound.service`. Preserve `.env`, database configuration and `WEB_SESSION_SECRET`. Normal startup applies any already-required versioned migrations to the configured production database. Never replace the production database with the Windows test database.
+
+## Live tour house filters and paragraph formatting
+
+The tour editor loads all accessible active registered houses without a 25-house cutoff. Name or ESO owner, tags and visibility filters apply immediately. More filters offers zone, style, house type and classification. Comma-separated tags must all match; Clear filters resets only the filters. The count shows matching and eligible houses, and the picker follows the current tour visibility. Selected stops and their order stay in the draft even when hidden by a filter. Enter inside the filters never submits the tour; use Save tour explicitly.
+
+The web preserves single line breaks and blank lines when displaying descriptions, comments and tour notes. Text is still escaped as plain text. This is a web display rule only: stored descriptions and Discord rendering are unchanged.
