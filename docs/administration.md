@@ -85,11 +85,11 @@ Backup and Export offers a portable guild/environment JSON snapshot of eligible 
 
 ## Owner only official house catalog
 
-Only IDs configured in `BOT_OWNER_IDS` can add newly released official ESO houses. Global/Server administration and Discord Administrator status do not grant this tool. On the web, open House Catalog; in Discord, use Administration, Add Official House.
+Only IDs configured in `BOT_OWNER_IDS` can add or edit official ESO catalog houses. Global/Server administration and Discord Administrator status do not grant this tool. On the web, open House Catalog; in Discord, use Administration, Add Official House.
 
 Enter the real positive in-game house ID and official name, with optional zone, classification, house type, limits, acquisition/pricing and verification/source metadata. The compact Discord form covers the core fields; the web form exposes the extended optional metadata. Unknown values stay blank. Preview and explicitly confirm the addition. Existing IDs are rejected rather than overwritten; similar names trigger a warning. This adds a shared official definition, not a player's furnished house registration.
 
-New definitions are available for registration without a code release. Owner-added definitions retain provenance and survive startup seeds and supported database transfers. If a packaged definition later conflicts, HearthBound retains the owner definition and emits a bounded review warning. Catalog changes are audited. This workflow does not offer deletion or overwriting of existing definitions.
+New definitions are available for registration without a code release. Owner-added definitions retain provenance and survive startup seeds and supported database transfers. If a packaged definition later conflicts, HearthBound retains the owner definition and emits a bounded review warning. Catalog changes are audited. Existing definitions can now be edited through the owner catalog with changed-field preview, stale-save protection and confirmation; in-game IDs cannot be changed. Classification profiles and reusable metadata values are managed separately. See the [schema 13 catalog upgrade guide](upgrade-v1.0.63.md).
 
 ## Statistics and global recent activity
 
@@ -120,7 +120,7 @@ sudo journalctl -u hearthbound -n 100 --no-pager
 
 If tracked local changes appear, preserve them before pulling; do not reset them. Keep the existing systemd User, WorkingDirectory, ExecStart, EnvironmentFile and database settings. Set the Git remote to the new repository URL if desired with `git remote set-url origin https://github.com/skperdue68/HearthBound.git`. If the unit has not been renamed, use its actual name, such as `addressbook`, instead of `hearthbound`. A unit-file change requires `sudo systemctl daemon-reload`; an ordinary application/configuration update does not.
 
-Follow the [production upgrade guide](upgrade-v1.0.62.md) for schema 12, backup, smoke checks and recovery. Pulling code alone does not alter the database; starting the upgraded application or running `npm run db:init` applies versioned migrations to the configured backend. Do not migrate the old Windows development database into production.
+Follow the [catalog upgrade guide](upgrade-v1.0.63.md) for the schema 13 update, backup, smoke checks and recovery; the [earlier production guide](upgrade-v1.0.62.md) covers schema 12. Pulling code alone does not alter the database; starting the upgraded application or running `npm run db:init` applies versioned migrations to the configured backend. Do not migrate the old Windows development database into production.
 
 ## Database support and transfer
 

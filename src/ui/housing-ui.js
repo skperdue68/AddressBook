@@ -789,7 +789,7 @@ Trusted submitter role used by the selected registration policy. It does not gra
     ['pending','Pending Review','Review pending house submissions.'],
     ['servermod','Server Moderator Requests','Review requests and manage Server grants.'],
     ['globalmod','Global Moderation','Manage Global Moderator access.'],
-    ...(isOwner?[['catalog','Add Official House','Bot owners: add a newly released official house.']]:[])
+    ...(isOwner?[['catalog','Add Official House','Bot owners: add a newly released official house.'],['catalog_edit','Edit Official House','Bot owners: correct existing official catalog details.']]:[])
   ].filter(([value])=>adminInterface!=='web'||!['health','audit','export','maintenance','pending','reports'].includes(value)).map(([value,label,description])=>({value,label,description})));
   components.push(new ActionRowBuilder().addComponents(tools),...buttonRows([{customId:'hu:admin:settings',label:'Administration Settings',style:'primary'},{customId:'hu:help:learning',label:'Help & Learning',style:'secondary'},{customId:'hu:home',label:'Back',style:'secondary',emoji:'↩️'}]));
   return {embeds:[e],components};

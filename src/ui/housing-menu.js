@@ -810,7 +810,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
   async function button(i){
     if(!await prepareInteraction(i))return;
     const id=i.customId;
-    if(id.startsWith('hu:catalog:')||id==='hu:modal:catalog:add'||(id==='hu:admin:tool'&&i.values?.[0]==='catalog'))return handleCatalog(i);
+    if(id.startsWith('hu:catalog:')||id.startsWith('hu:modal:catalog:')||(id==='hu:admin:tool'&&['catalog','catalog_edit'].includes(i.values?.[0])))return handleCatalog(i);
     if(isRetiredEventInteraction(id))return id.startsWith('hu:modal:')?i.reply({...retiredEventPayload(),flags:MessageFlags.Ephemeral}):i.update(retiredEventPayload());
     if(isServerModeratorAction(id))return handleServerModeratorAction(i,{serverModerators:guilds.serverModerators,guilds});
     if(isTourShareDestination(id))return handleTourShareDestination(i,{sharePasses,tours,guilds,loadHouse:async(i,id)=>(await loadSavedReference(i,id)).record});
@@ -1542,7 +1542,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
   async function select(i){
     if(!await prepareInteraction(i))return;
     const id=i.customId;
-    if(id.startsWith('hu:catalog:')||id==='hu:modal:catalog:add'||(id==='hu:admin:tool'&&i.values?.[0]==='catalog'))return handleCatalog(i);
+    if(id.startsWith('hu:catalog:')||id.startsWith('hu:modal:catalog:')||(id==='hu:admin:tool'&&['catalog','catalog_edit'].includes(i.values?.[0])))return handleCatalog(i);
     if(isRetiredEventInteraction(id))return id.startsWith('hu:modal:')?i.reply({...retiredEventPayload(),flags:MessageFlags.Ephemeral}):i.update(retiredEventPayload());
     if(isServerModeratorAction(id))return handleServerModeratorAction(i,{serverModerators:guilds.serverModerators,guilds});
     if(isTourShareDestination(id))return handleTourShareDestination(i,{sharePasses,tours,guilds,loadHouse:async(i,id)=>(await loadSavedReference(i,id)).record});
@@ -1762,7 +1762,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
   async function modal(i){
     if(!await prepareInteraction(i))return;
     const id=i.customId;
-    if(id.startsWith('hu:catalog:')||id==='hu:modal:catalog:add'||(id==='hu:admin:tool'&&i.values?.[0]==='catalog'))return handleCatalog(i);
+    if(id.startsWith('hu:catalog:')||id.startsWith('hu:modal:catalog:')||(id==='hu:admin:tool'&&['catalog','catalog_edit'].includes(i.values?.[0])))return handleCatalog(i);
     if(isRetiredEventInteraction(id))return id.startsWith('hu:modal:')?i.reply({...retiredEventPayload(),flags:MessageFlags.Ephemeral}):i.update(retiredEventPayload());
     if(isServerModeratorAction(id))return handleServerModeratorAction(i,{serverModerators:guilds.serverModerators,guilds});
     if(isTourShareDestination(id))return handleTourShareDestination(i,{sharePasses,tours,guilds,loadHouse:async(i,id)=>(await loadSavedReference(i,id)).record});

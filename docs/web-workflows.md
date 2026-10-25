@@ -49,3 +49,9 @@ This update uses existing schema 12 tables; it does not require a new database m
 The tour editor loads all accessible active registered houses without a 25-house cutoff. Name or ESO owner, tags and visibility filters apply immediately. More filters offers zone, style, house type and classification. Comma-separated tags must all match; Clear filters resets only the filters. The count shows matching and eligible houses, and the picker follows the current tour visibility. Selected stops and their order stay in the draft even when hidden by a filter. Enter inside the filters never submits the tour; use Save tour explicitly.
 
 The web preserves single line breaks and blank lines when displaying descriptions, comments and tour notes. Text is still escaped as plain text. This is a web display rule only: stored descriptions and Discord rendering are unchanged.
+
+## Owner catalog editing and shared defaults
+
+Bot owners can search House Catalog, edit existing definitions, preview changed fields and explicitly confirm. Official IDs stay fixed and linked registrations/tours are retained. Classification profiles supply database-backed capacity defaults; Apply selected classification defaults changes the house draft and individual values can override it. Shared styles, zones, types and other values use editable autocomplete suggestions. Newly saved values become reusable. The profile manager previews affected houses while preserving explicit exceptions; the value manager previews renames and only removes unused values.
+
+This catalog release upgrades to schema 13 automatically on startup. Follow [the catalog upgrade guide](upgrade-v1.0.63.md); preserve the Linux production database and take a verified backup first. Discord offers owner-only core catalog editing; full metadata management is on the web.

@@ -57,7 +57,7 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
 
   async function route(request, response) {
     const url = new URL(request.url, 'http://localhost');
-    if(['/assets/workspace.css','/assets/tour-editor.js','/assets/hearthbound-logo.png','/assets/account-menu.css','/assets/account-menu.js','/assets/web-actions.js'].includes(url.pathname)){
+    if(['/assets/workspace.css','/assets/tour-editor.js','/assets/hearthbound-logo.png','/assets/account-menu.css','/assets/account-menu.js','/assets/web-actions.js','/assets/catalog-editor.js'].includes(url.pathname)){
       if(request.method!=='GET')return send(response,405,'Method not allowed',{allow:'GET'});
       const asset=url.pathname.split('/').pop();return send(response,200,await readFile(new URL(`./assets/${asset}`,import.meta.url)),{'content-type':asset.endsWith('.png')?'image/png':asset.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8','x-content-type-options':'nosniff'});
     }
