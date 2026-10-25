@@ -1,4 +1,5 @@
 import {catalogRoute} from './catalog-routes.js';
+import {registerHousePage} from './registration-routes.js';
 import {tourHousePicker} from './tour-house-picker.js';
 import {houseTourSection} from './house-details.js';
 import {tourAllowsHouseScope} from '../services/saved-house-service.js';
