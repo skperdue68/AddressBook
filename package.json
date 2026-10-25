@@ -1,6 +1,6 @@
 {
   "name": "hearthbound-discord-bot",
-  "version": "1.0.62",
+  "version": "1.0.63",
   "private": true,
   "type": "module",
   "description": "HearthBound: a menu-driven Discord bot for ESO house discovery, private/public/global directories, comments, and guided housing tours.",

@@ -70,3 +70,15 @@ test('initial web setup matches the Discord environment gate and does not expose
   const done=await fetch(base+'/app/setup',{method:'POST',headers:{cookie},body:new URLSearchParams({csrf,contextGuildId:'g',contextEsoServer:'',esoServer:'pc_na'}),redirect:'manual'});assert.equal(done.status,302);assert.equal((await one(db,'SELECT eso_server FROM guild_settings WHERE guild_id=?',['g'])).eso_server,'pc_na');
  }finally{await new Promise(r=>server.close(r));await closeDatabase(db);}
 });
+
+test('official catalog editing is owner-only, previewed, CSRF-bound and rejects stale confirmation',async()=>{
+ const {db,svc}=await fixture();const server=createWebAdminServer({service:new WebAdminService(db),workspace:svc,config:{sessionSecret:'s'},resolveGuildMembership:async()=>({id:'g',name:'Guild',roleIds:['staff'],esoServer:'pc_na'})});await new Promise(r=>server.listen(0,'127.0.0.1',r));
+ const token=createSession({id:'1',username:'Owner',guilds:[{id:'g',name:'Guild'}]},Date.now(),'s'),csrf=readSession(token,Date.now(),'s').csrf,cookie=`addressbook_session=${token}`,base=`http://127.0.0.1:${server.address().port}`,path='/app/catalog/1/edit';
+ const post=data=>fetch(base+path,{method:'POST',headers:{cookie},body:new URLSearchParams({csrf,contextGuildId:'g',contextEsoServer:'pc_na',...data}),redirect:'manual'});
+ try{const response=await fetch(base+path,{headers:{cookie}}),html=await response.text();assert.equal(response.status,200);assert.match(html,/datalist id="catalog-style"/);const version=/name="version" value="([^"]+)"/.exec(html)[1];
+ assert.equal((await post({version,name:'Changed',csrf:'bad'})).status,400);assert.equal((await post({version,name:'Changed',contextGuildId:'other'})).status,409);
+ const preview=await post({version,name:'Changed',style:'Custom Style'});assert.equal(preview.status,200);assert.match(await preview.text(),/Confirm catalog changes/);assert.equal((await svc.catalog.get(1)).name,'House One');
+ assert.equal((await post({version,name:'Changed',style:'Custom Style',confirm:'edit'})).status,200);assert.equal((await svc.catalog.get(1)).name,'Changed');assert.equal((await post({version,name:'Stale',confirm:'edit'})).status,409);
+ const member=createSession({id:'u',username:'Staff',guilds:[{id:'g',name:'Guild'}]},Date.now(),'s');assert.equal((await fetch(base+path,{headers:{cookie:`addressbook_session=${member}`}})).status,403);
+ }finally{await new Promise(r=>server.close(r));await closeDatabase(db);}
+});

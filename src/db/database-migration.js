@@ -1,16 +1,18 @@
+import {CATALOG_TABLE_COLUMNS,catalogRowsFromHouses} from './catalog-schema.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { closeDatabase, ensureMariaDatabase, migrate, openDatabase, withTransaction } from './database.js';
 
 export const MIGRATION_CONFIRMATION = 'ERASE_TARGET_DATABASE';
 
-const OPTIONAL_V11 = new Set(['server_moderator_requests', 'server_moderators', 'featured_house_cycles', 'owner_catalog_houses', 'usage_events']);
+const OPTIONAL_V11 = new Set([...Object.keys(CATALOG_TABLE_COLUMNS),'server_moderator_requests', 'server_moderators', 'featured_house_cycles', 'owner_catalog_houses', 'usage_events']);
 const TABLES = [
   ['server_moderator_requests',['id', 'guild_id', 'discord_user_id', 'reason', 'status', 'revision', 'requested_at', 'reviewed_at', 'reviewed_by', 'discord_global_name', 'discord_display_name', 'guild_name']],
   ['server_moderators',['guild_id', 'discord_user_id', 'approved_by', 'request_id', 'request_revision', 'approved_at']],
   ['featured_house_cycles',['guild_id', 'eso_server', 'last_rotated_at', 'previous_destination_ids']],
 
   ['houses',['house_id','name','normalized_name','zone','subzone','category','classification','house_type','style','furnishing_limit','furnishing_limit_plus','special_furnishing_limit','special_furnishing_limit_plus','collectible_limit','collectible_limit_plus','special_collectible_limit','special_collectible_limit_plus','population_limit','population_limit_plus','purchase_type','gold_price','crown_price','crown_price_unfurnished','crown_price_furnished','requirements','availability','uesp_url','last_verified']],
+  ...Object.entries(CATALOG_TABLE_COLUMNS),
   ['owner_catalog_houses',['house_id','added_by','added_at']],
   ['usage_events',['id','event_key','occurred_at','actor_id','actor_name','origin_guild_id','origin_guild_name','eso_server','source','kind','target_kind','target_id']],
   ['discord_guilds',['guild_id','guild_name','last_seen_at','updated_at']],
@@ -61,14 +63,15 @@ export async function transferUnifiedData(source,target){
     catch(err){
       if(!OPTIONAL_V11.has(table)||!(/no such table/i.test(err.message)||err.code==='ER_NO_SUCH_TABLE'))throw err;
       const versions=await source.query('SELECT MAX(version) version FROM schema_migrations');
-      if(Number(versions[0]?.version||0)>=(['owner_catalog_houses','usage_events'].includes(table)?12:11))throw err;
+      if(Number(versions[0]?.version||0)>=(Object.hasOwn(CATALOG_TABLE_COLUMNS,table)?13:['owner_catalog_houses','usage_events'].includes(table)?12:11))throw err;
       sourceRows.set(table,[]);
     }
   }
+  if(!sourceRows.get('house_classifications')?.length){const derived=catalogRowsFromHouses(sourceRows.get('houses')||[]);for(const [table,rows] of Object.entries(derived))sourceRows.set(table,rows);}
   const summary={};
   await withTransaction(target,async conn=>{
     // Delete children before parents. Active tour sessions are intentionally not migrated.
-  for(const table of ['usage_events','owner_catalog_houses','server_moderators','server_moderator_requests','featured_house_cycles','share_pass_sessions','tour_sessions','tour_event_deliveries','tour_event_rsvps','tour_progress_stops','housing_reports','house_share_passes','tour_share_passes','recent_house_views','house_comments','tour_stops','featured_items','tour_progress','tour_events','global_moderators','global_moderator_requests','user_onboarding','user_house_states','saved_house_searches','tours','saved_houses','housing_destinations','guild_settings','audit_log','discord_guild_members','discord_channels','discord_roles','discord_users','discord_guilds','houses'])
+  for(const table of ['house_capacity_overrides','house_catalog_values','house_classifications','usage_events','owner_catalog_houses','server_moderators','server_moderator_requests','featured_house_cycles','share_pass_sessions','tour_sessions','tour_event_deliveries','tour_event_rsvps','tour_progress_stops','housing_reports','house_share_passes','tour_share_passes','recent_house_views','house_comments','tour_stops','featured_items','tour_progress','tour_events','global_moderators','global_moderator_requests','user_onboarding','user_house_states','saved_house_searches','tours','saved_houses','housing_destinations','guild_settings','audit_log','discord_guild_members','discord_channels','discord_roles','discord_users','discord_guilds','houses'])
       await conn.query(`DELETE FROM ${table}`);
     for(const [table,columns] of TABLES){
       const rows=sourceRows.get(table);

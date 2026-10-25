@@ -2,7 +2,7 @@
 
 Formerly **AddressBook**; the repository is now [HearthBound](https://github.com/skperdue68/HearthBound). `/housing` remains a compatibility alias.
 
-**Version 1.0.62** · A menu-driven Discord bot for Elder Scrolls Online housing.
+**Version 1.0.63** · A menu-driven Discord bot for Elder Scrolls Online housing.
 
 Discover houses, save addresses, leave comments, and organize guided tours. Members access everything through one command:
 
@@ -109,3 +109,7 @@ Run the automated checks with `npm test`. Destination tests simulate Discord req
 ## Expanded web workflows
 
 See the [HearthBound web workflow guide](docs/web-workflows.md) for personal collections, saved searches, comments, reports, deletion, self-paced tours, sharing and administration. Controls and navigation follow current HearthBound permissions; other members’ Private records remain protected.
+
+### Catalog management update
+
+Bot owners can now edit official houses, classification capacity profiles and reusable metadata values. See the [schema 13 upgrade guide](docs/upgrade-v1.0.63.md) before deploying.
