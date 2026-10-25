@@ -10,6 +10,8 @@ Every protected request checks current membership and permissions. Hidden contro
 
 ## Houses and personal collections
 
+**Register New House** supports a pasted ESO Housing Link or `JumpToSpecificHouse` command as well as the manual catalog picker. Paste the link or script, choose **Read link or script**, and review the extracted official house and ESO account owner. Choose visibility and add your nickname, description and tags, then click **Register house**. Reading a destination does not save it or execute the script. Unknown house IDs and malformed inputs show a retry message; final registration retains normal approval, role, duplicate and environment checks. After an active registration, use **Add to existing tour** on its detail page.
+
 Open a house for ESO jump, preview and housing links, official metadata, favorites, visit state, comments and problem reports. My Address Book links to your houses, tours, favorites, Want to Visit, Visited, recently viewed, pending submissions, saved searches, progress and Share Passes.
 
 Authorized editors can update the official house selection, ESO owner, nickname, description and tags. Change visibility previews the number of incompatible tour stops that will be removed, including incompatible server and Private-owner relationships. Confirm only after checking the impact. Private ownership remains with the original creator. Deletion requires a separate impact preview and confirmation; deleting a registration keeps the official catalog definition and other registrations of that destination.

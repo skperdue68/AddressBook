@@ -6,6 +6,34 @@ import {createWebAdminServer} from '../src/web/server.js';
 import {WebAdminService} from '../src/services/web-admin-service.js';
 import {createSession,readSession} from '../src/web/session.js';
 
+test('web registration previews Housing Links and Jump Commands without writing and retains normal save permissions',async()=>{
+ const {db,svc}=await fixture();let roles=[];
+ const server=createWebAdminServer({service:new WebAdminService(db),workspace:svc,config:{sessionSecret:'s'},resolveGuildMembership:async()=>({id:'g',name:'Guild',roleIds:roles,esoServer:'pc_na'})});await new Promise(r=>server.listen(0,'127.0.0.1',r));
+ const token=createSession({id:'u',username:'Member',guilds:[{id:'g',name:'Guild'}]},Date.now(),'s'),cookie=`addressbook_session=${token}`,csrf=readSession(token,Date.now(),'s').csrf,base=`http://127.0.0.1:${server.address().port}`;
+ const post=data=>fetch(base+'/app/register',{method:'POST',headers:{cookie},body:new URLSearchParams({csrf,contextGuildId:'g',contextEsoServer:'pc_na',...data}),redirect:'manual'});
+ const count=async()=>Number((await one(db,'SELECT count(*) n FROM saved_houses')).n);
+ try{
+  for(const destinationInput of ['|H1:housing:2:@Builder.One|h|h','/script JumpToSpecificHouse("@Builder.One", 2)']){
+   const response=await post({registrationAction:'resolve',destinationInput});assert.equal(response.status,200);const html=await response.text();assert.match(html,/<option value="2" selected>House Two/);assert.match(html,/name="esoOwner" value="Builder.One"/);assert.match(html,/Review the destination/);assert.equal(await count(),0);
+  }
+  assert.equal(Number((await one(db,"SELECT count(*) n FROM usage_events WHERE kind='registered_house'")).n),0,'previews do not claim a house was registered');
+  assert.equal((await post({registrationAction:'resolve',destinationInput:'|H1:housing:1:@Builder|h|h',csrf:'wrong'})).status,400);
+  assert.equal((await post({registrationAction:'resolve',destinationInput:'|H1:housing:1:@Builder|h|h',contextGuildId:'other'})).status,409);
+  for(const destinationInput of ['/script JumpToSpecificHouse("@Builder", -1)','|H1:housing:999:@Builder|h|h']){
+   const response=await post({registrationAction:'resolve',destinationInput});assert.equal(response.status,400);assert.match(await response.text(),/Try again|not found|positive/i);assert.equal(await count(),0);
+  }
+  const escaped=await post({registrationAction:'resolve',destinationInput:'|H1:housing:1:@<img src=x onerror=alert(1)>|h|h'});const html=await escaped.text();assert.doesNotMatch(html,/<img src=x/);assert.match(html,/&lt;img/);
+  await db.query("UPDATE guild_settings SET registration_policy='roles' WHERE guild_id='g'");
+  const preview=await post({registrationAction:'resolve',destinationInput:'|H1:housing:2:@Builder|h|h'});const options=/<select name="visibility">([\s\S]*?)<\/select>/.exec(await preview.text())[1];assert.doesNotMatch(options,/value="global"|value="public"/);
+  assert.equal((await post({registrationAction:'save',houseId:'2',esoOwner:'Builder.One',visibility:'global'})).status,403);assert.equal(await count(),0);
+  const saved=await post({registrationAction:'save',houseId:'2',esoOwner:'Builder.One',visibility:'private',description:'First\n\nSecond'});assert.equal(saved.status,302);assert.equal(await count(),1);assert.match(saved.headers.get('location'),/^\/app\/houses\/\d+\?saved=1$/);
+  roles=['staff'];const shared=await post({registrationAction:'save',houseId:'1',esoOwner:'Shared',visibility:'public'});assert.equal(shared.status,302);assert.equal(await count(),2);
+  roles=[];await db.query("UPDATE guild_settings SET registration_policy='approval' WHERE guild_id='g'");
+  const pending=await post({registrationAction:'save',houseId:'1',esoOwner:'Awaiting',visibility:'global'});assert.equal(pending.status,302);assert.equal((await one(db,"SELECT status FROM saved_houses WHERE eso_owner='Awaiting'")).status,'pending');
+  assert.equal((await post({registrationAction:'save',houseId:'2',esoOwner:'Builder.One',visibility:'private'})).status,409);assert.equal(await count(),3,'duplicate registration does not create another record');
+ }finally{await new Promise(r=>server.close(r));await closeDatabase(db);}
+});
+
 test('web tools hide unauthorized administration and mutations recheck ownership, CSRF and context',async()=>{
  const {db,svc,c}=await fixture();let roles=[];
  const own=await svc.registerHouse(c,{houseId:1,esoOwner:'@Owner'}),other=await svc.registerHouse({...c,userId:'someone'},{houseId:2,esoOwner:'@Other'});

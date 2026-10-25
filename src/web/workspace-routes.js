@@ -18,7 +18,7 @@ export async function handleWorkspaceRoute({request,response,url,session,context
  if(!c)return send(response,403,'This member context is unavailable.');
  const baseSend=send,baseRedirect=redirect;let eventKey=randomUUID(),recorded=false,usageKindOverride;
  const record=async(status,location=null)=>{if(recorded||status>=400||!w.usage)return;recorded=true;const path=url.pathname;let kind=null,target=null;const house=/^\/app\/houses\/(\d+)/.exec(path),tour=/^\/app\/tours\/(\d+)/.exec(path);if(request.method==='POST'){
- if(path==='/app/register'){kind='registered_house';const match=/\/houses\/(\d+)/.exec(location||'');if(match)target={kind:'house',id:Number(match[1])};}
+ if(path==='/app/register'){const match=/\/houses\/(\d+)/.exec(location||'');kind=match?'registered_house':'searched_houses';if(match)target={kind:'house',id:Number(match[1])};}
  else if(path==='/app/tours/new'){kind='created_tour';const match=/\/tours\/(\d+)/.exec(location||'');if(match)target={kind:'tour',id:Number(match[1])};}
  else if(tour){kind=path.endsWith('/start')?'started_tour':path.endsWith('/advance')?'advanced_tour':'updated_tour';target={kind:'tour',id:Number(tour[1])};}
  else if(house&&path.endsWith('/edit')){kind='updated_house';target={kind:'house',id:Number(house[1])};}
@@ -32,13 +32,7 @@ export async function handleWorkspaceRoute({request,response,url,session,context
   let form=null;if(request.method==='POST'){form=await readBody(request);eventKey=String(form.get('eventKey')||eventKey).slice(0,200);if(!csrfMatches(session.csrf,form.get('csrf')))return render('Form expired','<p>Reload the page and try again.</p>','home',400);if(form.get('contextGuildId')!==c.guildId||form.get('contextEsoServer')!==c.esoServer)return render('Server context changed','<p>This form was opened for a different server or ESO environment. Reload the form before saving.</p>','home',409);}else if(request.method!=='GET')return render('Method not allowed','<p>Use the provided forms.</p>','home',405);
   const shared=await handleWebSharing({request,url,session,context:c,workspace:w,form,render,redirect,response,setUsageKind:value=>{usageKindOverride=value;}});if(shared!==null)return shared;
   const handled=await handleWebActions({request,url,session,context:c,workspace:w,form,render,redirect,response,setUsageKind:value=>{usageKindOverride=value;}});if(handled!==null)return handled;
-  if(path==='/app/register'){
-   if(form){const house=await w.registerHouse(c,Object.fromEntries(form));return redirect(response,`/app/houses/${house.id}?saved=1`);}
-   const catalog=await w.catalog.filter({name:query.q||'',limit:200});
-   if(query.houseId&&!catalog.some(h=>String(h.house_id)===query.houseId)){const requested=await w.catalog.get(Number(query.houseId));if(requested)catalog.unshift(requested);}
-   const options=catalog.map(h=>`<option value="${Number(h.house_id)}" ${String(h.house_id)===query.houseId?'selected':''}>${escape(h.name)}${h.zone?` · ${escape(h.zone)}`:''}</option>`).join('');
-   return render('Register a house',`<p>Add your furnished destination to your collection or share it with others.</p><div class="panel"><form method="get"><div class="filters">${input('Find official house','q',query.q||'')}<button>Find house</button></div></form>${options?`<form method="post">${csrfField(session.csrf)}<label>Official house<select name="houseId" required>${options}</select></label>${input('ESO account owner','esoOwner','', 'text',true)}${scopeSelect('private',w.houseScopes(c))}${input('Nickname (optional)','displayName')}<label>Description<textarea name="description" maxlength="4000"></textarea></label>${input('Tags (comma separated)','tags')}<button class="primary">Register house</button></form>`:'<p>No matching official house exists in the catalog. Try a different spelling, or ask a bot owner to add a new release.</p>'}<p class="note">Shared registrations follow this server’s approval policy. Private records stay yours.</p></div>`,'register');
-  }
+  if(path==='/app/register')return await registerHousePage({workspace:w,context:c,session,form,query,render,redirect,response});
   if(path==='/app/houses'||path==='/app/personal'){
    if(form)return render('Method not allowed','<p>This view is read-only.</p>','houses',405);
    const personal=path.endsWith('/personal'),result=await w.listHouses(c,{...query,personal});
