@@ -20,12 +20,12 @@ test('public root serves branded metadata and assets without login or membership
     assert.equal(response.status,200);assert.equal(response.headers.get('location'),null);
     assert.match(html,/property="og:title" content="HearthBound/);
     assert.match(html,/property="og:url" content="https:\/\/hearthbound.example\/"/);
-    assert.match(html,/property="og:image" content="https:\/\/hearthbound.example\/assets\/hearthbound-preview.png"/);
-    assert.match(html,/name="twitter:card"/);assert.match(html,/Sign in with Discord/);assert.match(html,/Invite to your server/);
+    assert.match(html,/property="og:image" content="https:\/\/hearthbound.example\/assets\/hearthbound-banner.webp"/);
+    assert.match(html,/<img class="welcome-banner"[^>]*src="\/assets\/hearthbound-banner.webp"/);assert.match(html,/class="public-page welcome-page"/);assert.match(html,/name="twitter:card"/);assert.match(html,/Sign in with Discord/);assert.match(html,/Invite to your server/);
     assert.match(html,/permissions=274877991936/);assert.doesNotMatch(html,/Evaine|First &lt;Guild&gt;|attacker.example/);
   }
   assert.deepEqual(calls,[]);
-  for(const path of ['/assets/hearthbound-logo.png','/assets/hearthbound-preview.png','/assets/public-pages.css'])assert.equal((await fetch(base+path,{redirect:'manual'})).status,200);
+  for(const path of ['/assets/hearthbound-logo.png','/assets/hearthbound-preview.png','/assets/hearthbound-banner.webp','/assets/hearthbound-landscape.webp','/assets/public-pages.css'])assert.equal((await fetch(base+path,{redirect:'manual'})).status,200);
   for(const path of ['/app','/admin']){const response=await fetch(base+path,{redirect:'manual'});assert.equal(response.status,302);assert.match(response.headers.get('location'),/^\/auth\/discord/);}
 });
 
