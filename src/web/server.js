@@ -7,6 +7,7 @@ import { buildDiscordAuthorizeUrl, consumeOAuthState, createOAuthState, exchange
 import { createSession, readSession, sessionLifetimeSeconds } from './session.js';
 import { csrfMatches } from './session.js';
 import { page, escape } from './render.js';
+import {welcomePage,guildPickerPage} from './public-pages.js';
 
 const cookieValue = (request, name) => String(request.headers.cookie || '').split(';').map(item => item.trim()).find(item => item.startsWith(`${name}=`))?.slice(name.length + 1) || null;
 const send = (response, status, body, headers = {}) => { response.writeHead(status, { 'content-type': 'text/html; charset=utf-8', 'referrer-policy':'no-referrer', 'cache-control':'private, no-store', ...headers }); response.end(body); };
@@ -57,9 +58,13 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
 
   async function route(request, response) {
     const url = new URL(request.url, 'http://localhost');
-    if(['/assets/workspace.css','/assets/tour-editor.js','/assets/hearthbound-logo.png','/assets/account-menu.css','/assets/account-menu.js','/assets/web-actions.js','/assets/catalog-editor.js'].includes(url.pathname)){
+    if(['/assets/workspace.css','/assets/public-pages.css','/assets/hearthbound-preview.png','/assets/tour-editor.js','/assets/hearthbound-logo.png','/assets/account-menu.css','/assets/account-menu.js','/assets/web-actions.js','/assets/catalog-editor.js'].includes(url.pathname)){
       if(request.method!=='GET')return send(response,405,'Method not allowed',{allow:'GET'});
       const asset=url.pathname.split('/').pop();return send(response,200,await readFile(new URL(`./assets/${asset}`,import.meta.url)),{'content-type':asset.endsWith('.png')?'image/png':asset.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8','x-content-type-options':'nosniff'});
+    }
+    if(url.pathname==='/'){
+      if(!['GET','HEAD'].includes(request.method))return send(response,405,'Method not allowed',{allow:'GET, HEAD'});
+      return send(response,200,welcomePage(cfg.oauth));
     }
     if (url.pathname === '/auth/discord') {
       const { state } = createOAuthState(url.searchParams.get('returnTo') || '/admin', now(), cfg.sessionSecret);
@@ -81,8 +86,7 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
     if (!context) return redirect(response, `/auth/discord?returnTo=${encodeURIComponent(url.pathname)}`);
     if (context.forbidden) return send(response, 403, page('Access unavailable', '<p>You do not have Housing Moderator access to a HearthBound guild.</p>'));
     if (context.choices) {
-      const choices = context.choices.map(item => `<li><a href="${(url.pathname==='/'||url.pathname.startsWith('/app'))?'/app':'/admin'}?guildId=${encodeURIComponent(item.guild.id)}">${escape(item.guild.name || item.guild.id)}</a> <small>${escape(item.esoServer || 'ESO environment not configured')}</small></li>`).join('');
-      return send(response, 200, page('Choose Discord Server', `<p>You have access to more than one HearthBound guild. Choose the server you want to use.</p><ul>${choices}</ul>`, context.session));
+      return send(response, 200, guildPickerPage(context.choices,context.session,url.pathname.startsWith('/app')?'/app':'/admin'));
     }
     if (context.selectionCookie) {
       const cleanPath = url.pathname === '/admin' ? '/admin' : `${url.pathname}${url.search.replace(/([?&])guildId=[^&]*&?/, '$1').replace(/[?&]$/, '')}`;
