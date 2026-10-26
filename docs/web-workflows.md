@@ -55,3 +55,12 @@ The web preserves single line breaks and blank lines when displaying description
 Bot owners can search House Catalog, edit existing definitions, preview changed fields and explicitly confirm. Official IDs stay fixed and linked registrations/tours are retained. Classification profiles supply database-backed capacity defaults; Apply selected classification defaults changes the house draft and individual values can override it. Shared styles, zones, types and other values use editable autocomplete suggestions. Newly saved values become reusable. The profile manager previews affected houses while preserving explicit exceptions; the value manager previews renames and only removes unused values.
 
 This catalog release upgrades to schema 13 automatically on startup. Follow [the catalog upgrade guide](upgrade-v1.0.63.md); preserve the Linux production database and take a verified backup first. Discord offers owner-only core catalog editing; full metadata management is on the web.
+
+
+## Public welcome page and link previews
+
+The website root (`/`) is a public HearthBound introduction with sign-in and bot invitation buttons. The workspace (`/app`) and administration (`/admin`) still require Discord login and current authorization. After signing in, users with multiple accessible servers choose one on a branded server picker.
+
+Shared links to the root include Open Graph and Twitter preview metadata using a dedicated navy-and-gold preview image based on the existing logo. Absolute preview URLs use the origin of `DISCORD_OAUTH_REDIRECT_URI`; configure that callback with your public HTTPS hostname (for example `https://hearthbound.perdues.me/auth/callback`). No new environment variables, dependencies, or database migrations are required.
+
+Deploy by pulling the merged code and restarting `hearthbound.service`. Ensure the reverse proxy forwards `/` and `/assets/` to HearthBound without redirecting them to Discord or requiring proxy-level login. Share the root HTTPS address for the welcome preview; Discord invitation and OAuth URLs still belong to Discord and use its previews. Existing cached previews may take time to refresh; post a fresh link with a query such as `?preview=2` to check the deployed result. The sign-in button opens the protected `/app` workspace.
