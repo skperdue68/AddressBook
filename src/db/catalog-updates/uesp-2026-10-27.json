@@ -1,0 +1,1527 @@
+{
+  "checked_on": "2026-10-27",
+  "main_source": "https://en.uesp.net/wiki/Online:Player_Housing",
+  "main_revision": 3646506,
+  "packaged_count": 120,
+  "uesp_count": 122,
+  "patches": [
+    {
+      "house_id": 1,
+      "name": "Mara's Kiss Inn Room",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Mara%27s_Kiss_Inn_Room",
+      "source_revision": 3520806,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520806",
+      "values": {
+        "subzone": "Iluvamir",
+        "gold_price": 3000
+      },
+      "replacements": {
+        "purchase_type": {
+          "before": "Quest, event, promotion, or special acquisition",
+          "after": "Quest or Gold"
+        }
+      }
+    },
+    {
+      "house_id": 2,
+      "name": "The Rosy Lion",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:The_Rosy_Lion_(room)",
+      "source_revision": 3520812,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520812",
+      "values": {
+        "subzone": "Daenia",
+        "gold_price": 3000
+      },
+      "replacements": {
+        "purchase_type": {
+          "before": "Quest, event, promotion, or special acquisition",
+          "after": "Quest or Gold"
+        }
+      }
+    },
+    {
+      "house_id": 3,
+      "name": "The Ebony Flask Inn Room",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:The_Ebony_Flask_Inn_Room",
+      "source_revision": 3520811,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520811",
+      "values": {
+        "subzone": "Zabamat",
+        "gold_price": 3000
+      },
+      "replacements": {
+        "purchase_type": {
+          "before": "Quest, event, promotion, or special acquisition",
+          "after": "Quest or Gold"
+        }
+      }
+    },
+    {
+      "house_id": 4,
+      "name": "Barbed Hook Private Room",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Barbed_Hook_Private_Room",
+      "source_revision": 3520814,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520814",
+      "values": {
+        "subzone": "Calambar"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 5,
+      "name": "Sisters of the Sands Apartment",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Sisters_of_the_Sands_Apartment",
+      "source_revision": 3520816,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520816",
+      "values": {
+        "subzone": "Myrkwasa"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 6,
+      "name": "Flaming Nix Deluxe Garret",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Flaming_Nix_Deluxe_Garret",
+      "source_revision": 3520815,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520815",
+      "values": {
+        "subzone": "Lagomere"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 7,
+      "name": "Black Vine Villa",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Black_Vine_Villa",
+      "source_revision": 3520819,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520819",
+      "values": {
+        "subzone": "Silvenar Vale"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 8,
+      "name": "Cliffshade",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Cliffshade",
+      "source_revision": 3520822,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520822",
+      "values": {
+        "subzone": "Wilderking Court"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 9,
+      "name": "Mathiisen Manor",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Mathiisen_Manor",
+      "source_revision": 3520865,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520865",
+      "values": {
+        "subzone": "Calambar"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 11,
+      "name": "The Ample Domicile",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:The_Ample_Domicile",
+      "source_revision": 3520844,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520844",
+      "values": {
+        "subzone": "Reticulated Spine"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 12,
+      "name": "Stay-Moist Mansion",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Stay-Moist_Mansion",
+      "source_revision": 3520875,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520875",
+      "values": {
+        "subzone": "Leafwater"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 13,
+      "name": "Snugpod",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Snugpod",
+      "source_revision": 3520843,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520843",
+      "values": {
+        "subzone": "Green Hall"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 14,
+      "name": "Bouldertree Refuge",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Bouldertree_Refuge",
+      "source_revision": 3520820,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520820",
+      "values": {
+        "subzone": "Drowned Coast"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 15,
+      "name": "The Gorinir Estate",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:The_Gorinir_Estate",
+      "source_revision": 3520877,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520877",
+      "values": {
+        "subzone": "Green Hall"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 16,
+      "name": "Captain Margaux's Place",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Captain_Margaux%27s_Place",
+      "source_revision": 3520821,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520821",
+      "values": {
+        "subzone": "Daenia"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 17,
+      "name": "Ravenhurst",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Ravenhurst",
+      "source_revision": 3582860,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3582860",
+      "values": {
+        "subzone": "Westmark Moor"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 18,
+      "name": "Gardner House",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Gardner_House",
+      "source_revision": 3520858,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520858",
+      "values": {
+        "subzone": "Menevia"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 19,
+      "name": "Kragenhome",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Kragenhome",
+      "source_revision": 3520835,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520835",
+      "values": {
+        "subzone": "Varanis"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 20,
+      "name": "Velothi Reverie",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Velothi_Reverie",
+      "source_revision": 3520847,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520847",
+      "values": {
+        "subzone": "Redolent Loam"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 21,
+      "name": "Quondam Indorilia",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Quondam_Indorilia",
+      "source_revision": 3520873,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520873",
+      "values": {
+        "subzone": "Redolent Loam"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 23,
+      "name": "Sleek Creek House",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Sleek_Creek_House",
+      "source_revision": 3520842,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520842",
+      "values": {
+        "subzone": "Jodewood"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 24,
+      "name": "Dawnshadow",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Dawnshadow",
+      "source_revision": 3520853,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520853",
+      "values": {
+        "subzone": "Dawnmead"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 25,
+      "name": "Cyrodilic Jungle House",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Cyrodilic_Jungle_House",
+      "source_revision": 3520823,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520823",
+      "values": {
+        "subzone": "Silvenar Vale"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 26,
+      "name": "Domus Phrasticus",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Domus_Phrasticus",
+      "source_revision": 3520824,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520824",
+      "values": {
+        "subzone": "Elinhir Region"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 27,
+      "name": "Strident Springs Demesne",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Strident_Springs_Demesne",
+      "source_revision": 3520876,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520876",
+      "values": {
+        "subzone": "Northern Woods"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 28,
+      "name": "Autumn's-Gate",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Autumn%27s-Gate",
+      "source_revision": 3520818,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520818",
+      "values": {
+        "subzone": "Ragged Hills"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 29,
+      "name": "Grymharth's Woe",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Grymharth%27s_Woe",
+      "source_revision": 3520830,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520830",
+      "values": {
+        "subzone": "Giant's Run"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 30,
+      "name": "Old Mistveil Manor",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Old_Mistveil_Manor",
+      "source_revision": 3520871,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520871",
+      "values": {
+        "subzone": "Smokefrost Peaks"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 31,
+      "name": "Hammerdeath Bungalow",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Hammerdeath_Bungalow",
+      "source_revision": 3520831,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520831",
+      "values": {
+        "subzone": "Menevia"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 32,
+      "name": "Mournoth Keep",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Mournoth_Keep",
+      "source_revision": 3520839,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520839",
+      "values": {
+        "subzone": "Mournoth"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 33,
+      "name": "Forsaken Stronghold",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Forsaken_Stronghold",
+      "source_revision": 3520857,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520857",
+      "values": {
+        "subzone": "Mournoth"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 34,
+      "name": "Twin Arches",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Twin_Arches",
+      "source_revision": 3520845,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520845",
+      "values": {
+        "subzone": "Fallen Wastes"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 35,
+      "name": "House of the Silent Magnifico",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:House_of_the_Silent_Magnifico",
+      "source_revision": 3520833,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520833",
+      "values": {
+        "subzone": "Myrkwasa"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 37,
+      "name": "Serenity Falls Estate",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Serenity_Falls_Estate",
+      "source_revision": 3520874,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520874",
+      "values": {
+        "subzone": "Dawnmead"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 38,
+      "name": "Daggerfall Overlook",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Daggerfall_Overlook",
+      "source_revision": 3520852,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520852",
+      "values": {
+        "subzone": "Daenia"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 39,
+      "name": "Ebonheart Chateau",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Ebonheart_Chateau",
+      "source_revision": 3520855,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520855",
+      "values": {
+        "subzone": "Daen Seeth"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 40,
+      "name": "Grand Topal Hideaway",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Grand_Topal_Hideaway",
+      "source_revision": 3600772,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3600772",
+      "values": {
+        "subzone": "Long Coast"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 41,
+      "name": "Earthtear Cavern",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Earthtear_Cavern",
+      "source_revision": 3520892,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520892",
+      "values": {
+        "subzone": "Belkarth Region"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 42,
+      "name": "Saint Delyn Penthouse",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Saint_Delyn_Penthouse",
+      "source_revision": 3520809,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520809",
+      "values": {
+        "subzone": "Ascadian Isles",
+        "gold_price": 3000
+      },
+      "replacements": {
+        "purchase_type": {
+          "before": "Quest, event, promotion, or special acquisition",
+          "after": "Quest or Gold"
+        }
+      }
+    },
+    {
+      "house_id": 43,
+      "name": "Amaya Lake Lodge",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Amaya_Lake_Lodge",
+      "source_revision": 3520849,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520849",
+      "values": {
+        "subzone": "Ascadian Isles"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 44,
+      "name": "Ald Velothi Harbor House",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Ald_Velothi_Harbor_House",
+      "source_revision": 3620037,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3620037",
+      "values": {
+        "subzone": "West Gash"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 45,
+      "name": "Tel Galen",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Tel_Galen",
+      "source_revision": 3581869,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3581869",
+      "values": {
+        "subzone": "Azura's Coast"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 47,
+      "name": "Coldharbour Surreal Estate",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Coldharbour_Surreal_Estate",
+      "source_revision": 3520851,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520851",
+      "values": {
+        "crown_price_unfurnished": 5600,
+        "crown_price": 5600
+      },
+      "replacements": {
+        "purchase_type": {
+          "before": "Gold",
+          "after": "Gold or Crowns"
+        }
+      }
+    },
+    {
+      "house_id": 48,
+      "name": "Hakkvild's High Hall",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Hakkvild%27s_High_Hall",
+      "source_revision": 3520860,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520860",
+      "values": {
+        "subzone": "Elinhir Region"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 49,
+      "name": "Exorcised Coven Cottage",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Exorcised_Coven_Cottage",
+      "source_revision": 3648092,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3648092",
+      "values": {
+        "subzone": "Cambray Hills"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 54,
+      "name": "Pariah's Pinnacle",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Pariah%27s_Pinnacle",
+      "source_revision": 3581874,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3581874",
+      "values": {
+        "subzone": "Icy Shore"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 58,
+      "name": "Golden Gryphon Garret",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Golden_Gryphon_Garret",
+      "source_revision": 3520804,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520804",
+      "values": {
+        "subzone": "Alinor",
+        "gold_price": 3000
+      },
+      "replacements": {
+        "purchase_type": {
+          "before": "Quest, event, promotion, or special acquisition",
+          "after": "Quest or Gold"
+        }
+      }
+    },
+    {
+      "house_id": 59,
+      "name": "Alinor Crest Townhouse",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Alinor_Crest_Townhouse",
+      "source_revision": 3520848,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520848",
+      "values": {
+        "subzone": "Alinor"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 61,
+      "name": "Hunter's Glade",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Hunter%27s_Glade",
+      "source_revision": 3581868,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3581868",
+      "values": {
+        "subzone": "Smokefrost Peaks"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 63,
+      "name": "Enchanted Snow Globe Home",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Enchanted_Snow_Globe_Home",
+      "source_revision": 3520894,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520894",
+      "values": {
+        "subzone": "Giant's Run"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 65,
+      "name": "Frostvault Chasm",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Frostvault_Chasm",
+      "source_revision": 3581863,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3581863",
+      "values": {
+        "subzone": "Giant's Run"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 66,
+      "name": "Elinhir Private Arena",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Elinhir_Private_Arena",
+      "source_revision": 3581871,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3581871",
+      "values": {
+        "subzone": "Elinhir Region"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 68,
+      "name": "Sugar Bowl Suite",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Sugar_Bowl_Suite",
+      "source_revision": 3519401,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3519401",
+      "values": {
+        "subzone": "Tenmar Borderlands",
+        "gold_price": 3000
+      },
+      "replacements": {
+        "purchase_type": {
+          "before": "Quest, event, promotion, or special acquisition",
+          "after": "Quest or Gold"
+        }
+      }
+    },
+    {
+      "house_id": 69,
+      "name": "Jode's Embrace",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Jode%27s_Embrace",
+      "source_revision": 3621938,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3621938",
+      "values": {
+        "subzone": "High Savannah"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 70,
+      "name": "Hall of the Lunar Champion",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Hall_of_the_Lunar_Champion",
+      "source_revision": 3520861,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520861",
+      "values": {
+        "subzone": "Tenmar Borderlands"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 71,
+      "name": "Moon-Sugar Meadow",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Moon-Sugar_Meadow",
+      "source_revision": 3520906,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520906",
+      "values": {
+        "subzone": "Tenmar Borderlands",
+        "crown_price_unfurnished": 6400,
+        "crown_price": 6400,
+        "purchase_type": "Crowns / special availability"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 72,
+      "name": "Wraithhome",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Wraithhome",
+      "source_revision": 3520933,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520933",
+      "values": {
+        "subzone": "Westmark Moor"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 75,
+      "name": "Forgemaster Falls",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Forgemaster_Falls",
+      "source_revision": 3535062,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3535062",
+      "values": {
+        "subzone": "Morkul Plain"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 76,
+      "name": "Thieves' Oasis",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Thieves%27_Oasis",
+      "source_revision": 3588569,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3588569",
+      "values": {
+        "subzone": "Fallen Wastes"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 77,
+      "name": "Snowmelt Suite",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Snowmelt_Suite",
+      "source_revision": 3520810,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520810",
+      "values": {
+        "subzone": "Haafingar",
+        "gold_price": 3000
+      },
+      "replacements": {
+        "purchase_type": {
+          "before": "Quest, event, promotion, or special acquisition",
+          "after": "Quest or Gold"
+        }
+      }
+    },
+    {
+      "house_id": 78,
+      "name": "Proudspire Manor",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Proudspire_Manor",
+      "source_revision": 3520872,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520872",
+      "values": {
+        "subzone": "Haafingar"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 79,
+      "name": "Bastion Sanguinaris",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Bastion_Sanguinaris",
+      "source_revision": 3654234,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3654234",
+      "values": {
+        "subzone": "Greymoor Cavern"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 80,
+      "name": "Stillwaters Retreat",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Stillwaters_Retreat",
+      "source_revision": 3520919,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520919",
+      "values": {
+        "subzone": "Hjaalmarch",
+        "crown_price_unfurnished": 7000,
+        "crown_price": 7000,
+        "purchase_type": "Crowns / special availability"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 81,
+      "name": "Antiquarian's Alpine Gallery",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Antiquarian%27s_Alpine_Gallery",
+      "source_revision": 3520882,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520882",
+      "values": {
+        "subzone": "Hjaalmarch",
+        "crown_price_unfurnished": 7000,
+        "crown_price": 7000
+      },
+      "replacements": {
+        "purchase_type": {
+          "before": "Quest, event, promotion, or special acquisition",
+          "after": "Crowns / special availability"
+        }
+      }
+    },
+    {
+      "house_id": 82,
+      "name": "Shalidor's Shrouded Realm",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Shalidor%27s_Shrouded_Realm",
+      "source_revision": 3548092,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3548092",
+      "values": {
+        "subzone": "Hjaalmarch"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 85,
+      "name": "Kushalit Sanctuary",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Kushalit_Sanctuary",
+      "source_revision": 3548735,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3548735",
+      "values": {
+        "subzone": "Ashlands"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 87,
+      "name": "Pilgrim's Rest",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Pilgrim%27s_Rest",
+      "source_revision": 3520807,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520807",
+      "values": {
+        "subzone": "Niben Forest",
+        "gold_price": 3000
+      },
+      "replacements": {
+        "purchase_type": {
+          "before": "Quest, event, promotion, or special acquisition",
+          "after": "Quest or Gold"
+        }
+      }
+    },
+    {
+      "house_id": 88,
+      "name": "Water's Edge",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Water%27s_Edge",
+      "source_revision": 3520879,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520879",
+      "values": {
+        "subzone": "Niben Forest"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 89,
+      "name": "Pantherfang Chapel",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Pantherfang_Chapel",
+      "source_revision": 3548200,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3548200",
+      "values": {
+        "subzone": "Blackwood Bog"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 90,
+      "name": "Doomchar Plateau",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Doomchar_Plateau",
+      "source_revision": 3520854,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520854",
+      "values": {
+        "subzone": "Broken Coast"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 91,
+      "name": "Sweetwater Cascades",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Sweetwater_Cascades",
+      "source_revision": 3520922,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520922",
+      "values": {
+        "subzone": "Niben Forest"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 92,
+      "name": "Ossa Accentium",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Ossa_Accentium",
+      "source_revision": 3581873,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3581873",
+      "values": {
+        "subzone": "Fargrave"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 93,
+      "name": "Agony's Ascent",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Agony%27s_Ascent",
+      "source_revision": 3520881,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520881",
+      "values": {
+        "subzone": "The Sever"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 95,
+      "name": "Ancient Anchor Berth",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Ancient_Anchor_Berth",
+      "source_revision": 3519904,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3519904",
+      "values": {
+        "subzone": "Sapphire Coast",
+        "gold_price": 3000
+      },
+      "replacements": {
+        "purchase_type": {
+          "before": "Quest, event, promotion, or special acquisition",
+          "after": "Quest or Gold"
+        }
+      }
+    },
+    {
+      "house_id": 96,
+      "name": "Highhallow Hold",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Highhallow_Hold",
+      "source_revision": 3581872,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3581872",
+      "values": {
+        "subzone": "Sapphire Coast"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 98,
+      "name": "Fogbreak Lighthouse",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Fogbreak_Lighthouse",
+      "source_revision": 3520895,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520895",
+      "values": {
+        "subzone": "Oakenvald"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 99,
+      "name": "The Fair Winds",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:The_Fair_Winds",
+      "source_revision": 3636397,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3636397",
+      "values": {
+        "subzone": "Vastyr"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 100,
+      "name": "Journey's End Lodgings",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Journey%27s_End_Lodgings",
+      "source_revision": 3520805,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520805",
+      "values": {
+        "subzone": "Padomaic Crest",
+        "gold_price": 3000
+      },
+      "replacements": {
+        "purchase_type": {
+          "before": "Quest, event, promotion, or special acquisition",
+          "after": "Quest or Gold"
+        }
+      }
+    },
+    {
+      "house_id": 101,
+      "name": "Emissary's Enclave",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Emissary%27s_Enclave",
+      "source_revision": 3520856,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520856",
+      "values": {
+        "subzone": "Necrom"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 103,
+      "name": "Sword-Singer's Redoubt",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Sword-Singer%27s_Redoubt",
+      "source_revision": 3581881,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3581881",
+      "values": {
+        "subzone": "Tigonus"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 104,
+      "name": "Kelesan'ruhn",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Kelesan%27ruhn",
+      "source_revision": 3581885,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3581885",
+      "values": {
+        "subzone": "Fungal Lowlands"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 106,
+      "name": "Tower of Unutterable Truths",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Tower_of_Unutterable_Truths",
+      "source_revision": 3520930,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520930",
+      "values": {
+        "subzone": "Endless Library"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 109,
+      "name": "Rosewine Retreat",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Rosewine_Retreat",
+      "source_revision": 3520808,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520808",
+      "values": {
+        "subzone": "Gold Road",
+        "gold_price": 3000
+      },
+      "replacements": {
+        "purchase_type": {
+          "before": "Quest, event, promotion, or special acquisition",
+          "after": "Quest or Gold"
+        }
+      }
+    },
+    {
+      "house_id": 110,
+      "name": "Merryvine Estate",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Merryvine_Estate",
+      "source_revision": 3530633,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3530633",
+      "values": {
+        "subzone": "Colovian Highlands"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 111,
+      "name": "Seabloom Villa",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Seabloom_Villa",
+      "source_revision": 3629315,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3629315",
+      "values": {
+        "subzone": "Iluvamir",
+        "house_type": "Medium Home"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 112,
+      "name": "Haven of the Five Companions",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Haven_of_the_Five_Companions",
+      "source_revision": 3520862,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520862",
+      "values": {
+        "subzone": "Colovian Highlands"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 113,
+      "name": "Kthendral Deep Mines",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Kthendral_Deep_Mines",
+      "source_revision": 3605760,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3605760",
+      "values": {
+        "subzone": "Dark Moon Grotto"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 115,
+      "name": "Shattered Mirror Isle",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Shattered_Mirror_Isle",
+      "source_revision": 3581891,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3581891",
+      "values": {
+        "subzone": "Fargrave City District",
+        "crown_price_unfurnished": 8000,
+        "crown_price": 8000
+      },
+      "replacements": {
+        "purchase_type": {
+          "before": "Quest, event, promotion, or special acquisition",
+          "after": "Crowns / special availability"
+        }
+      }
+    },
+    {
+      "house_id": 116,
+      "name": "Castle Skingrad",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Castle_Skingrad",
+      "source_revision": 3559327,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3559327",
+      "values": {
+        "subzone": "The Gold Road"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 117,
+      "name": "Bismuth Steam Baths",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Bismuth_Steam_Baths",
+      "source_revision": 3520850,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520850",
+      "values": {
+        "subzone": "Western Solstice"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 118,
+      "name": "The Sleepy Sloth",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:The_Sleepy_Sloth",
+      "source_revision": 3520813,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3520813",
+      "values": {
+        "subzone": "Western Solstice",
+        "house_type": "Inn Room",
+        "gold_price": 3000
+      },
+      "replacements": {
+        "purchase_type": {
+          "before": "Quest, event, promotion, or special acquisition",
+          "after": "Quest or Gold"
+        }
+      }
+    },
+    {
+      "house_id": 119,
+      "name": "Theater of the Ancestors",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Theater_of_the_Ancestors",
+      "source_revision": 3570817,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3570817",
+      "values": {
+        "subzone": "Niben Forest",
+        "house_type": "Manor Home"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 120,
+      "name": "Hiddenspring Cottage",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Hiddenspring_Cottage",
+      "source_revision": 3581866,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3581866",
+      "values": {
+        "house_type": "Medium Home"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 121,
+      "name": "Wildgrown Chapel of Julianos",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Wildgrown_Chapel_of_Julianos",
+      "source_revision": 3530651,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3530651",
+      "values": {
+        "house_type": "Manor Home"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 122,
+      "name": "Cradle of the Worm Colossus",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Cradle_of_the_Worm_Colossus",
+      "source_revision": 3574798,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3574798",
+      "values": {
+        "subzone": "Eastern Solstice",
+        "house_type": "Manor Home"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 123,
+      "name": "Druidspring Conservatory",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Druidspring_Conservatory",
+      "source_revision": 3574800,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3574800",
+      "values": {
+        "subzone": "Oakenvald",
+        "house_type": "Manor Home",
+        "crown_price_unfurnished": 8000,
+        "crown_price": 8000
+      },
+      "replacements": {
+        "purchase_type": {
+          "before": "Quest, event, promotion, or special acquisition",
+          "after": "Crowns / special availability"
+        }
+      }
+    },
+    {
+      "house_id": 124,
+      "name": "Night's Den",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Night%27s_Den",
+      "source_revision": 3581852,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3581852",
+      "values": {
+        "subzone": "Night Market",
+        "purchase_type": "Quest, event, promotion, or special acquisition",
+        "requirements": "Complete Those Who Would Rule while the Night Market is open. The reward is furnished; no unfurnished version is listed.",
+        "availability": "Acquisition is tied to Night Market seasons; owned houses remain accessible afterward."
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 125,
+      "name": "Buccaneer Bay",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Buccaneer_Bay",
+      "source_revision": 3550778,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3550778",
+      "values": {
+        "house_type": "Manor Home"
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 128,
+      "name": "Rogue's Refuge",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Rogue%27s_Refuge",
+      "source_revision": 3593434,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3593434",
+      "values": {
+        "subzone": "King's Guard",
+        "purchase_type": "Quest, event, promotion, or special acquisition",
+        "requirements": "Collect and use four notes: Wherenow Code Key (A Guild Grows In Glenumbra), Indecipherable Sai Note (Thieves Troves or Safeboxes), Baffling Baan Dar Note (Dynamic Encounter rewards), and Mysterious Nocturnal Note (Thieves Guild Heist rewards).",
+        "availability": "Earned by collecting all four required notes."
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 129,
+      "name": "Dancing Waters Wellspring",
+      "new_house": false,
+      "source_url": "https://en.uesp.net/wiki/Online:Dancing_Waters_Wellspring",
+      "source_revision": 3585631,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3585631",
+      "values": {
+        "house_type": "Large Home",
+        "crown_price_unfurnished": 8000,
+        "crown_price": 8000
+      },
+      "replacements": {
+        "purchase_type": {
+          "before": "Quest, event, promotion, or special acquisition",
+          "after": "Crowns / special availability"
+        }
+      }
+    },
+    {
+      "house_id": 131,
+      "name": "Grotto of Desires",
+      "new_house": true,
+      "source_url": "https://en.uesp.net/wiki/Online:Grotto_of_Desires",
+      "source_revision": 3658249,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3658249",
+      "values": {
+        "house_type": "Manor Home",
+        "zone": "Blackwood",
+        "classification": "Notable Home",
+        "style": "Daedric, Sanguine",
+        "category": "Notable Home",
+        "uesp_url": "https://en.uesp.net/wiki/Online:Grotto_of_Desires",
+        "purchase_type": "Quest, event, promotion, or special acquisition",
+        "requirements": "Combine the Roseblood Bat pet with five Grotto of Desires event fragments from the Impresario.",
+        "availability": "UESP marks this house pre-release and unavailable as of 2026-10-27; fragment release dates are incomplete."
+      },
+      "replacements": {}
+    },
+    {
+      "house_id": 132,
+      "name": "Sheogorad Chateau",
+      "new_house": true,
+      "source_url": "https://en.uesp.net/wiki/Online:Sheogorad_Chateau",
+      "source_revision": 3643417,
+      "source_revision_url": "https://en.uesp.net/w/index.php?oldid=3643417",
+      "values": {
+        "house_type": "Large Home",
+        "crown_price_unfurnished": 10400,
+        "crown_price_furnished": 13000,
+        "crown_price": 10400,
+        "purchase_type": "Crowns / special availability",
+        "zone": "Vvardenfell",
+        "classification": "Notable Home",
+        "style": "Hlaalu",
+        "category": "Notable Home",
+        "uesp_url": "https://en.uesp.net/wiki/Online:Sheogorad_Chateau",
+        "requirements": "Limited-time Crown Store purchase; first documented sale September 30–October 15, 2026.",
+        "availability": "Limited-time Crown Store sale; check the current showcase for availability."
+      },
+      "replacements": {}
+    }
+  ],
+  "unresolved": [
+    {
+      "house_id": 124,
+      "field": "house_type",
+      "reason": "UESP housesize is unknown; packaged Large Home is unverified and preserved."
+    },
+    {
+      "house_id": 119,
+      "field": "classification",
+      "reason": "Main table says Notable; individual page says Classic. Preserve packaged Notable."
+    },
+    {
+      "house_id": 131,
+      "field": "prices",
+      "reason": "No prices published. Leave unknown; never infer zero."
+    },
+    {
+      "house_ids": [
+        126,
+        127,
+        130
+      ],
+      "reason": "Not listed; ID gaps do not prove missing houses."
+    }
+  ],
+  "coverage": {
+    "main_table_house_ids": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63,
+      64,
+      65,
+      66,
+      68,
+      69,
+      70,
+      71,
+      72,
+      73,
+      74,
+      75,
+      76,
+      77,
+      78,
+      79,
+      80,
+      81,
+      82,
+      83,
+      85,
+      86,
+      87,
+      88,
+      89,
+      90,
+      91,
+      92,
+      93,
+      94,
+      95,
+      96,
+      98,
+      99,
+      100,
+      101,
+      102,
+      103,
+      104,
+      105,
+      106,
+      107,
+      108,
+      109,
+      110,
+      111,
+      112,
+      113,
+      114,
+      115,
+      116,
+      117,
+      118,
+      119,
+      120,
+      121,
+      122,
+      123,
+      124,
+      125,
+      128,
+      129,
+      131,
+      132
+    ],
+    "individual_pages_checked": 122
+  }
+}
