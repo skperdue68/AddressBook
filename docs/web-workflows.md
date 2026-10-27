@@ -64,3 +64,10 @@ The website root (`/`) is a public HearthBound introduction with sign-in and bot
 Shared links to the root include Open Graph and Twitter preview metadata using the illustrated HearthBound banner. The welcome page displays that banner above the introduction, with a matching stars-and-hills landscape behind the page; text panels stay dark for readability. Absolute preview URLs use the origin of `DISCORD_OAUTH_REDIRECT_URI`; configure that callback with your public HTTPS hostname (for example `https://hearthbound.perdues.me/auth/callback`). No new environment variables, dependencies, or database migrations are required.
 
 Deploy by pulling the merged code and restarting `hearthbound.service`. Ensure the reverse proxy forwards `/` and `/assets/` to HearthBound without redirecting them to Discord or requiring proxy-level login. Share the root HTTPS address for the welcome preview; Discord invitation and OAuth URLs still belong to Discord and use its previews. Existing cached previews may take time to refresh; post a fresh link with a query such as `?preview=2` to check the deployed result. The sign-in button opens the protected `/app` workspace.
+
+
+## Feedback
+
+Use **Send feedback** on the welcome page or under **Help & Access** after signing in. Choose General feedback, Bug report or Idea, enter a subject (120 characters) and description (4,000 characters), then send. Your last ten submissions show their current status. Only the author and configured bot owners can read a submission; internal review notes are owner-only.
+
+Configured bot owners see **Feedback inbox** in the sidebar, with newest submissions first, status filtering and pages of 25. Expand **Review feedback** to mark New, Reviewed or Resolved and save internal notes. Server and Global administrators do not gain feedback review access. Feedback is retained in the database independently of public usage activity and is included in full database/backend transfers, not guild-level JSON exports. See [upgrade instructions](upgrade-v1.0.64.md).

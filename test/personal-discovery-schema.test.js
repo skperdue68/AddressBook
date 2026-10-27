@@ -18,7 +18,7 @@ test('schema version 6 creates personal discovery tables with stable columns and
     const tables=new Set((await db.query("SELECT name FROM sqlite_master WHERE type='table'")).map(row=>row.name));
     assert.ok(tables.has('user_house_states'));
     assert.ok(tables.has('saved_house_searches'));
-    assert.equal(Number((await one(db,'SELECT max(version) v FROM schema_migrations')).v),13);
+    assert.equal(Number((await one(db,'SELECT max(version) v FROM schema_migrations')).v),14);
     assert.deepEqual((await db.query('PRAGMA table_info(user_house_states)')).map(row=>row.name),[
       'id','discord_user_id','discord_global_name','discord_display_name','target_kind','target_id','house_name','eso_owner','is_favorite','visit_state','last_visited_at','created_at','updated_at'
     ]);
@@ -47,6 +47,6 @@ test('version 5 upgrade preserves existing houses and tours',async()=>{
 
     assert.equal(Number((await one(db,'SELECT count(*) c FROM saved_houses')).c),1);
     assert.equal(Number((await one(db,'SELECT count(*) c FROM tours')).c),1);
-    assert.equal(Number((await one(db,'SELECT max(version) v FROM schema_migrations')).v),13);
+    assert.equal(Number((await one(db,'SELECT max(version) v FROM schema_migrations')).v),14);
   }finally{await closeDatabase(db);}
 });

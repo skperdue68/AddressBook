@@ -113,3 +113,6 @@ See the [HearthBound web workflow guide](docs/web-workflows.md) for personal col
 ### Catalog management update
 
 Bot owners can now edit official houses, classification capacity profiles and reusable metadata values. See the [schema 13 upgrade guide](docs/upgrade-v1.0.63.md) before deploying.
+
+
+Members can send ideas and bug reports from **Send feedback** on the website or under **Help & Access**. Configured bot owners review submissions in the **Feedback inbox**; members see only their own feedback and status. [Upgrade to 1.0.64 (schema14)](docs/upgrade-v1.0.64.md).

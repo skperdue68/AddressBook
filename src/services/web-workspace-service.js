@@ -1,3 +1,4 @@
+import {FeedbackService} from './feedback-service.js';
 import {UsageActivityService} from './usage-activity-service.js';
 import {WebActionsService} from './web-actions-service.js';
 import {HouseCatalogService} from './house-catalog-service.js';
@@ -16,7 +17,7 @@ import {one} from '../db/database.js';
 const tourNameOrder=new Intl.Collator('en',{sensitivity:'base'});
 const pageNumber=v=>Math.min(100000,Math.max(1,Math.floor(Number(v)||1)));
 export class WebWorkspaceService{
- constructor(db,{env=process.env}={}){this.db=db;this.policy=new ContentPolicyService(db,env);this.statistics=new CommunityStatisticsService(db);this.usage=new UsageActivityService(db);this.ownerCatalog=new HouseCatalogService(db,env);this.saved=new SavedHouseService(db);this.tours=new TourService(db);this.progress=new TourProgressService(db);this.catalog=new HouseService(db);this.featuredService=new FeaturedContentService(db);this.actions=new WebActionsService(this);}
+ constructor(db,{env=process.env}={}){this.db=db;this.feedback=new FeedbackService(db,env);this.policy=new ContentPolicyService(db,env);this.statistics=new CommunityStatisticsService(db);this.usage=new UsageActivityService(db);this.ownerCatalog=new HouseCatalogService(db,env);this.saved=new SavedHouseService(db);this.tours=new TourService(db);this.progress=new TourProgressService(db);this.catalog=new HouseService(db);this.featuredService=new FeaturedContentService(db);this.actions=new WebActionsService(this);}
  authorizeContext(input){return this.policy.context(input);}
  fresh(c){return this.authorizeContext(c);}
  houseScopes(c){return c.settings.registration_policy!=='roles'||c.isServerAdmin||c.isOwner||JSON.parse(c.settings.registration_role_ids||'[]').some(r=>c.memberRoleIds.includes(r))?['private','public','global']:['private'];}
