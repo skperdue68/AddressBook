@@ -20,7 +20,7 @@ export class WebWorkspaceService{
  constructor(db,{env=process.env}={}){this.db=db;this.feedback=new FeedbackService(db,env);this.policy=new ContentPolicyService(db,env);this.statistics=new CommunityStatisticsService(db);this.usage=new UsageActivityService(db);this.ownerCatalog=new HouseCatalogService(db,env);this.saved=new SavedHouseService(db);this.tours=new TourService(db);this.progress=new TourProgressService(db);this.catalog=new HouseService(db);this.featuredService=new FeaturedContentService(db);this.actions=new WebActionsService(this);}
  authorizeContext(input){return this.policy.context(input);}
  fresh(c){return this.authorizeContext(c);}
- houseScopes(c){return c.settings.registration_policy!=='roles'||c.isServerAdmin||c.isOwner||JSON.parse(c.settings.registration_role_ids||'[]').some(r=>c.memberRoleIds.includes(r))?['private','public','global']:['private'];}
+ houseScopes(c){return c.settings.registration_policy!=='roles'||c.isServerAdmin||c.isOwner||JSON.parse(c.settings.registration_role_ids||'[]').some(r=>c.memberRoleIds.includes(r))?['public','private','global']:['private'];}
  async tourHouseCandidates(context){
   const c=await this.fresh(context);
   const rows=await this.db.query(`SELECT s.id,s.house_id,s.scope,s.guild_id,s.owner_user_id,s.display_name,s.eso_owner,s.tags,h.name catalog_house_name,h.zone,h.classification,h.house_type,h.style FROM saved_houses s JOIN houses h ON h.house_id=s.house_id WHERE s.eso_server=? AND s.status='active' AND (s.scope='global' OR (s.scope='public' AND s.guild_id=?) OR (s.scope='private' AND s.owner_user_id=?))`,[c.esoServer,c.guildId,c.userId]);
@@ -37,8 +37,8 @@ export class WebWorkspaceService{
   return {rows:withCatalogHouseNames(rows).map(h=>({...h,canEdit:this.policy.canEditHouse(h,c)})),total,page:p,hasNext:p*25<total};
  }
  async getHouse(c,id){const h=await this.saved.get(id);if(!h||(!this.policy.canViewHouse(h,c)&&!(this.policy.canEditHouse(h,c)&&h.status==='pending')))throw new Error('House is not available.');return {...h,canEdit:this.policy.canEditHouse(h,c)};}
- async registerHouse(context,{houseId,esoOwner,visibility='private',displayName=null,description=null,tags=[]}){
-  const c=await this.fresh(context);if(!['private','public','global'].includes(visibility))throw new Error('Choose Private, Server or Global visibility.');
+ async registerHouse(context,{houseId,esoOwner,visibility,displayName=null,description=null,tags=[]}){
+  const c=await this.fresh(context);visibility??=this.houseScopes(c)[0];if(!['private','public','global'].includes(visibility))throw new Error('Choose Private, Server or Global visibility.');
   if(!await one(this.db,'SELECT house_id FROM houses WHERE house_id=?',[Number(houseId)||0]))throw new Error('That official house does not exist in the catalog. Check the selection or ask a bot owner to add a newly released house.');
   const trusted=c.isOwner||JSON.parse(c.settings.registration_role_ids||'[]').some(r=>c.memberRoleIds.includes(r));
   if(visibility!=='private'&&!c.isServerAdmin&&c.settings.registration_policy==='roles'&&!trusted)throw new Error('Your server requires a registration role to register shared houses.');
@@ -65,7 +65,7 @@ export class WebWorkspaceService{
   const c=await this.fresh(context);if(!Array.isArray(stopIds)||stopIds.length>250)throw new Error('A tour supports at most 250 stops per save.');const ids=stopIds.map(Number);if(ids.some(n=>!Number.isSafeInteger(n)||n<=0))throw new Error('Invalid house selection.');if(new Set(ids).size!==ids.length)throw new Error('Duplicate house selection.');
   return withTransaction(this.db,async conn=>{
    const snap=id?await this.tourSnapshot(conn,id):null;if(id&&(!snap||!this.policy.canEditTour(snap.tour,c)))throw new Error('Tour is not available for editing.');if(id&&version!==snap.version)throw new Error('This tour changed since you opened it. Reload and reapply your changes.');
-   const name=boundedRequired(details.name??snap?.tour.name,TOUR_NAME_MAX,'Tour name'),description=boundedOptional(details.description??snap?.tour.description,TOUR_DESCRIPTION_MAX,'Tour description'),visibility=details.visibility||snap?.tour.visibility||'private';if(!['private','public','global'].includes(visibility))throw new Error('Invalid tour visibility.');
+   const name=boundedRequired(details.name??snap?.tour.name,TOUR_NAME_MAX,'Tour name'),description=boundedOptional(details.description??snap?.tour.description,TOUR_DESCRIPTION_MAX,'Tour description'),visibility=details.visibility||snap?.tour.visibility||'public';if(!['private','public','global'].includes(visibility))throw new Error('Invalid tour visibility.');
    if(snap&&visibility==='global'&&snap.tour.creator_id!==c.userId&&!c.isGlobalAdmin)throw new Error('Only the creator or a Global administrator can make this tour Global.');
    if(snap&&visibility==='private'&&snap.tour.creator_id!==c.userId)throw new Error('You cannot make another creator’s tour Private.');
    const guildId=snap?.tour.guild_id||snap?.tour.source_guild_id||c.guildId;

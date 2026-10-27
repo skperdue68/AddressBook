@@ -71,3 +71,8 @@ Deploy by pulling the merged code and restarting `hearthbound.service`. Ensure t
 Use **Send feedback** on the welcome page or under **Help & Access** after signing in. Choose General feedback, Bug report or Idea, enter a subject (120 characters) and description (4,000 characters), then send. Your last ten submissions show their current status. Only the author and configured bot owners can read a submission; internal review notes are owner-only.
 
 Configured bot owners see **Feedback inbox** in the sidebar, with newest submissions first, status filtering and pages of 25. Expand **Review feedback** to mark New, Reviewed or Resolved and save internal notes. Server and Global administrators do not gain feedback review access. Feedback is retained in the database independently of public usage activity and is included in full database/backend transfers, not guild-level JSON exports. See [upgrade instructions](upgrade-v1.0.64.md).
+
+
+## Default visibility for new entries
+
+New houses and tours default to **Server** visibility in the web portal. Discord house registration preselects Server and offers Continue with Server; tour creation presents Server as the primary/default action while keeping an explicit confirmation. You can still choose Private or Global. Existing entries retain their saved visibility when edited. Role-restricted members who cannot submit shared houses default to Private, and a new tour started from a Private house also starts Private to keep its first stop compatible. Shared-house approval policies still apply. No database migration is needed for this change.

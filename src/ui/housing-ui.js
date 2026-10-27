@@ -227,8 +227,8 @@ export function bulkTourSelectionPayload({token,action,options,page=0,pages=1,se
 export function bulkTourCreateModal(token){ return new ModalBuilder().setCustomId(`hu:modal:bulk:create:${token}`).setTitle('Create New Tour From Results').addComponents(textField('name','Tour name',{required:true,maxLength:200}),textField('description','Description (optional)',{paragraph:true,maxLength:2000})); }
 export function bulkTourVisibilityPayload(token,{allowPublic=true,allowGlobal=true}={}){ return {embeds:[embed('Create New Tour From Results — Visibility','Choose who should be able to find and reuse the saved tour. Eligible houses are determined automatically by visibility.')],components:buttonRows([
   {customId:`hu:bulk:visibility:global:${token}`,label:'Global Tour',style:'secondary',disabled:!allowGlobal},
-  {customId:`hu:bulk:visibility:server:${token}`,label:'Server Tour',style:'success',disabled:!allowPublic},
-  {customId:`hu:bulk:visibility:personal:${token}`,label:'Private Tour',style:'primary'},
+  {customId:`hu:bulk:visibility:server:${token}`,label:'Server Tour',style:allowPublic?'primary':'secondary',disabled:!allowPublic},
+  {customId:`hu:bulk:visibility:personal:${token}`,label:'Private Tour',style:allowPublic?'secondary':'primary'},
   {customId:`hu:bulk:return:${token}`,label:'Back',style:'secondary',emoji:'↩️'}
 ])}; }
 
@@ -530,13 +530,13 @@ export function searchFiltersModal(token,filters={},includeNonPlayer=false){
     new LabelBuilder().setLabel('Additional Filters').setDescription('Choose tour status and optionally one attribute category.').setStringSelectMenuComponent(attribute)
   );
 }
-export function registrationTypePayload({backId='hu:home'}={}){
+export function registrationTypePayload({backId='hu:home',defaultVisibility='public'}={}){
   const select=new StringSelectMenuBuilder().setCustomId('hu:register:type').setPlaceholder('Choose Global, Server, or Private').setMinValues(1).setMaxValues(1).addOptions(
     {label:'Global',value:'global',description:'Share with Discord servers in the same ESO environment.'},
-    {label:'Server',value:'public',description:"Register this house in this Discord server's directory."},
-    {label:'Private',value:'private',description:'Save this house privately for your Discord account.'}
+    {label:'Server',value:'public',default:defaultVisibility==='public',description:"Register this house in this Discord server's directory."},
+    {label:'Private',value:'private',default:defaultVisibility==='private',description:'Save this house privately for your Discord account.'}
   );
-  return {embeds:[embed('➕ Register New House','Choose a **Visibility** before continuing.\n\nNo visibility is selected by default; choose **Global**, **Server**, or **Private**.')],components:[new ActionRowBuilder().addComponents(select),...buttonRows([{customId:backId,label:'Back',style:'secondary',emoji:'↩️'}])]};
+  return {embeds:[embed('➕ Register New House','Visibility defaults to **Server** when shared registration is allowed. Continue with the selected default, or choose another visibility below.')],components:[new ActionRowBuilder().addComponents(select),...buttonRows([{customId:`hu:register:continue:${defaultVisibility}`,label:`Continue with ${defaultVisibility==='public'?'Server':'Private'}`,style:'primary'},{customId:backId,label:'Back',style:'secondary',emoji:'↩️'}])]};
 }
 const visibilityName=value=>value==='global'?'Global':value==='public'||value==='server'?'Server':'Private';
 const registrationStatusName=value=>value==='pending'?'Awaiting Housing Moderator approval':'Active';
@@ -713,10 +713,10 @@ export function tourEventEditModal(event, timezone = null, returnPage = 1){
   return new ModalBuilder().setCustomId(`hu:modal:event:edit:${event.id}${Number(returnPage)>1?`:${Math.floor(Number(returnPage))}`:''}`).setTitle('Edit Tour Event').addComponents(textField('title','Event title',{value:event.title,required:true,maxLength:EVENT_TITLE_MAX}),textField('date','Date (YYYY-MM-DD)',{value:date,required:true}),textField('time','Local time (e.g. 7:30 PM)',{value:time,required:true}),textField('description','Description (optional)',{value:event.description||'',paragraph:true,maxLength:EVENT_DESCRIPTION_MAX}));
 }
 export function featuredExpiryModal(targetKind,targetId){ return new ModalBuilder().setCustomId(`hu:modal:featured:expiry:${targetKind}:${targetId}`).setTitle('Featured Expiration').addComponents(textField('days','Days until expiration (0 = never)',{required:true})); }
-export function tourVisibilityPayload(token){ return {embeds:[embed('Create Tour — Tour Visibility','Who should be able to find and start this saved tour?\n\n**Global Tour:** Discord servers using the same ESO environment; Global Tours can contain Global Houses only.\n**Server Tour:** this Discord server; it can contain Global and Server Houses.\n**Private Tour:** only you; it can contain any house visible to you in this ESO environment.')],components:buttonRows([
+export function tourVisibilityPayload(token){ return {embeds:[embed('Create Tour — Tour Visibility','Who should be able to find and start this saved tour? Server is the default choice.\n\n**Global Tour:** Discord servers using the same ESO environment; Global Tours can contain Global Houses only.\n**Server Tour:** this Discord server; it can contain Global and Server Houses.\n**Private Tour:** only you; it can contain any house visible to you in this ESO environment.')],components:buttonRows([
   {customId:`hu:tour:createvis:global:${token}`,label:'Global Tour',style:'secondary'},
-  {customId:`hu:tour:createvis:server:${token}`,label:'Server Tour',style:'success'},
-  {customId:`hu:tour:createvis:personal:${token}`,label:'Private Tour',style:'primary'},
+  {customId:`hu:tour:createvis:server:${token}`,label:'Server Tour',style:'primary'},
+  {customId:`hu:tour:createvis:personal:${token}`,label:'Private Tour',style:'secondary'},
   {customId:'hu:tours',label:'Cancel',style:'secondary'}
 ])}; }
 export function tourEditDetailsPayload(tour){
