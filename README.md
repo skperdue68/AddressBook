@@ -116,3 +116,6 @@ Bot owners can now edit official houses, classification capacity profiles and re
 
 
 Members can send ideas and bug reports from **Send feedback** on the website or under **Help & Access**. Configured bot owners review submissions in the **Feedback inbox**; members see only their own feedback and status. [Upgrade to 1.0.64 (schema14)](docs/upgrade-v1.0.64.md).
+
+
+The [October27 UESP catalog audit](docs/catalog-audit-2026-10-27.md) adds Grotto of Desires131 and Sheogorad Chateau132 and fills verified metadata gaps. [SQLite/MariaDB SQL and Linux instructions](docs/catalog-import-2026-10-27.md) also cover existing owner-added records. Unknown prices and source conflicts remain documented rather than guessed.

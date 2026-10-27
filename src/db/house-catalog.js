@@ -1,3 +1,4 @@
+import {applyReviewedCatalog} from './catalog-review.js';
 import {classificationDefaults} from '../utils/house-classification.js';
 // Generated from the UESP Player Housing tables supplied in the project conversation.
 // 2026 category limits reflect the current Staple / Classic / Notable housing rebalance.
@@ -240,11 +241,9 @@ const HOUSE_TYPE_BY_NAME = {
   "Zhan Khaj Crest": "Crown Store Exclusive"
 };
 
-export const HOUSE_CATALOG_DEFINITIONS = BASE_HOUSE_CATALOG.map(h=>({...h,classification:h.category??null,house_type:HOUSE_TYPE_BY_NAME[h.name]??null}));
+export const HOUSE_CATALOG_DEFINITIONS = applyReviewedCatalog(BASE_HOUSE_CATALOG.map(h=>({...h,classification:h.category??null,house_type:HOUSE_TYPE_BY_NAME[h.name]??null})));
 
-export const HOUSE_CATALOG = BASE_HOUSE_CATALOG.map(h => ({
-  ...classificationDefaults(h.category),
-  ...h,
-  classification: h.category ?? null,
-  house_type: HOUSE_TYPE_BY_NAME[h.name] ?? null
+export const HOUSE_CATALOG = HOUSE_CATALOG_DEFINITIONS.map(h => ({
+  ...classificationDefaults(h.classification),
+  ...h
 }));
