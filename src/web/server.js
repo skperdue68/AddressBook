@@ -14,10 +14,10 @@ const send = (response, status, body, headers = {}) => { response.writeHead(stat
 const redirect = (response, location, headers = {}) => { response.writeHead(302, { location, ...headers }); response.end(); };
 const sessionCookie = (value, secure = false, lifetimeSeconds = sessionLifetimeSeconds()) => `addressbook_session=${value}; HttpOnly; SameSite=Lax;${secure ? ' Secure;' : ''} Path=/; Max-Age=${lifetimeSeconds}`;
 const pendingPage = value => Math.min(1000000, Math.max(1, Math.floor(Number(value) || 1)));
-const readBody = request => new Promise((resolve, reject) => {
+const readBody = (request,limit=8192) => new Promise((resolve, reject) => {
   let data = '';
   request.setEncoding('utf8');
-  request.on('data', chunk => { data += chunk; if (data.length > 8192) { reject(new Error('Request body is too large.')); request.destroy(); } });
+  request.on('data', chunk => { data += chunk; if (data.length > limit) { reject(new Error('Request body is too large.')); request.destroy(); } });
   request.on('end', () => resolve(new URLSearchParams(data)));
   request.on('error', reject);
 });
@@ -86,7 +86,8 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
     if (!context) return redirect(response, `/auth/discord?returnTo=${encodeURIComponent(url.pathname)}`);
     if (context.forbidden) return send(response, 403, page('Access unavailable', '<p>You do not have Housing Moderator access to a HearthBound guild.</p>'));
     if (context.choices) {
-      return send(response, 200, guildPickerPage(context.choices,context.session,url.pathname.startsWith('/app')?'/app':'/admin'));
+      const destination=['/app/feedback','/app/feedback/review'].includes(url.pathname)?url.pathname:url.pathname.startsWith('/app')?'/app':'/admin';
+      return send(response, 200, guildPickerPage(context.choices,context.session,destination));
     }
     if (context.selectionCookie) {
       const cleanPath = url.pathname === '/admin' ? '/admin' : `${url.pathname}${url.search.replace(/([?&])guildId=[^&]*&?/, '$1').replace(/[?&]$/, '')}`;

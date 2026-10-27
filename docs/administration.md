@@ -133,3 +133,8 @@ Older records without a known ESO environment use the existing preview/confirmat
 ## Expanded web workflows
 
 See the [HearthBound web workflow guide](web-workflows.md) for personal collections, saved searches, comments, reports, deletion, self-paced tours, sharing and administration. Controls and navigation follow current HearthBound permissions; other members’ Private records remain protected.
+
+
+## Application feedback (bot owners)
+
+Use **Feedback inbox** in the web sidebar to review member bug reports, ideas and general feedback across HearthBound. Review status and internal notes persist in the configured database. Only bot owners can view or review this inbox; Server/Global administrator roles do not grant access. Members can submit under Help and see their own recent feedback/status. Details: [web workflows](web-workflows.md#feedback) and [schema14 upgrade](upgrade-v1.0.64.md).
