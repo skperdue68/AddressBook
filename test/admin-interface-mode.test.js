@@ -33,6 +33,7 @@ test('web-only mode keeps Discord-only settings while directing reports and migr
   try {
     await migrate(db);
     await db.query("INSERT INTO guild_settings(guild_id,guild_name,eso_server,staff_role_ids) VALUES('g1','Guild One','pc_na','[]')");
+    await db.query("INSERT INTO server_moderators(guild_id,discord_user_id,approved_by,request_id,request_revision) VALUES('g1','u1','fixture-admin',1,1)");
     const menu = createHousingMenu(db, { adminInterface: 'web' });
     let reply, updated;
     const interaction = {
@@ -72,6 +73,7 @@ test('web-only mode blocks stale buttons and selectors for all migrated tools',a
   try{
     await migrate(db);
     await db.query("INSERT INTO guild_settings(guild_id,guild_name,eso_server,staff_role_ids) VALUES('g1','Guild One','pc_na','[]')");
+    await db.query("INSERT INTO server_moderators(guild_id,discord_user_id,approved_by,request_id,request_revision) VALUES('g1','u1','fixture-admin',1,1)");
     const menu=createHousingMenu(db,{adminInterface:'web'});let reply,updated;
     const interaction={guildId:'g1',channelId:'c1',user:{id:'u1',username:'User'},guild:{name:'Guild'},member:{displayName:'User',roles:{cache:new Map()}},reply:async p=>{reply=p;},update:async p=>{updated=p;}};
     for(const id of ['hu:admin:health','hu:admin:audit','hu:admin:export','hu:admin:maintenance','hu:admin:reports','hu:guild:pending']){

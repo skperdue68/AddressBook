@@ -1,0 +1,6 @@
+import {escape} from './render.js';
+import {scopeLabel,linkButton} from './workspace-render.js';
+export async function houseMemberships(workspace,c,house){
+ const rows=await workspace.db.query(`SELECT DISTINCT t.id,t.name,t.visibility FROM tour_stops ts JOIN tours t ON t.id=ts.tour_id JOIN saved_houses s ON s.id=ts.saved_house_id WHERE t.eso_server=? AND s.eso_server=? AND (s.destination_id=? OR s.id=?) AND (t.visibility='global' OR (t.visibility='public' AND t.guild_id=?) OR (t.visibility='private' AND t.creator_id=?)) AND (s.scope='global' OR (s.scope='public' AND s.guild_id=?) OR (s.scope='private' AND s.owner_user_id=?)) ORDER BY lower(t.name),t.id`,[c.esoServer,c.esoServer,house.destination_id||null,house.id,c.guildId,c.userId,c.guildId,c.userId]);
+ return `<section class="panel house-memberships"><div class="section-heading"><h2>Tours featuring this house</h2><span class="count-badge">${rows.length}</span></div>${rows.length?`<ul class="tour-memberships">${rows.map(t=>`<li><div><a href="/app/tours/${Number(t.id)}">${escape(t.name)}</a><span class="pill">${scopeLabel(t.visibility)}</span></div>${linkButton('View tour',`/app/tours/${Number(t.id)}`)}</li>`).join('')}</ul>`:'<p class="muted">Not on a tour you can view yet. Add it to one of your tours below.</p>'}</section>`;
+}

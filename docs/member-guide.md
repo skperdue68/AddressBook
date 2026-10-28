@@ -4,9 +4,11 @@
 
 ## Getting started
 
-First-time users can choose **Show Me Around** for a seven-screen introduction covering search and filters, flexible house registration, copy-ready ESO links, My Address Book, tour modes, Share Passes, visibility, environment boundaries, and reporting. Each screen can open the real feature it describes after recording onboarding completion; Back from its first feature screen returns to the same introduction page, including from Search after clearing filters. Help can replay the introduction later. **Help & Learning** also includes a release-specific **What’s New** guide and shortcuts to Search, Houses, Tours, Sharing, and Administration. Acknowledging release notes does not reset or alter the original completed/skipped onboarding status.
+Use `/hearth` or `/housing` to open the main menu, or sign in to the web portal with Discord. Pick the job you want to do: register a house, build a tour, explore houses or tours, or keep favorites and visit plans in My Address Book. First use opens the normal menu; training screens have been retired.
 
+House cards expose Favorite or Unfavorite, Want to Visit or Unmark, Visited or Unmark, and Add Comment. Personal changes preserve the current house or tour stop. On the web, the visit selector saves automatically and reports success or failure. Choose Not marked to clear visit status. A favorite is independent of visit status.
 
+**Support & Access** contains separate Server and Global access requests, feedback, and the downloadable guide. It replaces Help & Learning.
 
 ## ESO environments
 
@@ -150,19 +152,19 @@ Open **Help → Moderator Access**. **Request Server Moderator Access** applies 
 
 ## Main menu
 
-The main screen is ordered Search Houses, Search Housing Tours, Register New House, Random House, Featured Housing, My Address Book, Administration (when authorized), and Help. Random House chooses from accessible registered Global, Server, and your own Private houses in the current ESO environment; it excludes Non-Player catalog homes and other users’ Private houses. Another Random House avoids the previous destination when alternatives exist. Back returns Home. It is no longer a search-results action.
+The main screen is ordered Search Houses, Search Housing Tours, Register New House, Random House, Featured Housing, My Address Book, Administration (when authorized), and Support & Access. Random House chooses from accessible registered Global, Server, and your own Private houses in the current ESO environment; it excludes Non-Player catalog homes and other users’ Private houses. Another Random House avoids the previous destination when alternatives exist. Back returns Home. It is no longer a search-results action.
 
 Featured Housing is also available directly from Home. Opening a featured house or tour retains a path to that list and Home. Administrators configure Featured Housing where they do now; its management screen has Back to Administration.
 
 ## The HearthBound web portal
 
-Use **Open Web Portal** on the Discord main menu or in Help, or visit your server's configured portal URL. Sign in with Discord and choose a server. The header shows the selected server and ESO environment. **Your Access** lists every applicable role: Member, Server Administrator with server name, Global Administrator with environment, and Bot Owner. Both `/hearth` and the `/housing` compatibility alias open the same Discord menu.
+Use **Open Web Portal** on the Discord main menu or in Support & Access, or visit your server's configured portal URL. Sign in with Discord and choose a server. The header shows the selected server and ESO environment. **Your Access** lists every applicable role: Member, Server Administrator with server name, Global Administrator with environment, and Bot Owner. Both `/hearth` and the `/housing` compatibility alias open the same Discord menu.
 
 The portal remembers sign-in for 30 days by default. Sign Out clears this browser's login; membership and permissions are still checked on protected requests. Administrators can configure `WEB_SESSION_DAYS`. A browser that clears cookies or uses private browsing may require another sign-in.
 
-Open the circular Discord avatar in the header for your name, username, selected server/environment and current access, plus shortcuts to My Address Book, Change server, Help, the Word guide and Sign out. Initials appear if an avatar is unavailable. Existing sessions can sign out and back in to refresh profile information. The menu works with Enter or Space, Tab through its links, and Escape to close and return focus to the avatar.
+Open the circular Discord avatar in the header for your name, username, selected server/environment and current access, plus shortcuts to My Address Book, Change server, Support & Access, the Word guide and Sign out. Initials appear if an avatar is unavailable. Existing sessions can sign out and back in to refresh profile information. The menu works with Enter or Space, Tab through its links, and Escape to close and return focus to the avatar.
 
-Choose **Download guide (Word)** from the account menu or the guide download button under **Help & Access**. The current HearthBound user and administrator guide is available to signed-in members as well as administrators; downloading it does not grant additional access.
+Choose **Download guide (Word)** from the account menu or the guide download button under **Support & Access**. The current HearthBound user and administrator guide is available to signed-in members as well as administrators; downloading it does not grant additional access.
 
 **Search Houses** searches accessible house names, ESO owners, nicknames, and zones. Filter by visibility, open a house for details and copy-ready jump/preview/housing links, or edit a house you manage. **Register New House** accepts a pasted ESO Housing Link or Jump Command: choose **Read link or script**, review the extracted official house and ESO owner, then choose **Register house** to save. The manual catalog picker is also available. Choose Private, Server, or Global visibility as permitted. Shared submissions follow the server's registration and approval policy. A missing official house is reported clearly; a bot owner can add a new release to the catalog. After saving an active house, use **Create tour with this house** or **Add to your tour**.
 
@@ -177,3 +179,18 @@ Start or resume a self-paced web tour, complete the current stop and advance, or
 ## Expanded web workflows
 
 See the [HearthBound web workflow guide](web-workflows.md) for personal collections, saved searches, comments, reports, deletion, self-paced tours, sharing and administration. Controls and navigation follow current HearthBound permissions; other members’ Private records remain protected.
+
+
+## My Address Book and navigation
+
+My Address Book is your intentional collection: submitted houses, favorites, places you want to visit, and visited places. Simply viewing a house does not add it. All Saved Places combines those lists without duplicate physical destinations; Submitted shows just your registrations. Clearing one mark does not delete the registered house or remove independent marks.
+
+House details show visit commands, official information and all normally visible tours containing that destination. Private or foreign-server tours you cannot normally view are omitted. Featured Housing includes descriptions, owner, location and tour stop counts. Comments show author and timestamp above their text.
+
+Numbered page controls and Jump to page are available when totals are known. Filtered lists retain their criteria when navigating. In Discord, paginated pickers offer Jump to Page when more than one page exists.
+
+## Joining a new Discord server
+
+Choose the ESO environment first. Under Support & Access, the Discord server owner or someone with Manage Server permission can confirm initial HearthBound Server administration if no administrator role or individual grant exists. HearthBound verifies current membership and authority before creating the first grant. Discord permissions only allow that initial setup; ongoing editing and moderation use HearthBound roles and approved grants.
+
+After setup, administrators can configure Server roles and review Server access requests. Global access is a separate request for an ESO environment, reviewed by bot owners or configured approvers. It is never granted merely by installing the bot or being a Discord administrator.

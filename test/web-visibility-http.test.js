@@ -7,7 +7,7 @@ import {WebAdminService} from '../src/services/web-admin-service.js';
 import {createSession} from '../src/web/session.js';
 
 const confirmation = html => {
- const form = /<form method="post"[^>]*>([\s\S]*?)Confirm change to [^<]+<\/button><\/form>/.exec(html);
+ const form = [...html.matchAll(/<form method="post"[^>]*>([\s\S]*?)<\/form>/g)].find(match=>/Confirm change to [^<]+<\/button>/.test(match[1]));
  assert.ok(form, 'visibility preview supplies a confirmation form');
  return new URLSearchParams([...form[1].matchAll(/<input[^>]*name="([^"]+)"[^>]*value="([^"]*)"[^>]*>/g)].map(([,name,value])=>[name,value]));
 };
@@ -38,6 +38,7 @@ test('visibility HTTP preview and emitted confirmation work for creators and adm
    assert.equal(form.get('contextGuildId'),'g');assert.equal(form.get('contextEsoServer'),'pc_na');assert.ok(form.get('csrf'));
    const response=await fetch(base+path,{method:'POST',headers:{cookie:sessionCookie},body:form,redirect:'manual'});
    assert.equal(response.status,302,await response.text());
+   assert.equal(response.headers.get('location'),`/app/houses/${house.id}?saved=1`);
    const changed=await svc.saved.get(house.id);assert.equal(changed.scope,scenario.target);assert.equal(changed.status,scenario.status);
    if(scenario.target==='private')assert.equal(changed.owner_user_id,creator.userId);
   }

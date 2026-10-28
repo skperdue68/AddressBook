@@ -36,9 +36,9 @@ An explicit Private Tour Pass also opens an independent web route. Its signed na
 
 Share a house or tour by creating a revocable web link or selecting a Discord channel, optionally selecting an accessible existing thread, and confirming the destination. Nothing is posted before confirmation. Both your and the bot's channel/thread permissions are checked again before sending. Manage your own passes under My Address Book to revoke them or issue a replacement link. Replacement invalidates the old token, including old Discord cards.
 
-Help & Access includes Server and Global moderator requests. Current HearthBound Server administrators review Server requests; configured bot owners and existing designated approvers review Global requests. Requests do not grant access automatically. Administrative pages include registration roles/policy, channel and timezone settings, featured ordering and expiration, server environment changes and legacy recovery previews. Personal legacy recovery applies only to the signed-in member's records. Environment/recovery changes require explicit impact confirmation. Configured owners manage newly released official houses.
+Support & Access includes Server and Global moderator requests. Current HearthBound Server administrators review Server requests; configured bot owners and existing designated approvers review Global requests. Requests do not grant access automatically. Administrative pages include registration roles/policy, channel and timezone settings, featured ordering and expiration, server environment changes and legacy recovery previews. Personal legacy recovery applies only to the signed-in member's records. Environment/recovery changes require explicit impact confirmation. Configured owners manage newly released official houses.
 
-Leader-controlled Discord session controls remain in Discord. Scheduled events remain retired. Download the current Word guide from Help or the avatar menu.
+Leader-controlled Discord session controls remain in Discord. Scheduled events remain retired. Download the current Word guide from Support & Access or the avatar menu.
 
 ## Deployment
 
@@ -68,7 +68,7 @@ Deploy by pulling the merged code and restarting `hearthbound.service`. Ensure t
 
 ## Feedback
 
-Use **Send feedback** on the welcome page or under **Help & Access** after signing in. Choose General feedback, Bug report or Idea, enter a subject (120 characters) and description (4,000 characters), then send. Your last ten submissions show their current status. Only the author and configured bot owners can read a submission; internal review notes are owner-only.
+Use **Send feedback** on the welcome page or under **Support & Access** after signing in. Choose General feedback, Bug report or Idea, enter a subject (120 characters) and description (4,000 characters), then send. Your last ten submissions show their current status. Only the author and configured bot owners can read a submission; internal review notes are owner-only.
 
 Configured bot owners see **Feedback inbox** in the sidebar, with newest submissions first, status filtering and pages of 25. Expand **Review feedback** to mark New, Reviewed or Resolved and save internal notes. Server and Global administrators do not gain feedback review access. Feedback is retained in the database independently of public usage activity and is included in full database/backend transfers, not guild-level JSON exports. See [upgrade instructions](upgrade-v1.0.64.md).
 
@@ -125,3 +125,12 @@ Opening a house from normal, advanced, saved or personal search carries its filt
 House editing and administrative actions are under **Manage house**, visible only when an applicable action is authorized. Personal favorites, visit status and sharing are grouped under **Save & share**. Advanced Search shows common fields first; **More filters & multiple values** reveals the rest and automatically opens when one is active. Tour editing shows Find houses → Add stops → Arrange route → Save tour.
 
 Discord house cards now put **Add to a Tour** first for active accessible houses. You can add another member’s shared house to an eligible tour you can edit; this does not let you edit their house. Editable tour details have a direct **Add House** shortcut. Tour returns are named **Back to Tours**, **Back to Tour** or **Main Menu**. Private ownership, visibility compatibility, moderation policies and existing permission checks continue to apply.
+
+
+## Professional interface and direct actions
+
+Version 1.0.69 groups the home page around sharing a house, building a tour, exploring, and saving favorites. Controls use shared alignment, spacing, focus styles, and text labels with semantic colors. Delete and revoke actions are red. Visit selection saves automatically; Favorite toggles to Unfavorite, and Not marked clears visit state. Feedback review status also saves in place, independently of internal notes. Both report saving, success and failure without moving away.
+
+House visit commands and official details start expanded. Favorite and visit controls appear near the top. Visible tour memberships include accessible registrations of the same physical ESO destination. Featured cards show descriptions and useful metadata. Comments show author and timestamp first, text directly below, then space before the next entry.
+
+Statistics numbers and ranking entries open exact, correctly scoped lists. Recent Activity’s People using HearthBound counts distinct Discord accounts recorded within 90 days from Discord or the web, not online presence; server, action and person filters combine. Numbered page controls and direct jumps preserve list filters. Support & Access retains setup, Server/Global requests, feedback and guide downloads; learning screens are retired.

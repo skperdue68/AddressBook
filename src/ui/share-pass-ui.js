@@ -1,6 +1,6 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } from 'discord.js';
 import {portalPublicUrl} from '../web/portal-url.js';
-import { cleanDestinationEmbed, buttonRows } from './housing-ui.js';
+import { cleanDestinationEmbed, buttonRows, houseStateSpecs } from './housing-ui.js';
 import { destinationLabel } from '../utils/labels.js';
 import { discordDescription, discordTitle } from '../utils/text-limits.js';
 
@@ -15,7 +15,7 @@ export function sharedPrivateHousePayload(house,{token,passId,canCopy=false,back
     {customId:`hu:pass:house:comments:${componentToken}`,label:'Comments',style:'primary'},
     {customId:`hu:pass:house:details:${showDetails?'hide':'show'}:${componentToken}`,label:showDetails?'Hide Details':'More Details',style:'primary'},
     {customId:`hu:pass:house:report:${componentToken}`,label:'Report a Problem',style:'secondary'},
-    {customId:`hu:personal:open:pass:${componentToken}`,label:'Personal Actions',style:'secondary',emoji:'⭐'}
+    ...houseStateSpecs(house,'pass')
   );
   if(backToTourId!=null)actions.push({customId:`hu:pass:tour:back:${backToTourId}`,label:'Back to Tour',style:'secondary'});
   return {embeds:[embed],components:buttonRows(actions)};

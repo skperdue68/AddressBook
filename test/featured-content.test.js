@@ -33,6 +33,7 @@ test('Featured reorder keeps the moved entry selected for further changes', asyn
   const {db,featured}=await fixture();
   try{
     await db.query("INSERT INTO guild_settings(guild_id,eso_server) VALUES('g1','pc_na')");
+    await db.query("INSERT INTO server_moderators(guild_id,discord_user_id,approved_by,request_id,request_revision) VALUES('g1','mod','owner',0,1)");
     await featured.set({guildId:'g1',esoServer:'pc_na',targetKind:'house',targetId:1,actorId:'mod',isModerator:true});
     await featured.set({guildId:'g1',esoServer:'pc_na',targetKind:'house',targetId:2,actorId:'mod',isModerator:true});
     await featured.set({guildId:'g1',esoServer:'pc_na',targetKind:'tour',targetId:1,actorId:'mod',isModerator:true});
@@ -55,6 +56,7 @@ test('changing a Featured expiration retains its position', async () => {
     assert.deepEqual(rows.map(row=>[Number(row.target_id),Number(row.position)]),[[1,1],[2,2]]);
     assert.ok(rows[0].expires_at);
     await db.query("INSERT INTO guild_settings(guild_id,eso_server) VALUES('g1','pc_na')");
+    await db.query("INSERT INTO server_moderators(guild_id,discord_user_id,approved_by,request_id,request_revision) VALUES('g1','mod','owner',0,1)");
     let rendered;
     await createHandlers(db).modal({customId:'hu:modal:featured:expiry:house:1',guildId:'g1',channelId:'c1',guild:{name:'Guild'},user:{id:'mod',username:'Moderator'},member:{displayName:'Moderator',roles:{cache:new Map()}},fields:{getTextInputValue:()=> '0'},isFromMessage:()=>true,update:payload=>{rendered=payload;},reply:payload=>{rendered=payload;}});
     const controls=rendered.components.flatMap(row=>row.toJSON().components);

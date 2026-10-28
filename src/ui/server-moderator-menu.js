@@ -11,7 +11,8 @@ export async function handleServerModeratorAction(i,{serverModerators,guilds,act
   let member=i.member;
   if(i.guild?.members?.fetch){member=await i.guild.members.fetch({user:i.user.id,force:true});if(!member)throw new Error('Current server membership is required.');}
   const roleIds=[...(member?.roles?.cache?.keys?.()||[])],reviewer={userId:i.user.id,roleIds};
-  const access=await serverModerators.access({guildId:i.guildId,...reviewer});
+  if(id==='hu:servermod:claim')await guilds.claimFirstAdmin(i);
+  const access=await guilds.ensureModeratorAccess({...i,member});
   if(id==='hu:servermod:request')return i.showModal(serverRequestModal());
   if(id==='hu:modal:servermod:request'){
    if(access.isModerator)throw new Error('You already have Server Moderator access.');

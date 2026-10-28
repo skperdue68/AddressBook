@@ -14,7 +14,7 @@ export function houseMetadata(h){
   ['coins','Purchase & availability',[['Purchase type','purchase_type'],['Gold price','gold_price'],['Crowns · unfurnished','crown_price_unfurnished'],['Crowns · furnished','crown_price_furnished'],['Requirements','requirements'],['Availability','availability'],['Last verified','last_verified']]]
  ];
  const cards=groups.map(([symbol,title,fields])=>{const rows=fields.filter(([,key])=>present(h[key]));return rows.length?`<section class="house-detail-group"><h3>${icon(symbol)}${escape(title)}</h3><dl>${rows.map(([label,key])=>`<div class="house-detail-field"><dt>${escape(label)}</dt><dd>${number(h[key])}</dd></div>`).join('')}</dl></section>`:'';}).join('');
- return `<details class="panel house-metadata"><summary>${icon('home')}<span>Official house details<small>Location, capacity and purchase information</small></span></summary><div class="house-detail-grid">${cards||'<p>No additional official details are available yet.</p>'}</div></details>`;
+ return `<details class="panel house-metadata" open><summary>${icon('home')}<span>Official house details<small>Location, capacity and purchase information</small></span></summary><div class="house-detail-grid">${cards||'<p>No additional official details are available yet.</p>'}</div></details>`;
 }
 
 export function houseTourSection(h,tours,csrf,{returnTo}={}){

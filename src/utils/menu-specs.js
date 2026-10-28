@@ -9,7 +9,7 @@ export function homeButtonSpecs(isAdmin=false){
     {...b('hu:featured','Featured Housing','primary'),emoji:'⭐'},
     {...b('hu:my','My Address Book','primary'),emoji:'📖'},
     ...(isAdmin?[{...b('hu:admin','Administration','secondary'),emoji:'⚙️'}]:[]),
-    {...b('hu:help','Help','secondary'),emoji:'❓'}
+    {...b('hu:help','Support & Access','secondary'),emoji:'❓'}
   ];
 }
 export function toursButtonSpecs(){ return [{...b('hu:tours:start','Start a Tour','success'),emoji:'▶️'},b('hu:tours:browse','Browse Tours','primary'),{...b('hu:tours:create','Create Tour','secondary'),emoji:'➕'},b('hu:tours:featured','Featured Housing','primary'),{...b('hu:home','Main Menu','secondary'),emoji:'↩️'}]; }

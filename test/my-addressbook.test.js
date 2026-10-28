@@ -11,7 +11,7 @@ const labels=payload=>payload.components.flatMap(row=>row.components).map(compon
 
 test('home includes My Address Book without replacing the established entry points',()=>{
   assert.deepEqual(labels(homePayload()),[
-    'Search Houses','Search Housing Tours','Register New House','Random House','Featured Housing','My Address Book','Help'
+    'Search Houses','Search Housing Tours','Register New House','Random House','Featured Housing','My Address Book','Support & Access'
   ]);
 });
 
@@ -26,8 +26,8 @@ test('My Address Book renders personal counts and dashboard actions',()=>{
     ['✅ Visited','**0**'],['🔎 Saved Searches','**0**']
   ]);
   assert.deepEqual(labels(payload),[
-    'My Houses','My Tours','Pending','Recently Viewed',
-    'Favorites','Want to Visit','Visited','Tour Progress','Saved Searches','Back','Help & Learning'
+    'All Saved Places','My Houses','My Tours','Pending','Recently Viewed',
+    'Favorites','Want to Visit','Visited','Tour Progress','Saved Searches','Back','Support & Access'
   ]);
 });
 

@@ -37,6 +37,13 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
     return current?(current.member||{id:String(userId),displayName:String(userId)}):null;
   };
 
+  const claimFirstAdmin=async({userId,guildId})=>{
+    if(!workspace||!resolveGuildMembership)throw new Error('Live Discord verification is unavailable. Try again later.');
+    const current=await resolveGuildMembership({userId,guildId,strict:true});
+    if(!current)throw new Error('You must be a current member of this Discord server.');
+    return workspace.policy.server.claimFirstAdmin({guildId,userId,setupAuthority:current.setupAuthority===true});
+  };
+
   async function sessionContext(request, url) {
     const session = readSession(cookieValue(request, 'addressbook_session'), now(), cfg.sessionSecret);
     if (!session) return null;
@@ -49,7 +56,7 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
       const esoServer = settings?.eso_server || current.esoServer || guild.esoServer || null;
       const authorization = await service.authorizeGuild({ userId: session.id, guildId: guild.id, requestedGuildId: guild.id, esoServer, requestedEsoServer: esoServer, memberRoleIds: current.roleIds || [] });
       let memberContext=null;
-      if(workspace&&esoServer){try{memberContext=await workspace.authorizeContext({userId:session.id,guildId:guild.id,guildName:current.name||guild.name,esoServer,memberRoleIds:current.roleIds||[]});}catch{/* unavailable context */}}
+      if(workspace&&esoServer){try{memberContext=await workspace.authorizeContext({userId:session.id,guildId:guild.id,guildName:current.name||guild.name,esoServer,memberRoleIds:current.roleIds||[],setupAuthority:current.setupAuthority===true});}catch{/* unavailable context */}}
       if(workspace&&!esoServer)memberContext={userId:String(session.id),guildId:String(guild.id),guildName:current.name||guild.name,esoServer:null,memberRoleIds:current.roleIds||[],roles:[{kind:'member',label:'Member'}],setupRequired:true};
       const memberRoute=url.pathname==='/'||url.pathname==='/app'||url.pathname.startsWith('/app/');
       if (memberRoute?!!memberContext:authorization.allowed) choices.push({ guild: { ...guild, ...current }, settings, esoServer, memberContext });
@@ -64,7 +71,7 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
 
   async function route(request, response) {
     const url = new URL(request.url, 'http://localhost');
-    if(['/assets/workspace.css','/assets/public-pages.css','/assets/hearthbound-preview.png','/assets/hearthbound-banner.webp','/assets/hearthbound-landscape.webp','/assets/tour-editor.js','/assets/hearthbound-logo.png','/assets/account-menu.css','/assets/account-menu.js','/assets/web-actions.js','/assets/catalog-editor.js'].includes(url.pathname)){
+    if(['/assets/workspace.css','/assets/public-pages.css','/assets/hearthbound-preview.png','/assets/hearthbound-banner.webp','/assets/hearthbound-landscape.webp','/assets/tour-editor.js','/assets/hearthbound-logo.png','/assets/account-menu.css','/assets/account-menu.js','/assets/web-actions.js','/assets/interface.js','/assets/catalog-editor.js'].includes(url.pathname)){
       if(request.method!=='GET')return send(response,405,'Method not allowed',{allow:'GET'});
       const asset=url.pathname.split('/').pop();return send(response,200,await readFile(new URL(`./assets/${asset}`,import.meta.url)),{'content-type':asset.endsWith('.png')?'image/png':asset.endsWith('.webp')?'image/webp':asset.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8','x-content-type-options':'nosniff'});
     }
@@ -123,7 +130,7 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
       if(request.method!=='GET')return send(response,405,'Method not allowed',{allow:'GET, POST'});
       return send(response,200,renderWorkspace({title:'Choose this server’s ESO environment',user:session,context:context.memberContext,body:`<p>This is the same initial setup offered in Discord. Choose carefully; later changes require administration and an impact confirmation.</p><form action="/app/setup" method="post">${csrfField(session.csrf)}<label>ESO environment<select name="esoServer">${ESO_SERVERS.map(s=>`<option value="${s.value}">${s.label}</option>`).join('')}</select></label><button class="primary">Complete initial setup</button></form>`}));
     }
-    if(workspace&&(url.pathname==='/'||url.pathname==='/app'||url.pathname.startsWith('/app/'))){return handleWorkspaceRoute({request,response,url,session,context:context.memberContext,workspace,serverContexts:context.availableContexts||[],memberLookup,readBody,send,redirect});}
+    if(workspace&&(url.pathname==='/'||url.pathname==='/app'||url.pathname.startsWith('/app/'))){return handleWorkspaceRoute({request,response,url,session,context:context.memberContext,workspace,serverContexts:context.availableContexts||[],memberLookup,claimFirstAdmin,readBody,send,redirect});}
     const common = { guildId: guild.id, esoServer };
     const reportMutation = /^\/admin\/reports\/(\d+)\/(review|resolve|dismiss)$/.exec(url.pathname);
     if (reportMutation) {

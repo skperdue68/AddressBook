@@ -19,9 +19,10 @@ export class UsageActivityService{
   return true;
  }
  async tryRecord(event){try{return await this.recordUsage(event);}catch{this.logger.error('HearthBound usage recording failed; original action was preserved.');return false;}}
- async listActivity(c,{server='',kind='',cursor=null,limit=25}={}){
+ async listActivity(c,{server='',kind='',member='',cursor=null,limit=25}={}){
   const n=Math.max(1,Math.min(50,Math.floor(Number(limit)||25))),clauses=['occurred_at>=?'],args=[new Date(this.clock()-retention).toISOString()];
   if(server){clauses.push('origin_guild_id=?');args.push(String(server).slice(0,32));}if(Object.hasOwn(activityLabels,kind)){clauses.push('kind=?');args.push(kind);}
+  if(member){clauses.push('actor_id=?');args.push(String(member).slice(0,32));}
   if(cursor){try{if(String(cursor).length>256)throw new Error();const value=JSON.parse(Buffer.from(cursor,'base64url').toString());if(!/^\d{4}-\d{2}-\d{2}T/.test(value.time)||!Number.isSafeInteger(value.id)||value.id<=0)throw new Error();clauses.push('(occurred_at<? OR (occurred_at=? AND id<?))');args.push(value.time,value.time,value.id);}catch{throw new Error('Invalid activity page.');}}
   const rows=await this.db.query(`SELECT * FROM usage_events WHERE ${clauses.join(' AND ')} ORDER BY occurred_at DESC,id DESC LIMIT ?`,[...args,n+1]);const items=[];
   for(const row of rows.slice(0,n)){
@@ -32,6 +33,13 @@ export class UsageActivityService{
    items.push({id:Number(row.id),actorName:row.actor_name,kind:row.kind,action:activityLabels[row.kind],serverName:row.origin_guild_id?(active?row.origin_guild_name:'Former server'):'Personal session',source:row.source,occurredAt:row.occurred_at,esoServer:row.eso_server,targetTitle,targetUrl});
   }
   const last=rows.slice(0,n).at(-1);return {items,nextCursor:rows.length>n?Buffer.from(JSON.stringify({time:last.occurred_at,id:Number(last.id)})).toString('base64url'):null};
+ }
+ async activityMembers({server='',kind='',limit=1000}={}){
+  const n=Math.max(1,Math.min(1000,Math.floor(Number(limit)||1000))),clauses=['occurred_at>=?'],args=[new Date(this.clock()-retention).toISOString()];
+  if(server){clauses.push('origin_guild_id=?');args.push(String(server).slice(0,32));}
+  if(Object.hasOwn(activityLabels,kind)){clauses.push('kind=?');args.push(kind);}
+  const rows=await this.db.query(`SELECT actor_id id,actor_name name FROM usage_events WHERE id IN (SELECT max(id) FROM usage_events WHERE ${clauses.join(' AND ')} GROUP BY actor_id) ORDER BY lower(actor_name),actor_id LIMIT ?`,[...args,n+1]);
+  return {members:rows.slice(0,n),hasMore:rows.length>n};
  }
  async activityServers(){const rows=await this.db.query('SELECT origin_guild_id id,MAX(origin_guild_name) name FROM usage_events WHERE origin_guild_id IS NOT NULL AND occurred_at>=? GROUP BY origin_guild_id ORDER BY name LIMIT 1000',[new Date(this.clock()-retention).toISOString()]);const out=[];for(const row of rows){const active=this.isGuildActive?await this.isGuildActive(row.id):!!await one(this.db,'SELECT guild_id FROM guild_settings WHERE guild_id=? AND eso_server IS NOT NULL',[row.id]);if(active)out.push(row);}return out;}
  async usageTotals(){const since=new Date(this.clock()-retention).toISOString(),row=await one(this.db,'SELECT count(*) actions,count(DISTINCT actor_id) members,count(DISTINCT origin_guild_id) servers,min(occurred_at) since FROM usage_events WHERE occurred_at>=?',[since]);return {actions:Number(row.actions),members:Number(row.members),servers:Number(row.servers),since:row.since,retentionDays:90};}

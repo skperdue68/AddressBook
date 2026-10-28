@@ -41,6 +41,7 @@ test('administration saves all selected roles and any configured role grants its
   try {
     await migrate(db);
     await db.query("INSERT INTO guild_settings(guild_id,eso_server) VALUES('guild-1','pc_na')");
+    await db.query("INSERT INTO server_moderators(guild_id,discord_user_id,approved_by,request_id,request_revision) VALUES('guild-1','user-1','fixture-admin',1,1)");
     const menu = createHousingMenu(db);
     const updates = [];
     const interaction = {

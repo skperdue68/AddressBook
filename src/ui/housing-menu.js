@@ -42,7 +42,7 @@ import { normalizeAccount, parseTags as parseTagInput } from '../utils/eso.js';
 import { esoServerLabel } from '../utils/eso-server.js';
 import { tourEmbed, tourButtons } from '../utils/render.js';
 import {
-  homePayload as renderHomePayload, myAddressBookPayload, myPendingPayload, onboardingPayload, registrationTypePayload, toursPayload, helpPayload, helpLearningPayload, whatsNewPayload, learningTopicPayload,
+  pickerPageModal, houseStateSpecs, homePayload as renderHomePayload, myAddressBookPayload, myPendingPayload, registrationTypePayload, toursPayload, helpPayload,
   pickerPayload, destinationMenuPayload, officialHousePayload, buttonRows,
   advancedSearchPayload, advancedAttributePayload, advancedManagePayload, advancedRemovePayload, advancedTextModal, searchFiltersModal, houseEditModal, registerHouseFormModal, confirmPayload,
   registrationNotFoundPayload, destinationInputModal, registrationDestinationReviewPayload, registrationMetadataModal, registrationFinalReviewPayload,
@@ -111,6 +111,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
   const bulkTourStates=new Map();
   const personalActionStates=new Map();
   const savedSearchStates=new Map();
+  const quickCommentDrafts=new Map();
   const activeAdvancedByUser=new Map();
   const surpriseStates=new Map();
 
@@ -197,7 +198,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
   const personalRow=r=>({...r,scope:'personal',display_name:r.nickname||r.house_name,description:r.notes});
   const guildRow=r=>({...r,scope:'server'});
   const withCount=async r=>({...r,comment_count:await comments.count(r.scope,r.id,r.eso_server)});
-  const withHouseCardContext=async(i,r)=>{ await myAddressBook.recordView(i.user.id,r.id); return {...await withCount(r),associated_tours:await tours.visibleForHouse(r.id,{creatorId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)})}; };
+  const withHouseCardContext=async(i,r)=>{ await myAddressBook.recordView(i.user.id,r.id); const stateToken=token();personalActionStates.set(stateToken,{userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId),sourceKind:'saved',sourceId:r.id,target:houseTarget(r),created:Date.now()}); return {...await withCount(r),personal_token:stateToken,personal_state:await personalStates.get(i.user.id,houseTarget(r)),associated_tours:await tours.visibleForHouse(r.id,{creatorId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)})}; };
   const dashboard=async(i,{backId='hu:home'}={})=>{await recordUsage(i,'used_personal');const esoServer=guilds.getEsoServer(i.guildId);return myAddressBookPayload({...await myAddressBook.summary(i.user.id,i.guildId,esoServer),continueItems:await myAddressBook.continueItems(i.user.id,i.guildId,esoServer),legacy:await myAddressBook.legacyUnassigned(i.user.id),esoServer,backId});};
   const progressView=async(i,item)=>{
     if(!item)return null;
@@ -211,6 +212,19 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     try{const access=await loadSavedReference(i,stop.source_id);return !!access?.record&&canEditSaved(i,legacySavedRow(access.record));}
     catch{return false;}
   }
+  async function enrichedFeaturedPayload(i,options){
+    const items=[];
+    for(const item of options.items||[]){try{if(item.target_kind==='house'){const access=await loadSavedReference(i,item.target_id);if(!access.canView||access.record?.status!=='active'||!['public','global'].includes(access.record.scope))continue;const house=await saved.getVisible(item.target_id,{userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)});if(!house)continue;items.push({...item,description:house.description,zone:house.zone,subzone:house.subzone,style:house.style});}else items.push(item);}catch{}}
+    return featuredPayload({...options,items});
+  }
+  async function personalStopActions(i,payload,stop,routeContext={}){
+    if(!stop?.source_id||payload.components.length>=5)return payload;
+    const access=await loadSavedReference(i,stop.source_id);
+    if(!access.canView||access.record?.status!=='active')return payload;
+    const row=legacySavedRow(access.record),stateToken=token();
+    personalActionStates.set(stateToken,{userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId),sourceKind:'saved',sourceId:row.id,target:houseTarget(row),...routeContext,created:Date.now()});
+    return {...payload,components:[...payload.components,...buttonRows(houseStateSpecs({...row,personal_token:stateToken,personal_state:await personalStates.get(i.user.id,houseTarget(row))}))]};
+  }
   async function progressRunCard(i,item,{showDetails=false,content=null,overrideStopId=null,listPage=1}={}){
     const view=await progressView(i,item);
     if(view&&overrideStopId!=null)view.current_stop_id=Number(overrideStopId);
@@ -221,7 +235,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     const index=stops.findIndex(stop=>Number(stop.id)===Number(view.current_stop_id));
     if(!tour||index<0)return {...progressRunPayload({item:view,listPage}),...(content?{content}:{})};
     const stop=stops[index],commentCount=await tourStopCommentCount(stop,i.user.id),canEdit=await canEditTourStop(i,stop);
-    return {...progressRunPayload({item:view,tour,stops,currentPosition:index+1,commentCount,showDetails,canEdit,listPage}),...(content?{content}:{})};
+    return personalStopActions(i,{...progressRunPayload({item:view,tour,stops,currentPosition:index+1,commentCount,showDetails,canEdit,listPage}),...(content?{content}:{})},stop,{progressId:view.id,stopId:stop.id});
   }
   const onboardingNames=i=>({globalName:i.user.globalName||i.user.username,displayName:i.member?.displayName});
 
@@ -263,7 +277,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
   function createPicker(i,{kind,rows,title='Choose an option',description='Select the item you want to use.',extra={},backId='hu:home',multiple=false}){
     const administrative=['tour-manage','tour-add-house','tour-stop-edit','tour-stop-reorder','tour-stop-remove'].includes(kind);
     const tourAdminContext=administrative?{guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId),globalAdmin:isGlobalTourAdmin(i),serverAdmin:isModerator(i)}:null;
-    const id=token(); states.set(id,{userId:i.user.id,kind,rows,extra,backId,page:0,multiple,tourAdminContext,created:Date.now()}); return renderPicker(id);
+    const id=token(); states.set(id,{userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId),kind,rows,extra,backId,page:0,multiple,tourAdminContext,created:Date.now()}); return renderPicker(id);
   }
   const navigableHousePicker=s=>s.kind==='visit'||s.kind.startsWith('personal-');
   function navigationFromBackId(backId){
@@ -304,7 +318,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     const navigation={stateId,index:safeIndex,total:s.rows.length},backId=`hu:results:back:${stateId}:${safeIndex}`;
     s.page=Math.floor(safeIndex/PAGE);
     if(navigableHousePicker(s)){
-      if(raw.scope==='official')return i.update(officialHousePayload(await houses.get(raw.house_id),backId,showDetails,navigation));
+      if(raw.scope==='official')return i.update(officialHousePayload(await withOfficialState(i,await houses.get(raw.house_id)),backId,showDetails,navigation));
       const access=await accessContexts.forHouse({userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId),savedHouseId:raw.id});
       if(!access.canView)return i.reply({content:'That saved house is no longer available in this list. Browse or search again.',flags:MessageFlags.Ephemeral});
       await recordUsage(i,'viewed_house',{kind:'house',id:access.record.id});
@@ -313,6 +327,13 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     }
     if(s.kind==='bookmark'){ const r=personalRow(raw); return i.update(destinationMenuPayload(await withHouseCardContext(i,r),{canEdit:true,backId,showDetails,navigation})); }
     const r=guildRow(raw); return i.update(destinationMenuPayload(await withHouseCardContext(i,r),{canEdit:canManageReg(i,r),backId,showDetails,navigation}));
+  }
+  function pickerPageContext(i,stateId){
+    const state=states.get(stateId);
+    if(!state||Date.now()-state.created>30*60*1000)return {error:'That menu expired. Run the search or browse again.'};
+    if(state.userId!==i.user.id)return {error:'That menu belongs to another user.'};
+    if(state.guildId!==i.guildId||state.esoServer!==guilds.getEsoServer(i.guildId))return {error:'That menu belongs to another server or ESO environment. Open it again.'};
+    return {state,pages:Math.max(1,Math.ceil(state.rows.length/PAGE))};
   }
   function renderPicker(id){
     const s=states.get(id); if(!s)return homePayload();
@@ -333,11 +354,27 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     const description=s.extra.description?`${s.extra.description}\n\n${pageText}`:pageText;
     return pickerPayload({title:s.extra.title||'Choose an option',description,customId:`hu:picker:${id}`,options,page:s.page,pages,backId:s.backId,multiple:s.multiple,actions,paginationArrows:s.kind==='visit'});
   }
+  async function withPassState(i,house,passToken){
+    const stateToken=token(),row={...house,scope:house.scope==='private'?'personal':house.scope};
+    personalActionStates.set(stateToken,{userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId),sourceKind:'pass',sourceId:passToken,target:houseTarget(row),created:Date.now()});
+    return {...row,personal_token:stateToken,personal_state:await personalStates.get(i.user.id,houseTarget(row))};
+  }
+  async function withOfficialState(i,house){
+    const stateToken=token();personalActionStates.set(stateToken,{userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId),sourceKind:'official',sourceId:house.house_id,created:Date.now()});
+    return {...house,personal_token:stateToken,personal_state:await personalStates.get(i.user.id,houseTarget({...house,scope:'official'}))};
+  }
   async function personalActionSource(i,context){
+    if(context.progressId){const item=await one(db,'SELECT * FROM tour_progress WHERE id=? AND discord_user_id=?',[context.progressId,i.user.id]);if(!item||item.status!=='active'||Number(item.current_stop_id)!==Number(context.stopId)||!await tourById(i,item.tour_id))throw new Error('That tour stop changed or is no longer available.');}
+    if(context.sessionId&&context.sourceKind==='saved'){const session=await sessions.get(context.sessionId);if(!session||session.guild_id!==i.guildId||session.channel_id!==i.channelId||String(session.started_by)!==String(i.user.id))throw new Error('That tour has been closed.');const stops=await tours.getStops(session.tour_id);if(Number(stops[Number(session.current_position)-1]?.id)!==Number(context.stopId)||!await tourById(i,session.tour_id))throw new Error('That tour stop changed or is no longer available.');}
     if(context.sourceKind==='saved'){
       const access=await loadSavedReference(i,context.sourceId);
       if(!access.canView||access.record?.status!=='active')throw new Error('That house is no longer available.');
       return {row:legacySavedRow(access.record),access};
+    }
+    if(context.sourceKind==='tour'){
+      const {stop,pass}=await passTourStopContext(i,context.sessionId,context.stopId);
+      if(pass&&(pass.status!=='active'||pass.closed_at))throw new Error('This tour Share Pass was revoked.');
+      const record=await saved.get(stop.source_id);if(!record||record.status!=='active')throw new Error('That house is no longer available.');return {row:legacySavedRow(record)};
     }
     if(context.sourceKind==='official'){
       const house=await houses.get(context.sourceId);if(!house)throw new Error('That house is no longer available.');
@@ -349,8 +386,22 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     }
     throw new Error('That house is no longer available.');
   }
+  function quickCommentContext(i,stateToken){
+    const context=quickCommentDrafts.get(stateToken);
+    if(!context||context.used||Date.now()-context.created>30*60*1000)throw new Error('That comment form expired. Open Add Comment again.');
+    if(context.userId!==i.user.id)throw new Error('That comment form belongs to another user.');
+    if(context.guildId!==i.guildId||context.esoServer!==guilds.getEsoServer(i.guildId))throw new Error('That comment form belongs to another server or ESO environment.');
+    return context;
+  }
+  async function openQuickComment(i,context,{shared=false}={}){
+    const source=await personalActionSource(i,context),target=houseTarget(source.row);
+    if(context.target&&houseTargetKey(context.target)!==houseTargetKey(target))throw new Error('That house destination changed. Open the house again.');
+    const stateToken=token(),snapshot={embeds:(i.message?.embeds||[]).map(value=>value.toJSON?.()||value),components:(i.message?.components||[]).map(value=>value.toJSON?.()||value)};
+    quickCommentDrafts.set(stateToken,{...context,userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId),target,created:Date.now(),snapshot,shared});
+    return i.showModal(commentModal('global',source.row.id,'hu:home',destinationLabel(source.row)).setCustomId(`hu:modal:quickcomment:${stateToken}`));
+  }
   async function openPersonalActions(i,sourceKind,sourceId){
-    const context={userId:i.user.id,sourceKind,sourceId,created:Date.now()},source=await personalActionSource(i,context),target=houseTarget(source.row),stateToken=token();
+    const context={userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId),sourceKind,sourceId,created:Date.now()},source=await personalActionSource(i,context),target=houseTarget(source.row),stateToken=token();
     context.target=target;personalActionStates.set(stateToken,context);
     return i.update(personalActionsPayload({token:stateToken,target,state:await personalStates.get(i.user.id,target)}));
   }
@@ -373,7 +424,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       const row=discovery.choose(found.context.rows,{previousTargetKey:found.context.previousTargetKey});
       if(row.scope==='official'){
         const house=await houses.get(row.house_id);
-        if(house){found.context.previousTargetKey=houseTargetKey(houseTarget(row));return i.update(officialHousePayload(house,backId,false,null,stateToken));}
+        if(house){found.context.previousTargetKey=houseTargetKey(houseTarget(row));return i.update(officialHousePayload(await withOfficialState(i,house),backId,false,null,stateToken));}
       }else{
         const access=await accessContexts.forHouse({userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId),savedHouseId:row.id});
         if(access.canView){
@@ -392,7 +443,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
   function modalResponse(i,payload){ if(typeof i.isFromMessage==='function'&&i.isFromMessage())return i.update(payload); return i.reply({...payload,flags:MessageFlags.Ephemeral}); }
   function respond(i,payload,mode='update'){ if(mode==='reply')return i.reply({...payload,flags:MessageFlags.Ephemeral}); if(mode==='modal')return modalResponse(i,payload); return i.update(payload); }
   async function resolveComments(i,scope,id,limit=25){
-    return Promise.all((await comments.list(scope,id,limit,guilds.getEsoServer(i.guildId))).map(async c=>{ let name='Unknown user'; try{const m=await i.guild?.members.fetch(c.discord_user_id); if(m)name=m.displayName;}catch{try{const u=await i.client.users.fetch(c.discord_user_id);name=u.globalName||u.username;}catch{}} return {...c,author_name:name}; }));
+    return Promise.all((await comments.list(scope,id,limit,guilds.getEsoServer(i.guildId))).map(async c=>{ let name=String(c.discord_user_id||'Author unavailable'); try{const m=await i.guild?.members.fetch(c.discord_user_id); if(m)name=m.displayName;}catch{try{const u=await i.client.users.fetch(c.discord_user_id);name=u.globalName||u.username;}catch{}} return {...c,author_name:name}; }));
   }
   async function loadSavedReference(i,id){const result=await accessContexts.forHouse({userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId),savedHouseId:id});if(!result.environmentMatch)throw new Error(result.message);return result;}
   async function getSaved(scope,id,i){const access=await loadSavedReference(i,id);if(!access.canView)return null;const r=access.record;if(scope==='personal')return r.scope==='private'?personalRow(r):null;if(scope==='global'||r.scope==='global')return r.scope==='global'?{...r,scope:'global'}:null;return r.scope==='public'&&r.guild_id===i.guildId?{...r,scope:'server'}:null;}
@@ -448,7 +499,9 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
   }
   async function tourSessionCard(i,t,stops,session,position,showDetails=false){
     const stop=stops[Math.max(0,Number(position)-1)],count=await tourStopCommentCount(stop,session.mode==='self_paced'?i.user.id:null),canEdit=await canEditTourStop(i,stop);
-    return {embeds:[tourEmbed(t,stops,Number(position),count,showDetails,{shared:session.mode==='shared',leaderId:session.started_by})],components:tourButtons(session.id,count,showDetails,{canEdit,savedHouseId:stop?.source_id})};
+    const payload={embeds:[tourEmbed(t,stops,Number(position),count,showDetails,{shared:session.mode==='shared',leaderId:session.started_by})],components:tourButtons(session.id,count,showDetails,{canEdit,savedHouseId:stop?.source_id})};
+    if(session.mode==='self_paced'){const own=await personalStopActions(i,payload,stop,{sessionId:session.id,stopId:stop.id});if(own.components.flatMap(row=>(row.toJSON?.()||row).components).some(c=>c.label==='Add Comment'))return own;}
+    return {...payload,components:[...payload.components,...buttonRows([{customId:`tour:commentquick:${session.id}:${stop.id}`,label:'Add Comment',style:'primary'}])]};
   }
   async function openTourHouseEditor(i,savedHouseId,backId){
     const access=await loadSavedReference(i,savedHouseId),raw=access?.record,row=raw?legacySavedRow(raw):null;
@@ -709,7 +762,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     const returnId=backId||'hu:find';
     const resultTitle=scope==='personal'?'Private House Search Results':scope==='server'?'Server House Search Results':'House Search Results';
     const resultDescription=scope==='personal'?`Found ${rows.length} matches in your Private Directory.`:scope==='server'?`Found ${rows.length} matches in the Server Directory.`:`Found ${rows.length} matching home${rows.length===1?'':'s'}. Global entries for this ESO environment appear first, then this server’s Server entries, then your Private entries, followed by Non-Player Homes when included.\n\n${searchCriteria(searchType,filters)}`;
-    if(rows.length===1&&!alwaysPicker){ const r=rows[0]; payload=r.scope==='official'?officialHousePayload(await houses.get(r.house_id),returnId):destinationMenuPayload(await withHouseCardContext(i,r),{canEdit:canEditSaved(i,r),backId:returnId}); }
+    if(rows.length===1&&!alwaysPicker){ const r=rows[0]; payload=r.scope==='official'?officialHousePayload(await withOfficialState(i,await houses.get(r.house_id)),returnId):destinationMenuPayload(await withHouseCardContext(i,r),{canEdit:canEditSaved(i,r),backId:returnId}); }
     else payload=createPicker(i,{kind:'visit',rows,extra:{title:resultTitle,description:resultDescription,advancedToken},backId:returnId});
     if(content)payload.content=content;
     return mode==='modal'?successfulSearchResponse(i,payload):respond(i,payload,mode);
@@ -718,8 +771,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
   async function chat(i){
     if(!await prepareInteraction(i))return;
     await recordUsage(i,'opened_bot');
-    const seen=await onboarding.get(i.user.id);
-    return i.reply({...seen?homePayload({isAdmin:isAdmin(i),esoServer:guilds.getEsoServer(i.guildId)}):onboardingPayload({page:0}),flags:MessageFlags.Ephemeral});
+    return i.reply({...homePayload({isAdmin:isAdmin(i),esoServer:guilds.getEsoServer(i.guildId)}),flags:MessageFlags.Ephemeral});
   }
 
   async function globalModeratorScreen(i,mode='update'){
@@ -765,6 +817,9 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     if(['next','prev','end'].includes(action)&&!canControl)return i.reply({content:`Only <@${session.started_by}>, the tour leader, can control this ${session.mode==='shared'?'Shared':'Self Paced'} tour.`,flags:MessageFlags.Ephemeral});
     const currentIndex=Math.max(0,Math.min(stops.length-1,Number(session.current_position||1)-1));
     const currentStop=stops[currentIndex];
+    if(action==='commentquick'){
+      try{return await openQuickComment(i,{sourceKind:'tour',sessionId:session.id,stopId:Number(parts[3])},{shared:session.mode==='shared'});}catch(error){return i.reply({content:error.message,flags:MessageFlags.Ephemeral});}
+    }
     if(action==='edit'){
       const savedHouseId=Number(parts[3]),detailState=parts[4]==='expanded'?'expanded':'compact';
       if(savedHouseId!==Number(currentStop.source_id))return i.reply({content:'That tour stop has changed. Use the current Edit House button.',flags:MessageFlags.Ephemeral});
@@ -821,7 +876,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       const cycle=await featured.rotateHouses({guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)});
       const rows=await featured.list({guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)});
       await recordUsage(i,'viewed_featured');
-      return i.update(featuredPayload({items:rows,nextRotationAt:cycle.nextRotationAt,backId:id==='hu:featured'?'hu:home':'hu:tours'}));
+      return i.update(await enrichedFeaturedPayload(i,{items:rows,nextRotationAt:cycle.nextRotationAt,backId:id==='hu:featured'?'hu:home':'hu:tours'}));
     }
     if(id.startsWith('hu:featured:tour:')){
       const parts=id.split(':'),tourId=Number(parts[3]),source=parts[4]==='admin'&&isAdmin(i)?'admin':parts[4]==='home'?'home':'viewer';
@@ -847,14 +902,14 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     if(id.startsWith('hu:featured:remove:')){
       if(!isAdmin(i))return i.reply({content:'Only Housing Moderators can manage Featured housing.',flags:MessageFlags.Ephemeral});
       const parts=id.split(':'); await featured.remove({guildId:i.guildId,targetKind:parts[3],targetId:Number(parts[4]),actorId:i.user.id,isModerator:true});
-      return i.update(featuredPayload({items:await featured.list({guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)}),canManage:true}));
+      return i.update(await enrichedFeaturedPayload(i,{items:await featured.list({guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)}),canManage:true}));
     }
     if(id.startsWith('hu:featured:move:')){
       if(!isAdmin(i))return i.reply({content:'Only Housing Moderators can manage Featured housing.',flags:MessageFlags.Ephemeral});
       const parts=id.split(':');
       await featured.reorder({guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId),targetKind:parts[3],targetId:Number(parts[4]),position:Number(parts[5]),actorId:i.user.id,isModerator:true});
       const items=await featured.list({guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)});
-      return i.update(featuredPayload({items,canManage:true,selectedItem:items.find(item=>item.target_kind===parts[3]&&Number(item.target_id)===Number(parts[4]))||null}));
+      return i.update(await enrichedFeaturedPayload(i,{items,canManage:true,selectedItem:items.find(item=>item.target_kind===parts[3]&&Number(item.target_id)===Number(parts[4]))||null}));
     }
     if(id==='hu:featured:add:house'||id==='hu:featured:add:tour'){
       if(!isAdmin(i))return i.reply({content:'Only Housing Moderators can manage Featured housing.',flags:MessageFlags.Ephemeral});
@@ -875,12 +930,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       if(target==='help')return i.update(helpPayload({backId}));
       return i.update(homePayload({isAdmin:isAdmin(i),esoServer:guilds.getEsoServer(i.guildId)}));
     }
-    if(id.startsWith('hu:onboarding:')){
-      const action=id.split(':')[2];
-      if(action==='skip'){await onboarding.skip(i.user.id,onboardingNames(i));return i.update(homePayload({isAdmin:isAdmin(i),esoServer:guilds.getEsoServer(i.guildId)}));}
-      if(action==='finish'){await onboarding.complete(i.user.id,onboardingNames(i));await onboarding.markWalkthroughSeen(i.user.id,'1.0.62',onboardingNames(i));return i.update(homePayload({isAdmin:isAdmin(i),esoServer:guilds.getEsoServer(i.guildId)}));}
-      return i.update(onboardingPayload({page:Number(action)||1}));
-    }
+    if(id.startsWith('hu:onboarding:'))return i.update(homePayload({isAdmin:isAdmin(i),esoServer:guilds.getEsoServer(i.guildId)}));
     if(['hu:find','hu:register','hu:tours:start'].includes(id)&&!await onboarding.get(i.user.id))await onboarding.complete(i.user.id,onboardingNames(i));
     if(id==='hu:my')return i.update(await dashboard(i));
     if(id.startsWith('hu:savedsearch:save:')){
@@ -948,6 +998,26 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       const stateId=found.context.backId.split(':')[3],state=states.get(stateId);
       return state&&state.userId===i.user.id?i.update(renderPicker(stateId)):i.update(homePayload({isAdmin:isAdmin(i),esoServer:guilds.getEsoServer(i.guildId)}));
     }
+    if(id.startsWith('hu:comment:quick:')){
+      const found=personalActionContext(i,id.split(':')[3]);if(found.error)return i.reply({content:found.error,flags:MessageFlags.Ephemeral});
+      try{if(found.context.guildId!==i.guildId||found.context.esoServer!==guilds.getEsoServer(i.guildId))throw new Error('That house card belongs to another server or ESO environment.');return await openQuickComment(i,found.context);}catch(error){return i.reply({content:error.message,flags:MessageFlags.Ephemeral});}
+    }
+    if(id.startsWith('hu:mark:')){
+      const [, ,action,stateToken]=id.split(':');
+      const found=personalActionContext(i,stateToken);
+      if(found.error)return i.reply({content:found.error,flags:MessageFlags.Ephemeral});
+      const context=found.context;
+      if(context.guildId&&(context.guildId!==i.guildId||context.esoServer!==guilds.getEsoServer(i.guildId)))return i.reply({content:'That house card belongs to another ESO environment. Open the house again.',flags:MessageFlags.Ephemeral});
+      try{
+        const source=await personalActionSource(i,context),target=houseTarget(source.row);if(context.target&&houseTargetKey(context.target)!==houseTargetKey(target))throw new Error('That house destination changed. Open the house again.');const current=await personalStates.get(i.user.id,target),names=onboardingNames(i);
+        if(action==='favorite')await personalStates.setFavorite({userId:i.user.id,target,favorite:Number(current?.is_favorite)!==1,...names,visibleTarget:source.row});
+        else if(action==='want'||action==='visited'){const desired=action==='want'?'want_to_visit':'visited';await personalStates.setVisitState({userId:i.user.id,target,visitState:current?.visit_state===desired?'none':desired,...names,visibleTarget:source.row});}
+        else return i.reply({content:'That house action is unavailable.',flags:MessageFlags.Ephemeral});
+        const row={...source.row,personal_token:stateToken,personal_state:await personalStates.get(i.user.id,target)},specs=houseStateSpecs(row,context.sourceKind);
+        if(i.message?.components){const replacements=new Map(specs.map(spec=>[spec.customId,spec]));const components=i.message.components.map(raw=>{const row=raw.toJSON?.()||raw;return {...row,components:row.components.map(component=>{const spec=replacements.get(component.custom_id);return spec?{...component,label:spec.label,style:spec.style==='success'?3:spec.style==='primary'?1:2}:component;})};});return i.update({components});}
+        return i.update(context.sourceKind==='official'?officialHousePayload(row):destinationMenuPayload(row,{canEdit:canEditSaved(i,row)}));
+      }catch(error){return i.reply({content:error.message,flags:MessageFlags.Ephemeral});}
+    }
     if(id.startsWith('hu:personal:open:')){
       const parts=id.split(':'),sourceKind=parts[3],sourceId=sourceKind==='saved'||sourceKind==='official'?Number(parts[4]):parts.slice(4).join(':');
       try{return await openPersonalActions(i,sourceKind,sourceId);}catch(error){return i.reply({content:error.message,flags:MessageFlags.Ephemeral});}
@@ -956,7 +1026,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       const parts=id.split(':'),action=parts[3],stateToken=parts[4],found=personalActionContext(i,stateToken);
       if(found.error)return i.reply({content:found.error,flags:MessageFlags.Ephemeral});
       try{
-        const source=await personalActionSource(i,found.context),target=houseTarget(source.row),names=onboardingNames(i),current=await personalStates.get(i.user.id,target);
+        const source=await personalActionSource(i,found.context),target=houseTarget(source.row);if(found.context.target&&houseTargetKey(found.context.target)!==houseTargetKey(target))throw new Error('That house destination changed. Open the house again.');const names=onboardingNames(i),current=await personalStates.get(i.user.id,target);
         let message;
         if(action==='favorite'){
           const favorite=Number(current?.is_favorite)!==1;
@@ -980,8 +1050,8 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       if(found.error)return i.reply({content:found.error,flags:MessageFlags.Ephemeral});
       try{
         const source=await personalActionSource(i,found.context);
-        if(found.context.sourceKind==='official')return i.update(officialHousePayload(source.row,'hu:find'));
-        if(found.context.sourceKind==='pass')return i.update(sharedPrivateHousePayload(source.row,{token:found.context.sourceId,canCopy:source.resolved.access.canCopy}));
+        if(found.context.sourceKind==='official')return i.update(officialHousePayload(await withOfficialState(i,source.row),'hu:find'));
+        if(found.context.sourceKind==='pass')return i.update(sharedPrivateHousePayload(await withPassState(i,source.row,found.context.sourceId),{token:found.context.sourceId,canCopy:source.resolved.access.canCopy}));
         return i.update(destinationMenuPayload(await withHouseCardContext(i,source.row),{canEdit:canEditSaved(i,source.row),backId:'hu:find'}));
       }catch(error){return i.reply({content:error.message,flags:MessageFlags.Ephemeral});}
     }
@@ -995,6 +1065,14 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       const deferred=typeof i.deferUpdate==='function';if(deferred)await i.deferUpdate();
       try{const result=await environments.confirmPrivateLegacy({userId:i.user.id,esoServer,actorId:i.user.id,expectedFingerprint,guildId:i.guildId,names:{guildName:i.guild?.name,actorGlobalName:i.user.globalName||i.user.username,actorDisplayName:i.member?.displayName}}),payload={...await dashboard(i),content:`Assigned **${result.houses}** house${result.houses===1?'':'s'} and **${result.tours}** tour${result.tours===1?'':'s'} to this ESO environment.`};return deferred?i.editReply(payload):i.update(payload);}
       catch(error){const payload={...await dashboard(i),content:error.message};return deferred?i.editReply(payload):i.update(payload);}
+    }
+    if(id==='hu:my:library'){
+      const owned=(await myAddressBook.houses(i.user.id,guilds.getEsoServer(i.guildId))).filter(row=>row.scope==='global'||row.scope==='public'&&String(row.guild_id)===String(i.guildId)||row.scope==='private'&&String(row.owner_user_id)===String(i.user.id)).map(legacySavedRow);
+      const marked=await Promise.all(['favorites','wantToVisit','visited'].map(kind=>personalStates.list({...contextFor(i),kind})));
+      const unique=new Map();for(const row of [...owned,...marked.flat()]){const key=houseTargetKey(houseTarget(row));if(!unique.has(key))unique.set(key,row);}
+      const rows=[...unique.values()];
+      if(!rows.length)return i.update({...await dashboard(i),content:'Your address book is empty. Register a house or choose Favorite, Want to Visit, or Visited on a house card.'});
+      return i.update(createPicker(i,{kind:'visit',rows,extra:{title:'📖 All Saved Places',description:'Your houses and intentionally saved places.',actions:[{customId:'hu:my:favorites',label:'Favorites',style:'secondary'},{customId:'hu:my:want',label:'Want to Visit',style:'secondary'},{customId:'hu:my:visited',label:'Visited',style:'secondary'}]},backId:'hu:my'}));
     }
     if(id==='hu:my:houses'){
       const rows=(await myAddressBook.houses(i.user.id,guilds.getEsoServer(i.guildId))).map(legacySavedRow);
@@ -1014,9 +1092,9 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     }
     if(['hu:my:favorites','hu:my:want','hu:my:visited'].includes(id)){
       const config={
-        'hu:my:favorites':{kind:'favorites',picker:'personal-favorites',title:'⭐ My Favorites',empty:'Use Personal Actions on a house to add it to Favorites.'},
-        'hu:my:want':{kind:'wantToVisit',picker:'personal-want',title:'📌 Want to Visit',empty:'Use Personal Actions on a house to add it to Want to Visit.'},
-        'hu:my:visited':{kind:'visited',picker:'personal-visited',title:'✅ Visited Houses',empty:'Use Personal Actions to mark a house as Visited.'}
+        'hu:my:favorites':{kind:'favorites',picker:'personal-favorites',title:'⭐ My Favorites',empty:'Choose Favorite on a house card.'},
+        'hu:my:want':{kind:'wantToVisit',picker:'personal-want',title:'📌 Want to Visit',empty:'Choose Want to Visit on a house card.'},
+        'hu:my:visited':{kind:'visited',picker:'personal-visited',title:'✅ Visited Houses',empty:'Choose Visited on a house card.'}
       }[id];
       const rows=await personalStates.list({...contextFor(i),kind:config.kind});
       if(!rows.length)return i.update({...await dashboard(i),content:config.empty});
@@ -1197,14 +1275,14 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       const parts=id.split(':'),showDetails=parts[4]!=='hide',passToken=parts.slice(parts[4]==='hide'||parts[4]==='show'?5:4).join(':');
       try{
         const resolved=await sharePasses.resolveHousePass(passToken,{userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)});
-        return i.update(sharedPrivateHousePayload(resolved.house,{token:passToken,canCopy:resolved.access.canCopy,showDetails}));
+        return i.update(sharedPrivateHousePayload(await withPassState(i,resolved.house,passToken),{token:passToken,canCopy:resolved.access.canCopy,showDetails}));
       }catch(error){return i.reply({content:error.message,flags:MessageFlags.Ephemeral});}
     }
     if(id.startsWith('hu:pass:house:view:')){
       const passToken=id.split(':').slice(4).join(':');
       try{
         const resolved=await sharePasses.resolveHousePass(passToken,{userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)});
-        const payload=sharedPrivateHousePayload(resolved.house,{token:passToken,canCopy:resolved.access.canCopy});
+        const payload=sharedPrivateHousePayload(await withPassState(i,resolved.house,passToken),{token:passToken,canCopy:resolved.access.canCopy});
         return i.message?.flags?.has?.(MessageFlags.Ephemeral)?i.update(payload):i.reply({...payload,flags:MessageFlags.Ephemeral});
       }catch(error){return i.reply({content:error.message,flags:MessageFlags.Ephemeral});}
     }
@@ -1331,21 +1409,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       return finishHouseForm(i,scope,'add',null,{owner:draft.esoOwner,nickname:draft.nickname||null,description:draft.description||null,tags:draft.tags||[]},draft.house,'update','hu:home');
     }
     if(id==='hu:tours'){ await recordUsage(i,'searched_tours');const rows=await visibleTours(i); return i.update(toursPayload(rows.length)); }
-    if(id==='hu:help:learning')return i.update(helpLearningPayload(await onboarding.getLearningState(i.user.id)));
-    if(id==='hu:help:whatsnew')return i.update(whatsNewPayload(await onboarding.getLearningState(i.user.id)));
-    if(id.startsWith('hu:help:whatsnew:ack:')){
-      const version=id.split(':').slice(4).join(':');
-      await onboarding.acknowledgeFeature(i.user.id,`whats-new-${version}`,onboardingNames(i));
-      return i.update(helpLearningPayload(await onboarding.getLearningState(i.user.id)));
-    }
-    if(id.startsWith('hu:help:topic:')){
-      const topic=id.split(':')[3];
-      await onboarding.complete(i.user.id,onboardingNames(i));
-      if(topic==='search')return startAdvanced(i,'all');
-      if(topic==='houses')return i.update(registrationPayload(i));
-      if(topic==='tours'||topic==='sharing'){const rows=await visibleTours(i);return i.update(toursPayload(rows.length));}
-      if(topic==='administration')return isAdmin(i)?i.update(adminPayload(guilds.getSettings(i.guildId))):i.reply({content:'Housing Administration is available to configured Housing Moderators.',flags:MessageFlags.Ephemeral});
-    }
+    if(id.startsWith('hu:help:learning')||id.startsWith('hu:help:whatsnew')||id.startsWith('hu:help:topic:'))return i.update(helpPayload());
     if(id==='hu:help')return i.update(helpPayload());
     if(id==='hu:admin'){ if(!isAdmin(i))return i.reply({content:'You do not have access to Housing administration.',flags:MessageFlags.Ephemeral}); return i.update(renderAdminPayload(guilds.getSettings(i.guildId),{adminInterface,isOwner:guilds.isBotOwner(i)})); }
     if(id==='hu:admin:settings'){ if(!isAdmin(i))return i.reply({content:'You do not have access to Housing administration.',flags:MessageFlags.Ephemeral}); return i.update(adminSettingsPayload(guilds.getSettings(i.guildId))); }
@@ -1400,7 +1464,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     if(id==='hu:admin:featured'){
       if(!isAdmin(i))return i.reply({content:'You do not have access to Housing administration.',flags:MessageFlags.Ephemeral});
       const rows=await featured.list({guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)});
-      return i.update(featuredPayload({items:rows,canManage:true}));
+      return i.update(await enrichedFeaturedPayload(i,{items:rows,canManage:true}));
     }
     if(id==='hu:admin:passes'){
       if(!isAdmin(i))return i.reply({content:'You do not have access to Housing administration.',flags:MessageFlags.Ephemeral});
@@ -1504,7 +1568,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       const surpriseToken=/^hu:sr:([^:]+)$/.exec(backId)?.[1]||null;
       if(scope==='official'){
         const house=await houses.get(rid); if(!house)return i.update({content:'That Non-Player Home is no longer available.',embeds:[],components:[]});
-        return i.update(officialHousePayload(house,backId,showDetails,navigation,surpriseToken));
+        return i.update(officialHousePayload(await withOfficialState(i,house),backId,showDetails,navigation,surpriseToken));
       }
       const savedScope=scope==='personal'?'personal':scope==='global'?'global':'server',r=await getSaved(savedScope,rid,i); if(!r)return i.update({content:'That saved house is no longer available.',embeds:[],components:[]});
       return i.update(destinationMenuPayload(await withHouseCardContext(i,r),{canEdit:canEditSaved(i,r),backId,showDetails,navigation,surpriseToken}));
@@ -1538,6 +1602,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     if(id.startsWith('hu:bulkselect:done:')){ const bid=id.split(':')[3],b=bulkState(i,bid); if(!b)return i.reply({content:'That bulk-tour selection expired.',flags:MessageFlags.Ephemeral}); if(!b.selected.size)return i.update({...renderBulkSelection(i,bid),content:'Select at least one house first.'}); b.confirmedRows=null;return i.update(renderBulkOrder(b,bid)); }
     if(id.startsWith('hu:bulk:visibility:')){ const p=id.split(':'),scope=p[3],bid=p[4]; return createBulkTour(i,bid,scope); }
 
+    if(id.startsWith('hu:picker:jump:')){const sid=id.split(':')[3],found=pickerPageContext(i,sid);if(found.error)return i.reply({content:found.error,flags:MessageFlags.Ephemeral});return i.showModal(pickerPageModal(sid,{page:found.state.page+1,pages:found.pages}));}
     if(id.startsWith('hu:picker:prev:')||id.startsWith('hu:picker:next:')){ const p=id.split(':'),dir=p[2],sid=p[3],s=states.get(sid); if(!s)return i.reply({content:'That menu expired. Run /housing again.',flags:MessageFlags.Ephemeral}); if(s.userId!==i.user.id)return i.reply({content:'That menu belongs to another user.',flags:MessageFlags.Ephemeral}); s.page+=dir==='next'?1:-1; return i.update(renderPicker(sid)); }
   }
 
@@ -1560,7 +1625,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       const rows=await featured.list({guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)});
       const selectedItem=rows.find(item=>item.target_kind===targetKind&&String(item.target_id)===String(targetId));
       if(!selectedItem)return i.reply({content:'That Featured entry is no longer available.',flags:MessageFlags.Ephemeral});
-      return i.update(featuredPayload({items:rows,canManage:true,selectedItem}));
+      return i.update(await enrichedFeaturedPayload(i,{items:rows,canManage:true,selectedItem}));
     }
     if(id.startsWith('hu:progress:history:house:')){
       const parts=id.split(':'),progressId=Number(parts[4]),listPage=Math.max(1,Number(parts[5])||1),page=Math.max(1,Number(parts[6])||1),from=parts.indexOf('from'),activePage=from>=0?Math.max(1,Number(parts[from+1])||1):1,savedHouseId=Number(i.values?.[0]);
@@ -1657,7 +1722,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
         if(!rows.length)return i.update({...adminPayload(settings),content:'There are no recoverable Server or Global legacy tours linked to this Discord server.'});
         return i.update(createPicker(i,{kind:'admin-legacy-tour',rows,extra:{title:'🧭 Legacy Tours',description:'Choose an Unassigned Server or Global tour linked to this Discord server. Private tours remain visible only to their creators.'},backId:'hu:admin'}));
       }
-      if(tool==='featured')return i.update(featuredPayload({items:await featured.list({guildId:i.guildId,esoServer:server}),canManage:true}));
+      if(tool==='featured')return i.update(await enrichedFeaturedPayload(i,{items:await featured.list({guildId:i.guildId,esoServer:server}),canManage:true}));
       if(tool==='health'){
         const channels=i.guild?.channels?.cache?[...i.guild.channels.cache.keys()]:[];
         return i.update(adminHealthPayload(await adminHealth.snapshot({guildId:i.guildId,esoServer:server,availableChannelIds:channels})));
@@ -1764,6 +1829,18 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
   async function modal(i){
     if(!await prepareInteraction(i))return;
     const id=i.customId;
+    if(id.startsWith('hu:modal:quickcomment:')){
+      try{const context=quickCommentContext(i,id.split(':')[3]),source=await personalActionSource(i,context),target=houseTarget(source.row);if(houseTargetKey(target)!==houseTargetKey(context.target))throw new Error('That house destination changed. Open the house again.');
+        await comments.add({esoServer:context.esoServer,savedHouseId:source.row.id,destinationId:source.row.destination_id,commenterUserId:i.user.id,text:i.fields.getTextInputValue('comment')});context.used=true;
+        const payload={...context.snapshot,content:'Comment added.'};return context.shared?i.reply({...payload,components:[],flags:MessageFlags.Ephemeral}):modalResponse(i,payload);
+      }catch(error){return i.reply({content:error.message,flags:MessageFlags.Ephemeral});}
+    }
+    if(id.startsWith('hu:modal:pickerpage:')){
+      const sid=id.split(':')[3],found=pickerPageContext(i,sid);if(found.error)return i.reply({content:found.error,flags:MessageFlags.Ephemeral});
+      const input=String(i.fields.getTextInputValue('page')).trim(),page=Number(input);
+      if(!/^\d+$/.test(input)||!Number.isSafeInteger(page)||page<1||page>found.pages)return i.reply({content:`Enter a page number from 1 to ${found.pages}.`,flags:MessageFlags.Ephemeral});
+      found.state.page=page-1;return modalResponse(i,renderPicker(sid));
+    }
     if(id.startsWith('hu:catalog:')||id.startsWith('hu:modal:catalog:')||(id==='hu:admin:tool'&&['catalog','catalog_edit'].includes(i.values?.[0])))return handleCatalog(i);
     if(isRetiredEventInteraction(id))return id.startsWith('hu:modal:')?i.reply({...retiredEventPayload(),flags:MessageFlags.Ephemeral}):i.update(retiredEventPayload());
     if(isServerModeratorAction(id))return handleServerModeratorAction(i,{serverModerators:guilds.serverModerators,guilds});
@@ -1903,7 +1980,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     if(id==='hu:modal:tour:create'){
       const did=token(); drafts.set(did,{userId:i.user.id,name:text(i.fields.getTextInputValue('name')),description:text(i.fields.getTextInputValue('description'))||null,created:Date.now()}); return modalResponse(i,tourVisibilityPayload(did));
     }
-    if(id.startsWith('hu:modal:featured:expiry:')){ const parts=id.split(':'),targetKind=parts[4],targetId=Number(parts[5]); if(!isAdmin(i))return i.reply({content:'Only Housing Moderators can manage Featured housing.',flags:MessageFlags.Ephemeral}); const days=Number(text(i.fields.getTextInputValue('days'))); if(!Number.isInteger(days)||days<0||days>3650)return i.reply({content:'Enter a whole number of days from 0 to 3650. Use 0 for no expiration.',flags:MessageFlags.Ephemeral}); const expiresAt=days===0?null:new Date(Date.now()+days*86400000); try{await featured.set({guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId),targetKind,targetId,expiresAt,actorId:i.user.id,isModerator:true,actorGlobalName:i.user.globalName||i.user.username,actorDisplayName:i.member?.displayName});const items=await featured.list({guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)});return modalResponse(i,featuredPayload({items,canManage:true,selectedItem:items.find(item=>item.target_kind===targetKind&&Number(item.target_id)===targetId)||null}));}catch(error){return i.reply({content:error.message,flags:MessageFlags.Ephemeral});} }
+    if(id.startsWith('hu:modal:featured:expiry:')){ const parts=id.split(':'),targetKind=parts[4],targetId=Number(parts[5]); if(!isAdmin(i))return i.reply({content:'Only Housing Moderators can manage Featured housing.',flags:MessageFlags.Ephemeral}); const days=Number(text(i.fields.getTextInputValue('days'))); if(!Number.isInteger(days)||days<0||days>3650)return i.reply({content:'Enter a whole number of days from 0 to 3650. Use 0 for no expiration.',flags:MessageFlags.Ephemeral}); const expiresAt=days===0?null:new Date(Date.now()+days*86400000); try{await featured.set({guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId),targetKind,targetId,expiresAt,actorId:i.user.id,isModerator:true,actorGlobalName:i.user.globalName||i.user.username,actorDisplayName:i.member?.displayName});const items=await featured.list({guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)});return modalResponse(i,await enrichedFeaturedPayload(i,{items,canManage:true,selectedItem:items.find(item=>item.target_kind===targetKind&&Number(item.target_id)===targetId)||null}));}catch(error){return i.reply({content:error.message,flags:MessageFlags.Ephemeral});} }
     if(id.startsWith('hu:modal:tour:edit:')){ const tid=Number(id.split(':')[4]),t=await tourById(i,tid,{forManagement:true}); if(!t||!canManageTour(i,t))return i.reply({content:'You cannot manage that tour.',flags:MessageFlags.Ephemeral}); const updated=await tours.update(tid,{name:text(i.fields.getTextInputValue('name')),description:text(i.fields.getTextInputValue('description'))||null}); await recordUsage(i,'updated_tour',{kind:'tour',id:tid});return modalResponse(i,tourEditDetailsPayload(updated)); }
     if(id.startsWith('hu:modal:stop:edit:')){ const p=id.split(':'),tid=Number(p[4]),stopId=Number(p[5]),t=await tourById(i,tid,{forManagement:true}); if(!t||!canManageTour(i,t))return modalResponse(i,{content:'You cannot manage that tour.',embeds:[],components:[]}); const current=(await tours.getStops(tid)).find(s=>s.id===stopId); if(!current)return modalResponse(i,{content:'That tour stop no longer exists.',embeds:[],components:[]}); const enteredTitle=text(i.fields.getTextInputValue('title')),defaultTitle=text(current.registration_nickname||current.house_name||current.title); const customTitle=enteredTitle&&enteredTitle!==defaultTitle?enteredTitle:null; await tours.updateStop(stopId,{title:customTitle,notes:text(i.fields.getTextInputValue('description'))||null});if(customTitle!==current.custom_title||(text(i.fields.getTextInputValue('description'))||null)!==current.notes)await recordUsage(i,'updated_tour',{kind:'tour',id:tid}); return modalResponse(i,tourManagePayload(t,await tours.getStops(tid))); }
   }

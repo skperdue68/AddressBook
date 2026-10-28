@@ -1,3 +1,4 @@
+import {TourSessionService} from '../src/services/tour-session-service.js';
 import {VisitService} from '../src/services/visit-service.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -6,7 +7,7 @@ import {fixture} from './workspace-fixture.js';
 import {closeDatabase} from '../src/db/database.js';
 import {createHousingMenu} from '../src/ui/housing-menu.js';
 import {TourService} from '../src/services/tour-service.js';
-const controls=p=>p.components.flatMap(row=>row.toJSON().components);
+const controls=p=>p.components.flatMap(row=>(row.toJSON?.()||row).components);
 const house={id:1,house_id:1,house_name:'Villa',eso_owner:'Builder',scope:'guild',status:'active'};
 test('Discord readers see tour addition without source editing; pending houses omit it and payloads fit limits',()=>{
  for(const canEdit of [false,true]){
@@ -35,5 +36,19 @@ test('single-house search carries active status so the tour shortcut also appear
  const {db,svc,c}=await fixture();try{
   const owner=await svc.fresh({...c,userId:'1'});await svc.registerHouse(owner,{houseId:1,esoOwner:'Builder',visibility:'public'});
   const rows=await new VisitService(db).search({userId:'u',guildId:'g',esoServer:'pc_na',owner:'Builder'});assert.equal(rows.length,1);assert.equal(rows[0].status,'active');assert.ok(controls(destinationMenuPayload(rows[0],{canEdit:false})).some(b=>b.label==='Add to a Tour'));
+ }finally{await closeDatabase(db);}
+});
+
+test('self-paced stops expose personal marks and preserve tour navigation after marking',async()=>{
+ const {db,svc,c}=await fixture();try{const owner=await svc.fresh({...c,userId:'1'}),house=await svc.registerHouse(owner,{houseId:1,esoOwner:'Builder',visibility:'public'}),tours=new TourService(db),tour=await tours.create({creatorId:'u',guildId:'g',esoServer:'pc_na',visibility:'public',name:'Route'});await tours.addStop(tour.id,house.id);const menu=createHousingMenu(db);let payload;const i={guildId:'g',channelId:'c',guild:{name:'Guild'},user:{id:'u',username:'Guest'},member:{roles:{cache:new Map()}},update:async p=>payload=p,reply:async p=>payload=p};await menu.button({...i,customId: 'hu:tour:startprivate:'+tour.id});const mark=controls(payload).find(b=>b.label==='Favorite');assert.ok(mark);const previous=controls(payload).find(b=>b.label==='Next').custom_id;await menu.button({...i,customId:mark.custom_id,message:{components:payload.components}});assert.ok(controls(payload).some(b=>b.label==='Unfavorite'));assert.ok(controls(payload).some(b=>b.custom_id===previous));}finally{await closeDatabase(db);}
+});
+
+test('direct self-paced stop comment returns the same route card without advancing',async()=>{
+ const {db,svc,c}=await fixture();try{const owner=await svc.fresh({...c,userId:'1'}),h=await svc.registerHouse(owner,{houseId:1,esoOwner:'Builder',visibility:'public'}),tours=new TourService(db),tour=await tours.create({creatorId:'u',guildId:'g',esoServer:'pc_na',visibility:'public',name:'Route'});await tours.addStop(tour.id,h.id);const menu=createHousingMenu(db);let payload,modal;const i={guildId:'g',channelId:'c',guild:{name:'Guild'},user:{id:'u',username:'Guest'},member:{roles:{cache:new Map()}},update:async p=>payload=p,reply:async p=>payload=p,showModal:async p=>modal=p};await menu.button({...i,customId:'hu:tour:startprivate:'+tour.id});const original=payload,ids=controls(original).map(b=>b.custom_id),before=(await db.query("SELECT current_stop_id FROM tour_progress WHERE discord_user_id='u'"))[0].current_stop_id;const add=controls(original).find(b=>b.label==='Add Comment');assert.ok(add);await menu.button({...i,customId:add.custom_id,message:{embeds:original.embeds,components:original.components}});assert.ok(modal);await menu.modal({...i,customId:modal.toJSON().custom_id,fields:{getTextInputValue:()=> 'Lovely stop'},isFromMessage:()=>true});assert.deepEqual(controls(payload).map(b=>b.custom_id),ids);assert.equal((await db.query("SELECT current_stop_id FROM tour_progress WHERE discord_user_id='u'"))[0].current_stop_id,before);assert.equal((await db.query('SELECT count(*) n FROM house_comments'))[0].n,1);
+ }finally{await closeDatabase(db);}
+});
+
+test('shared route direct comments reply privately and leave public controls and position untouched',async()=>{
+ const {db,svc,c}=await fixture();try{const owner=await svc.fresh({...c,userId:'1'}),h=await svc.registerHouse(owner,{houseId:1,esoOwner:'Builder',visibility:'public'}),tours=new TourService(db),tour=await tours.create({creatorId:'u',guildId:'g',esoServer:'pc_na',visibility:'public',name:'Shared'});await tours.addStop(tour.id,h.id);const session=await new TourSessionService(db).startShared({tourId:tour.id,guildId:'g',channelId:'c',userId:'u',esoServer:'pc_na'}),menu=createHousingMenu(db);let payload,modal;let updates=0,replies=0;const i={guildId:'g',channelId:'c',guild:{name:'Guild'},user:{id:'guest',username:'Guest'},member:{roles:{cache:new Map()}},update:async p=>{updates++;payload=p;},reply:async p=>{replies++;payload=p;},showModal:async p=>modal=p};await menu.button({...i,customId:'tour:details:'+session.id});const original=payload,add=controls(original).find(b=>b.label==='Add Comment');assert.ok(add);updates=0;await menu.button({...i,customId:add.custom_id,message:{embeds:original.embeds,components:original.components}});assert.ok(modal);await menu.modal({...i,customId:modal.toJSON().custom_id,fields:{getTextInputValue:()=> 'A group comment'},isFromMessage:()=>true});assert.equal(updates,0);assert.equal(replies,1);assert.equal(payload.flags,64);assert.deepEqual(payload.components,[]);assert.deepEqual(payload.embeds,original.embeds.map(e=>e.toJSON()));assert.equal((await new TourSessionService(db).get(session.id)).current_position,1);
  }finally{await closeDatabase(db);}
 });

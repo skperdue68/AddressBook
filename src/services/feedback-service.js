@@ -29,14 +29,15 @@ export class FeedbackService{
   const rows=await this.db.query(`SELECT * FROM app_feedback ${where} ORDER BY created_at DESC,id DESC LIMIT 25 OFFSET ?`,[...args,(page-1)*25]);
   return {rows,total,page,hasNext:page*25<total};
  }
- async review(actor,{id,revision,status,notes=''}){
+ async review(actor,{id,revision,status,notes}){
   this.assertOwner(actor);id=Number(id);revision=Number(revision);
-  if(!Number.isSafeInteger(id)||id<1||!Number.isSafeInteger(revision)||revision<1||!Object.hasOwn(feedbackStatuses,status))throw new Error('Invalid review.');
-  notes=String(notes).trim();if(notes.length>1000)throw new Error('Internal notes must contain at most 1000 characters.');
+  if(!Number.isSafeInteger(id)||id<1||!Number.isSafeInteger(revision)||revision<1||(status!==undefined&&!Object.hasOwn(feedbackStatuses,status))||(status===undefined&&notes===undefined))throw new Error('Invalid review.');
+  if(notes!==undefined)notes=String(notes).trim();if(notes!==undefined&&notes.length>1000)throw new Error('Internal notes must contain at most 1000 characters.');
   return withTransaction(this.db,async conn=>{
-   const row=await one(conn,'SELECT id,revision FROM app_feedback WHERE id=? FOR UPDATE',[id]);
+   const row=await one(conn,'SELECT * FROM app_feedback WHERE id=? FOR UPDATE',[id]);
    if(!row||Number(row.revision)!==revision)throw new Error('This feedback changed or is unavailable. Reload the inbox.');
-   await conn.query('UPDATE app_feedback SET status=?,review_notes=?,reviewed_by=?,reviewed_at=?,revision=revision+1 WHERE id=? AND revision=?',[status,notes,String(actor.userId),new Date().toISOString(),id,revision]);
+   await conn.query('UPDATE app_feedback SET status=?,review_notes=?,reviewed_by=?,reviewed_at=?,revision=revision+1 WHERE id=? AND revision=?',[status??row.status,notes??row.review_notes,String(actor.userId),this.db.type==='mariadb'?new Date():new Date().toISOString(),id,revision]);
+   return one(conn,'SELECT * FROM app_feedback WHERE id=?',[id]);
   });
  }
 }

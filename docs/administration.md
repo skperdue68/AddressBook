@@ -21,7 +21,7 @@ Bot owners are configured through `BOT_OWNER_IDS` using numeric Discord user IDs
 
 Server staff can use configured Discord roles, individual approved grants, or both. The Discord native role picker supports name search; HearthBound stores IDs so role renames retain access. The web settings form uses numeric role IDs and accepts at most 25 per role category. Trusted submitters follow the registration policy without receiving general administration. Shared-tour roles allow appropriate Discord Shared Server tours without granting administration.
 
-If no Server staff role and no individual grant exists, the existing bootstrap setup behavior permits initial settings configuration. It does not grant general tour editing or permission to approve Server moderator requests.
+If no Server staff role and no individual grant exists, Support & Access offers explicit first-administrator setup. A freshly verified Discord server owner, member with Manage Server permission, or configured bot owner can confirm the first grant. The claim is atomic and audited using existing moderator tables. Empty configuration never grants general administration. After setup, normal HearthBound roles and individual grants determine access.
 
 ## Enabling the portal
 
@@ -41,7 +41,7 @@ DISCORD_OAUTH_CLIENT_SECRET=YOUR_DISCORD_OAUTH_CLIENT_SECRET
 DISCORD_OAUTH_REDIRECT_URI=https://YOUR_PORTAL_HOST/auth/callback
 ```
 
-Register that exact callback URI in the Discord Developer Portal and forward the public HTTPS hostname to the loopback listener through your reverse proxy. The portal starts after the bot connects to Discord. `WEB_PORTAL_URL` enables the Open Web Portal link in Discord Home and Help when the portal is enabled. For a local test or SSH tunnel, an exact loopback HTTP callback is supported; use HTTPS for normal remote access.
+Register that exact callback URI in the Discord Developer Portal and forward the public HTTPS hostname to the loopback listener through your reverse proxy. The portal starts after the bot connects to Discord. `WEB_PORTAL_URL` enables the Open Web Portal link in Discord Home and Support & Access when the portal is enabled. For a local test or SSH tunnel, an exact loopback HTTP callback is supported; use HTTPS for normal remote access.
 
 `ADMIN_INTERFACE=both` is the default. `discord` retains Discord administration and allows the member portal when explicitly enabled with `WEB_PORTAL_ENABLED=true`. `web` directs the migrated operational tools to the web while retaining live Discord session controls in Discord. Environment/channel/timezone changes, legacy recovery and Share Pass workflows are also available through the member portal. Web administration is also available when enabled in `both` mode. `WEB_ADMIN_ENABLED=true` remains required for `ADMIN_INTERFACE=web`.
 
@@ -55,9 +55,9 @@ Current membership and permissions are still checked on each protected request. 
 
 ## Web workspace and administration
 
-Ordinary members use Overview, Search Houses, Register New House, Housing Tours, Random House, Featured Housing, My Address Book, Statistics, Recent Activity, and Help. Administrators see the additional authorized tools. Forms are bound to their original server and environment; reopen a form if you switch context in another tab. Every write checks permissions and CSRF server-side.
+Ordinary members use Overview, Search Houses, Register New House, Housing Tours, Random House, Featured Housing, My Address Book, Statistics, Recent Activity, and Support & Access. Administrators see the additional authorized tools. Forms are bound to their original server and environment; reopen a form if you switch context in another tab. Every write checks permissions and CSRF server-side.
 
-The circular Discord avatar opens an account dropdown showing identity, selected context and current access. It includes navigation shortcuts, Sign out and **Download guide (Word)**. The same guide download is available under Help & Access to all authenticated portal members. The fixed `/app/guide` endpoint serves `HearthBound_User_Admin_Guide.docx` from the application root after checking current membership; keep that tracked document in deployments. Initials provide a fallback for missing or failed avatars. Older sessions can sign out and back in to refresh their Discord profile.
+The circular Discord avatar opens an account dropdown showing identity, selected context and current access. It includes navigation shortcuts, Sign out and **Download guide (Word)**. The same guide download is available under Support & Access to all authenticated portal members. The fixed `/app/guide` endpoint serves `HearthBound_User_Admin_Guide.docx` from the application root after checking current membership; keep that tracked document in deployments. Initials provide a fallback for missing or failed avatars. Older sessions can sign out and back in to refresh their Discord profile.
 
 ### Reviews and reports
 
@@ -67,7 +67,7 @@ Pending Review lists eligible shared registrations in pages of 25. Approve or Re
 
 The web form manages registration policy and Server administrator, trusted submitter and Shared-tour role IDs. Policies are Open (ordinary shared submissions become active), Approval (untrusted shared submissions wait for review), or Roles (only eligible submitters may register shared content). Private submissions remain active and personal.
 
-Open Moderator Access to review Server requests and revoke individual grants. Approval requires current Server administrator access; users cannot approve their own request and stale revisions are rejected. Revoking a grant does not revoke independent Discord role access. Members request access through Discord Help, and administrators can review through web or Discord.
+Open Moderator Access to review Server requests and revoke individual grants. Approval requires current Server administrator access; users cannot approve their own request and stale revisions are rejected. Revoking a grant does not revoke independent Discord role access. Members request access through Discord Support & Access, and administrators can review through web or Discord.
 
 Bot owners additionally see Global request and grant controls on the web access page. Global grants remain ESO-environment-specific. The legacy `GLOBAL_MODERATOR_APPROVER_USER_IDS` setting remains available for approval-only users through Discord and a dedicated web approval page; it does not make them owners or Global moderators.
 
@@ -137,9 +137,18 @@ See the [HearthBound web workflow guide](web-workflows.md) for personal collecti
 
 ## Application feedback (bot owners)
 
-Use **Feedback inbox** in the web sidebar to review member bug reports, ideas and general feedback across HearthBound. Review status and internal notes persist in the configured database. Only bot owners can view or review this inbox; Server/Global administrator roles do not grant access. Members can submit under Help and see their own recent feedback/status. Details: [web workflows](web-workflows.md#feedback) and [schema14 upgrade](upgrade-v1.0.64.md).
+Use **Feedback inbox** in the web sidebar to review member bug reports, ideas and general feedback across HearthBound. Review status and internal notes persist in the configured database. Only bot owners can view or review this inbox; Server/Global administrator roles do not grant access. Members can submit under Support & Access and see their own recent feedback/status. Details: [web workflows](web-workflows.md#feedback) and [schema14 upgrade](upgrade-v1.0.64.md).
 
 
 ## Copy a house to the correct server
 
 Use **Copy to another server** on the web house detail page to create a Server registration in another authorized community within the same ESO environment. Source and destination administrative access and current membership are rechecked on confirmation. Bot owners and Global administrators can use this within their authorized environment; Server administrators must administer both servers. Other users’ Private houses remain inaccessible. The source registration/tour stops remain, duplicate target registrations are retained, and copies are audited. Use the separate **Review deleting original** action only if removal from the wrong server is needed and existing deletion permissions allow it. [Workflow details](web-workflows.md#copy-a-house-between-servers).
+
+
+## Access directory and review inbox
+
+Access & Settings shows the selected server’s configured administrator, trusted-submitter and shared-tour roles, plus individual Server grants with readable identities when Discord can resolve them. Each source of access is listed separately. Your Global status is shown for the current ESO environment; Global access alone does not authorize reviewing another server’s access directory.
+
+The full role-holder roster is fetched with the Discord List Guild Members REST endpoint and requires **Server Members Intent** enabled for the bot in the Discord Developer Portal. No privileged Gateway intent is added automatically. If Discord cannot provide a complete roster, the page explicitly shows the configured roles and individual grants instead of pretending the cache is complete. See [Discord’s official privileged-intent documentation](https://github.com/discord/discord-api-docs/blob/main/developers/events/gateway.mdx).
+
+The feedback inbox has a visible status selector that saves in place. Internal notes are separate, owner-only edits. Saving either refreshes the item’s revision; stale edits are rejected without silently overwriting another reviewer. The inbox retains its status filter, page and scroll position. Send feedback belongs in Support and the account menu, outside the review inbox.
