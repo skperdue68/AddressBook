@@ -72,3 +72,15 @@ Round 4 verification: 723/723 full-suite tests passed. A final targeted run veri
 - Verification: 25 targeted renderer/auth/account/onboarding/gallery/discovery/browser checks passed. Real Chrome at 320px and 390px verified all owner/admin destinations, no horizontal overflow and 44px touch targets; desktop was checked at 1440px. Independent review found no actionable issues. No backend/permissions/schema/dependency/environment changes.
 
 Discord tour-building improvements are [PR #31](https://github.com/skperdue68/HearthBound/pull/31). As with the other rounds, restack the next PR to master during review rather than merging into a predecessor's feature branch.
+
+
+Mobile navigation improvements are [PR #32](https://github.com/skperdue68/HearthBound/pull/32).
+
+## Round 6: administration workspace
+
+- Added selected-section tabs inside the existing HearthBound frame. Overview count cards lead directly to pending submissions, reports, stale houses and duplicate groups. Owner-only Global request counts link to Access & settings. Removed retired scheduled-event reminder metrics from this overview.
+- Review actions stay together on each row, with destructive choices visually distinct. Wide tables scroll inside a keyboard-focusable region rather than widening the whole page.
+- Audit logs and problem reports gain numbered pages and direct page jumps. Audit filters persist, and stale out-of-range links return to the last available page. Pending review retains its honest Previous/Next model because that service does not provide a total count.
+- Browser verification covered all six administration sections, a real pending submission and problem report, aligned moderation controls, 320/390px layouts and 1440px desktop. Existing authorization and Private-record exclusion paths are unchanged. Independent review found no actionable issues.
+
+Round 6 verification: the full suite passed with no failures, followed by a final two-test renderer check after removing an unused import. HTTP regressions cover filtered page jumps and out-of-range redirects; browser checks cover eight administration layouts. No schema, dependency, environment or permission changes.
