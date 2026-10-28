@@ -681,7 +681,8 @@ export function tourManagePayload(tour,stops){
   const route=kept.length?`${kept.join('\n')}${omitted?`\n… plus ${omitted} more stop${omitted===1?'':'s'}`:''}`:'No stops yet.';
   const e=embed(`✏️ Edit Tour — ${tour.name}`,`${stops.length} stop${stops.length===1?'':'s'}\n\nAdd houses, arrange stops, then update the tour details. Changes are applied when you confirm each action.`)
     .addFields({name:'Current Tour Route',value:route});
-  return {embeds:[e],components:buttonRows(tourManageButtonSpecs().map(spec=>({...spec,customId:spec.customId==='hu:tours'?`hu:tour:view:${tour.id}`:`${spec.customId}:${tour.id}`})),3)};
+  const specs=tourManageButtonSpecs().map(spec=>({...spec,customId:spec.customId==='hu:tours'?`hu:tour:view:${tour.id}`:`${spec.customId}:${tour.id}`}));
+  return {embeds:[e],components:[...buttonRows(specs.slice(0,3)),...buttonRows(specs.slice(3,5)),...buttonRows(specs.slice(5))]};
 }
 export function tourStartChoicePayload(tour,canRunSharedPublicTour,readiness=null,{canManage=false,backId=null}={}){
   const canShared=tour.scope==='personal'||canRunSharedPublicTour;

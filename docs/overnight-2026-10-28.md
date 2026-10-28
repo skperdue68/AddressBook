@@ -47,3 +47,19 @@ Round 2 verification: 717/717 full-suite tests passed. An additional targeted ga
 Gallery experience improvements are [PR #29](https://github.com/skperdue68/HearthBound/pull/29), following #28 and #27.
 
 Round 3 verification: 721/721 full-suite tests passed. A final targeted rerun covered the clearer empty-list messages. Real Chrome verified Favorite/visit autosave without navigation, compact list, return-preserving filters, mobile overflow and alignment before/after saving. Independent review confirmed the tour-list fix and found no further actionable issues. Empty personal lists now explain how to populate that particular list.
+
+## Round 4: Discord tour building
+
+- Add House has one filter modal for house/owner, tags, visibility, zone and style/classification. Current filters are summarized in the picker. Already-used destinations and duplicate registrations are omitted.
+- Selecting a house still adds it immediately. The next card makes optional tour-specific notes prominent and provides Add Another House without losing the filter. Saving notes returns to that same card. Adding from a house/registration card also exposes notes and preserves Back to House.
+- Notes update the tour stop, not the underlying house description. Cleared/empty filters remain safe to reopen; empty results do not create an invalid dropdown. Context, current tour permissions and house eligibility are rechecked.
+- Discord tour-editor controls now prioritize adding/arranging stops, name Edit Stop / Notes clearly, and put Back to Tour just before Delete Tour at the end.
+- Review found a null-filter reopening error; it was fixed with a failing-then-passing regression and a complete blank-filter submit/reopen test. Independent final review found no further actionable issues.
+
+Discovery and saved-place improvements are [PR #30](https://github.com/skperdue68/HearthBound/pull/30).
+
+## Reviewing the PR sequence
+
+These PRs are stacked so each diff shows only its round. Start with #27. Before merging the next PR, its target must be retargeted/rebased to `master` after the preceding merge. Do not merge a later round into its predecessor's feature branch. The agent will handle this restacking and verify the resulting diff during the morning review. Nothing is deployed automatically.
+
+Round 4 verification: 723/723 full-suite tests passed. A final targeted run verified maximum Discord custom-ID/embed limits and the blank-filter regression. The complete interaction test covers filtering, adding, multiline notes, retained filters, clearing/reopening filters and rejecting another user. Registration-flow tests also confirm Back to House survives a notes edit. No new schema, environment or slash-command definition changes.
