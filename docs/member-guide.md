@@ -208,3 +208,5 @@ House screenshots: open a house’s gallery on the web or select Screenshots in 
 House discovery uses descriptive cards with Favorite, visit status, View house and Add to tour actions. Basic Search also offers Compact list. Cards and pagination retain filters; tags open matching searches. My Address Book puts All saved, Favorites, Want to Visit and Visited first on web and Discord, followed by submitted records and organizing tools.
 
 Web lists with multiple pages offer numbered navigation and Jump to page. Stale page links return to an available page while retaining filters. If the last item on a page is deleted or no longer matches, earlier records remain reachable instead of showing a misleading empty list. Saved-place categories use the same paging controls.
+
+House and tour editors retain entered fields when a save fails. Tour recovery keeps stop order and tour-specific notes, and marks the recovered route as unsaved. If someone changed the tour since you opened it, Save remains blocked: use Open latest editor to compare with the current version in another tab and reapply your changes there. No automatic overwrite occurs.

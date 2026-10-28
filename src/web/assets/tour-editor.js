@@ -18,5 +18,5 @@ if(editor){
  filterPanel?.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('input,select')){e.preventDefault();applyFilters();}});
  document.getElementById('candidate-apply')?.addEventListener('click',applyFilters);
  document.getElementById('candidate-clear')?.addEventListener('click',()=>{controls.forEach(control=>control.value='');applyFilters();document.getElementById('candidate-filter')?.focus();});applyFilters();
- editor.addEventListener('input',e=>{if(!e.target.closest('[data-candidate-filters]'))dirty=true;});editor.addEventListener('submit',()=>dirty=false);window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});sync();dirty=false;status.textContent=`${container.children.length} stops · Ready to edit`;
+ editor.addEventListener('input',e=>{if(!e.target.closest('[data-candidate-filters]'))dirty=true;});editor.addEventListener('submit',()=>dirty=false);window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});sync();dirty=editor.dataset.restoredDraft==='true';status.textContent=`${container.children.length} stops · ${dirty?'Restored draft · Unsaved changes':'Ready to edit'}`;
 }
