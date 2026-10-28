@@ -111,3 +111,15 @@ Discord comments improvements are [PR #34](https://github.com/skperdue68/HearthB
 - Follow-up found during this pass: Saved Search Rename/Delete/Run links still return to the first saved-search page; handle their originating page as a separate navigation improvement rather than weakening return-location validation.
 
 Round 8 verification: 735/735 full-suite tests passed; 21 focused pagination/library/feedback/catalog checks passed before the full run. Real Chrome verified desktop/mobile stale-page correction, filter retention, page-jump submission and Private-record exclusion. No schema, dependency, environment or permission changes.
+
+
+Reliable list pagination is [PR #35](https://github.com/skperdue68/HearthBound/pull/35).
+
+## Round 9: saved-search return navigation
+
+- Followed up the saved-search return issue found in Round 8. Run, Rename and Delete now carry a numeric originating list page. Results → house → results → saved searches restores that page; Cancel and successful changes do too.
+- After a deletion, the remaining authorized count determines a valid return page. The list confirms saved/deleted actions. Rename/Delete controls share a row; delete confirmation is clearly named, red and placed after Cancel.
+- Return validation accepts the numeric list-page value only on saved-search result routes. Arbitrary/external destinations remain rejected, and existing ownership, CSRF and server/ESO checks remain in place.
+- HTTP tests cover 26 saved searches, result/house return metadata, rename/cancel, deletion of the only item on the last page and malicious source-page input. Chrome followed the actual mobile results/house/back/rename/delete path and submitted forms successfully. Independent review found no actionable issues.
+
+Round 9 verification: all 737 tests passed. A final 15-test return/navigation rerun passed after the concise save notice. Real Chrome completed the mobile navigation and mutation sequence; independent review found no actionable issues. No schema, dependency, environment or permission changes.
