@@ -58,3 +58,9 @@ button,.button{appearance:none;display:inline-flex;align-items:center;justify-co
 .featured-card{min-width:0;overflow-wrap:anywhere}.random-house-facts{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}.random-house-facts .pill{padding:8px 12px}
 
 #tour-stops .stop{align-items:flex-start}#tour-stops .stop>.name{min-width:0}#tour-stops .stop textarea{min-height:88px;resize:vertical}#tour-stops .stop>button{flex-shrink:0}
+
+.gallery-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:20px}.gallery-grid figure{margin:0;min-width:0}.gallery-grid img,.house-cover{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:9px;border:1px solid var(--hb-line)}.gallery-grid figcaption{font-size:13px;color:var(--hb-muted);margin-top:10px;white-space:pre-wrap;overflow-wrap:anywhere}.house-cover{margin:12px 0 18px}.random-cover{max-height:520px;object-fit:contain;background:#0b1525}.house-gallery input[type=file]{max-width:100%}
+
+.house-result-cover{width:120px;height:75px;object-fit:cover;border-radius:7px;float:left;margin:0 14px 8px 0}
+
+.gallery-grid img{height:auto;aspect-ratio:16/10}

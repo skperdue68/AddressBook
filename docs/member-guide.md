@@ -196,3 +196,5 @@ Choose the ESO environment first. Under Support & Access, the Discord server own
 After setup, administrators can configure Server roles and review Server access requests. Global access is a separate request for an ESO environment, reviewed by bot owners or configured approvers. It is never granted merely by installing the bot or being a Discord administrator.
 
 Tour builders can enter optional tour-specific notes directly on each draft stop, or when adding a house from its detail page. These notes guide visitors during that tour and never replace the house description. Save tour keeps stop order and notes together.
+
+House screenshots: open a house’s gallery on the web or select Screenshots in Discord. Add up to eight images with optional captions using the web upload form or `/hearth house:… screenshot:… caption:…` (also `/housing`). Only house editors can upload, choose the cover, or remove screenshots. Private images remain creator-only.

@@ -1,3 +1,4 @@
+import {HouseImageService} from './house-image-service.js';
 import {FeedbackService} from './feedback-service.js';
 import {UsageActivityService} from './usage-activity-service.js';
 import {WebActionsService} from './web-actions-service.js';
@@ -18,7 +19,7 @@ import {one} from '../db/database.js';
 const tourNameOrder=new Intl.Collator('en',{sensitivity:'base'});
 const pageNumber=v=>Math.min(100000,Math.max(1,Math.floor(Number(v)||1)));
 export class WebWorkspaceService{
- constructor(db,{env=process.env}={}){this.db=db;this.feedback=new FeedbackService(db,env);this.policy=new ContentPolicyService(db,env);this.statistics=new CommunityStatisticsService(db);this.usage=new UsageActivityService(db);this.ownerCatalog=new HouseCatalogService(db,env);this.saved=new SavedHouseService(db);this.tours=new TourService(db);this.progress=new TourProgressService(db);this.catalog=new HouseService(db);this.featuredService=new FeaturedContentService(db);this.actions=new WebActionsService(this);}
+ constructor(db,{env=process.env}={}){this.db=db;this.feedback=new FeedbackService(db,env);this.policy=new ContentPolicyService(db,env);this.statistics=new CommunityStatisticsService(db);this.usage=new UsageActivityService(db);this.ownerCatalog=new HouseCatalogService(db,env);this.saved=new SavedHouseService(db);this.tours=new TourService(db);this.progress=new TourProgressService(db);this.catalog=new HouseService(db);this.featuredService=new FeaturedContentService(db);this.actions=new WebActionsService(this);this.images=new HouseImageService(this,{directory:env.HOUSE_IMAGE_DIR});}
  authorizeContext(input){return this.policy.context(input);}
  fresh(c){return this.authorizeContext(c);}
  houseScopes(c){return c.settings.registration_policy!=='roles'||c.isServerAdmin||c.isOwner||JSON.parse(c.settings.registration_role_ids||'[]').some(r=>c.memberRoleIds.includes(r))?['public','private','global']:['private'];}
@@ -37,7 +38,7 @@ export class WebWorkspaceService{
   if(ownerExact!==''){clauses.push('s.normalized_owner=?');args.push(normalizeAccount(ownerExact));}
   if(q){clauses.push("(lower(h.name) LIKE ? OR lower(coalesce(s.display_name,'')) LIKE ? OR lower(s.eso_owner) LIKE ? OR lower(coalesce(h.zone,'')) LIKE ?)");const term=`%${String(q).slice(0,200).toLowerCase()}%`;args.push(term,term,term,term);}
   const where=clauses.join(' AND '),total=Number((await one(this.db,`SELECT count(*) c FROM saved_houses s JOIN houses h ON h.house_id=s.house_id WHERE ${where}`,args)).c),p=pageNumber(page);
-  const rows=await this.db.query(`SELECT s.*,h.name catalog_house_name,h.zone,h.classification,h.house_type,h.style FROM saved_houses s JOIN houses h ON h.house_id=s.house_id WHERE ${where} ORDER BY lower(coalesce(s.display_name,h.name)),s.id LIMIT 25 OFFSET ?`,[...args,(p-1)*25]);
+  const rows=await this.db.query(`SELECT s.*,(SELECT hi.id FROM house_images hi WHERE hi.saved_house_id=s.id ORDER BY hi.position,hi.id LIMIT 1) cover_image_id,h.name catalog_house_name,h.zone,h.classification,h.house_type,h.style FROM saved_houses s JOIN houses h ON h.house_id=s.house_id WHERE ${where} ORDER BY lower(coalesce(s.display_name,h.name)),s.id LIMIT 25 OFFSET ?`,[...args,(p-1)*25]);
   return {rows:withCatalogHouseNames(rows).map(h=>({...h,canEdit:this.policy.canEditHouse(h,c)})),total,page:p,hasNext:p*25<total};
  }
  async getHouse(c,id){const h=await this.saved.get(id);if(!h||(!this.policy.canViewHouse(h,c)&&!(this.policy.canEditHouse(h,c)&&h.status==='pending')))throw new Error('House is not available.');return {...h,canEdit:this.policy.canEditHouse(h,c)};}
