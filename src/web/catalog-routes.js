@@ -1,4 +1,5 @@
-import {pagination} from './pagination.js';
+import {pagination,correctedPageLocation} from './pagination.js';
+import {pageWindow} from '../utils/pagination.js';
 import {catalogMetadataRoute} from './catalog-metadata-routes.js';
 import {escape} from './render.js';
 import {csrfField,input,linkButton} from './workspace-render.js';
@@ -8,13 +9,14 @@ import {one} from '../db/database.js';
 
 const label=key=>key.replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase()).replace('Uesp Url','Source URL');
 const hidden=(key,value)=>`<input type="hidden" name="${escape(key)}" value="${escape(value??'')}">`;
-export async function catalogRoute({workspace:w,context:c,session,url,form,render}){
+export async function catalogRoute({workspace:w,context:c,session,url,form,render,redirect,response}){
  const service=w.ownerCatalog,actor={id:c.userId};service.assertOwner(actor);
  const metadata=await catalogMetadataRoute({workspace:w,context:c,session,url,form,render});if(metadata!==null)return metadata;
  const edit=/^\/app\/catalog\/(\d+)\/edit$/.exec(url.pathname),adding=url.pathname==='/app/catalog/new'||(url.pathname==='/app/catalog'&&form);
  if(!edit&&!adding){if(url.pathname!=='/app/catalog')return render('Not found','<p>Catalog page not found.</p>','catalog',404);
-  const q=String(url.searchParams.get('q')||'').slice(0,200),page=Math.max(1,Math.min(100000,Math.floor(Number(url.searchParams.get('page'))||1))),where=q?'WHERE lower(name) LIKE ? OR house_id=?':'',args=q?[`%${q.toLowerCase()}%`,Number(q)||0]:[];
-  const rows=await w.db.query(`SELECT * FROM houses ${where} ORDER BY lower(name),house_id LIMIT 50 OFFSET ?`,[...args,(page-1)*50]),total=Number((await one(w.db,`SELECT count(*) n FROM houses ${where}`,args)).n);
+  const q=String(url.searchParams.get('q')||'').slice(0,200),where=q?'WHERE lower(name) LIKE ? OR house_id=?':'',args=q?[`%${q.toLowerCase()}%`,Number(q)||0]:[];
+  const total=Number((await one(w.db,`SELECT count(*) n FROM houses ${where}`,args)).n),page=pageWindow(url.searchParams.get('page'),total,50).page,corrected=correctedPageLocation(url,page);if(corrected)return redirect(response,corrected);
+  const rows=await w.db.query(`SELECT * FROM houses ${where} ORDER BY lower(name),house_id LIMIT 50 OFFSET ?`,[...args,(page-1)*50]);
   return render('Official House Catalog',`<p>Bot owners manage official definitions shared across all servers and ESO environments. Player registrations and tour stops keep their existing links.</p><div class="actions">${linkButton('Add official house','/app/catalog/new',true)}${linkButton('Classification profiles','/app/catalog/classifications')}${linkButton('Shared values','/app/catalog/values')}</div><form method="get" class="filters">${input('House name or in-game ID','q',q)}<button>Search catalog</button></form><div class="panel">${rows.map(h=>`<div class="activity"><div><strong>${escape(h.name)}</strong><p>${h.house_id} · ${escape(h.classification||'Unclassified')} · ${escape(h.zone||'Zone unknown')}</p></div>${linkButton('Edit official house',`/app/catalog/${h.house_id}/edit`)}</div>`).join('')||'<p>No houses match.</p>'}</div>${pagination({page,total,pageSize:50,path:'/app/catalog',params:{q}})}`,'catalog');
  }
  const id=edit?Number(edit[1]):null,current=id?await service.get(actor,id):{},version=id?service.version(current):'';

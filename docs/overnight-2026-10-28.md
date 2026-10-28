@@ -98,3 +98,16 @@ Administration workspace improvements are [PR #33](https://github.com/skperdue68
 Discord layout reference: [Discord message/embed limits](https://github.com/discord/discord-api-docs/blob/main/developers/resources/message.mdx) informed the bounded reader layout rather than slicing a whole discussion into one description.
 
 Round 7 verification: all 732 tests passed. Four focused reader tests passed again after final formatting. Independent review found no remaining actionable issues. Two existing return-navigation tests were updated for the clearer Back to house label and still verify expanded details and house-list navigation.
+
+
+Discord comments improvements are [PR #34](https://github.com/skperdue68/HearthBound/pull/34).
+
+## Round 8: reliable list pagination
+
+- Found that several lists clamped their displayed page number while still querying the stale requested offset. This could show an empty screen alongside a valid page number, especially after deleting the last item on a page.
+- House/submitted/saved-place/feedback queries now use the same available-page calculation as the controls. Tours, saved searches and the owner catalog also calculate their page from the authorized matching total before fetching or slicing records.
+- Explicit stale/invalid web page URLs redirect to the available page with the complete filter/layout query retained. Favorites, Want to Visit, Visited, Recently viewed and Pending collections now share the existing library pagination rather than rendering an arbitrarily long unpaged list.
+- Tests cover a final page beyond the first 25 houses, deletion of its remaining items, genuinely empty results, other users' Private records, filtered feedback, all seven affected web routes, preserved search/layout parameters and owner-only restrictions. Chrome desktop/mobile checks follow stale links and submit real page-jump forms while retaining filters. Independent review found no actionable issues.
+- Follow-up found during this pass: Saved Search Rename/Delete/Run links still return to the first saved-search page; handle their originating page as a separate navigation improvement rather than weakening return-location validation.
+
+Round 8 verification: 735/735 full-suite tests passed; 21 focused pagination/library/feedback/catalog checks passed before the full run. Real Chrome verified desktop/mobile stale-page correction, filter retention, page-jump submission and Private-record exclusion. No schema, dependency, environment or permission changes.

@@ -1,4 +1,4 @@
-import {pagination} from './pagination.js';
+import {pagination,correctedPageLocation} from './pagination.js';
 import {escape} from './render.js';
 import {csrfField,linkButton} from './workspace-render.js';
 import {feedbackCategories,feedbackStatuses} from '../services/feedback-service.js';
@@ -24,6 +24,7 @@ export async function feedbackRoute({workspace:w,context:c,session,url,form,rend
   }
   const status=url.searchParams.get('status')||'';if(status&&!Object.hasOwn(feedbackStatuses,status))return render('Invalid filter','<p>Choose a listed feedback status.</p>','feedback',400);
   const result=await service.list(c,{status,page:url.searchParams.get('page')});
+  const corrected=correctedPageLocation(url,result.page);if(corrected)return redirect(response,corrected);
   const reviewFields=item=>`${csrfField(session.csrf)}<input type="hidden" name="id" value="${Number(item.id)}"><input type="hidden" name="revision" value="${Number(item.revision)}">`;
   const cards=result.rows.map(item=>`<article class="panel feedback-item" data-feedback-id="${Number(item.id)}"><div class="feedback-heading"><div><span class="pill">${feedbackCategories[item.category]||escape(item.category)}</span><span class="pill" data-feedback-status>${feedbackStatuses[item.status]||escape(item.status)}</span><h2>#${Number(item.id)} · ${escape(item.subject)}</h2></div>${stamp(item.created_at)}</div><p class="note">From ${escape(item.author_name)} (${escape(item.author_id)}) · ${escape(item.guild_name)} · ${escape(item.eso_server)}</p><p class="user-text">${escape(item.message)}</p><form method="post" action="${escape(url.pathname+url.search)}" data-feedback-action="status">${reviewFields(item)}<input type="hidden" name="action" value="status"><label>Status<select name="status">${options(feedbackStatuses,item.status)}</select></label><noscript><button>Save status</button></noscript><span role="status" aria-live="polite"></span></form><details><summary>Internal notes</summary><form method="post" action="${escape(url.pathname+url.search)}" data-feedback-action="notes">${reviewFields(item)}<input type="hidden" name="action" value="notes"><label>Internal notes<textarea name="notes" maxlength="1000">${escape(item.review_notes||'')}</textarea></label><p class="note">Internal notes are visible only to bot owners.${item.reviewed_by?` Last updated by ${escape(item.reviewed_by)} · ${stamp(item.reviewed_at)}`:''}</p><div class="actions"><button class="primary">Save notes</button><span role="status" aria-live="polite"></span></div></form></details></article>`).join('');
 
