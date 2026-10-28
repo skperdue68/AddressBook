@@ -42,9 +42,12 @@ test('Personal Actions panel reflects Favorite and visit state',()=>{
 test('saved and Non-Player cards expose Personal Actions without crowding component rows',()=>{
   const saved=ui.destinationMenuPayload({id:1,scope:'global',destination_id:44,house_id:62,eso_owner:'Owner',house_name:'Villa',display_name:'Villa',associated_tours:[]});
   const official=ui.officialHousePayload({house_id:62,name:'Villa'});
-  assert.ok(labels(saved).includes('Personal Actions'));
-  assert.ok(labels(official).includes('Personal Actions'));
-  for(const payload of [saved,official])for(const row of payload.components)assert.ok(row.toJSON().components.length<=5);
+  assert.ok(labels(saved).includes('Favorite'));
+  assert.ok(labels(saved).includes('Want to Visit'));
+  assert.ok(labels(saved).includes('Visited'));
+  assert.ok(labels(official).includes('Favorite'));
+  const editable=ui.destinationMenuPayload({id:1,scope:'personal',house_id:62,eso_owner:'Owner',house_name:'Villa'},{canEdit:true,navigation:{stateId:'abc123',index:1,total:3},surpriseToken:'random'});
+  for(const payload of [saved,official,editable]){assert.ok(payload.components.length<=5);for(const row of payload.components){assert.ok(row.toJSON().components.length<=5);for(const c of row.toJSON().components)assert.ok((c.custom_id||'').length<=100);}}
 });
 
 test('My Address Book exposes personal discovery sections and their counts',()=>{
@@ -104,5 +107,64 @@ test('26 Favorites paginate as 25 options then one',async()=>{
     await menu.button(second.value);
     const secondSelect=components(second.calls.updates[0]).find(component=>Array.isArray(component.options));
     assert.equal(secondSelect.options.length,1);
+    const jump=components(second.calls.updates[0]).find(c=>c.label==='Jump to Page');assert.ok(jump);
+    const opened=interaction(jump.custom_id);opened.value.showModal=async p=>opened.calls.modal=p;await menu.button(opened.value);
+    assert.ok(opened.calls.modal);const modalId=opened.calls.modal.toJSON().custom_id;
+    const bad=interaction(modalId);bad.value.fields={getTextInputValue:()=> '3'};await menu.modal(bad.value);assert.match(bad.calls.replies[0].content,/1.*2/);
+    const foreign=interaction(modalId,'u3');foreign.value.fields={getTextInputValue:()=> '1'};await menu.modal(foreign.value);assert.match(foreign.calls.replies[0].content,/another user/);
+    const other=interaction(modalId);other.value.guildId='g2';other.value.fields={getTextInputValue:()=> '1'};await db.query("INSERT INTO guild_settings(guild_id,eso_server) VALUES('g2','pc_na')");await menu.modal(other.value);assert.match(other.calls.replies[0].content,/another server|environment/);
+    const valid=interaction(modalId);valid.value.fields={getTextInputValue:()=> '1'};valid.value.isFromMessage=()=>true;await menu.modal(valid.value);assert.equal(components(valid.calls.updates[0]).find(c=>c.options).options.length,25);
+    assert.match(valid.calls.updates[0].embeds[0].toJSON().description,/Page 1 of 2/);
   }finally{await closeDatabase(db);}
+});
+
+test('support retains access and removes training links',()=>{
+ const payload=ui.helpPayload();
+ assert.ok(labels(payload).includes('Moderator Access'));
+ assert.ok(!components(payload).some(c=>/learning|onboarding/.test(c.custom_id||'')));
+ assert.match(payload.embeds[0].toJSON().title,/Support/);
+});
+
+test('direct card toggles restore unmarked state in the same message and reject stale context',async()=>{
+ const {db,menu}=await fixture();
+ try{
+ const opened=interaction('hu:context:view:global:1:hu%3Amy');await menu.button(opened.value);
+ let payload=opened.calls.updates[0];const original=components(payload).filter(c=>!c.custom_id?.startsWith('hu:mark:'));
+ for(const label of ['Favorite','Unfavorite','Want to Visit','Unmark Want to Visit','Visited','Unmark Visited']){
+ const button=components(payload).find(c=>c.label===label);assert.ok(button,label);
+ const click=interaction(button.custom_id);click.value.message={components:payload.components};await menu.button(click.value);
+ payload={...payload,...click.calls.updates[0]};
+ assert.deepEqual(components(payload).filter(c=>!c.custom_id?.startsWith('hu:mark:')),original);
+ }
+ assert.equal(Number((await one(db,'SELECT count(*) c FROM user_house_states')).c),0);
+ const button=components(payload).find(c=>c.label==='Favorite');
+ const foreign=interaction(button.custom_id,'u3');await menu.button(foreign.value);assert.match(foreign.calls.replies[0].content,/another user/);
+ const otherGuild=interaction(button.custom_id);otherGuild.value.guildId='g2';await db.query("INSERT INTO guild_settings(guild_id,eso_server) VALUES('g2','pc_na')");await menu.button(otherGuild.value);assert.match(otherGuild.calls.replies[0].content,/another ESO environment/);
+ const now=Date.now;try{Date.now=()=>now()+31*60*1000;const expired=interaction(button.custom_id);await menu.button(expired.value);assert.match(expired.calls.replies[0].content,/expired/);}finally{Date.now=now;}
+ await db.query("UPDATE saved_houses SET status='archived' WHERE id=1");const stale=interaction(button.custom_id);await menu.button(stale.value);assert.match(stale.calls.replies[0].content,/no longer available/);
+ assert.equal(Number((await one(db,'SELECT count(*) c FROM user_house_states')).c),0);
+ }finally{await closeDatabase(db);}
+});
+
+test('address book library includes intentional marks and user entries but excludes merely viewed homes',async()=>{
+ const {db,menu}=await fixture();try{
+ await db.query("INSERT INTO recent_house_views(discord_user_id,saved_house_id) VALUES('u1',1)");
+ const empty=interaction('hu:my:library');await menu.button(empty.value);assert.match(empty.calls.updates[0].content,/address book is empty/i);
+ await db.query("INSERT INTO user_house_states(discord_user_id,target_kind,target_id,is_favorite) VALUES('u1','destination',44,1)");
+ const saved=interaction('hu:my:library');await menu.button(saved.value);assert.equal(components(saved.calls.updates[0]).find(c=>c.options)?.options.length,1);
+ }finally{await closeDatabase(db);}
+});
+
+test('first use opens Home after environment setup without training choices',async()=>{
+ const {db,menu}=await fixture();try{const first=interaction('');await menu.chat(first.value);assert.equal(first.calls.replies[0].embeds[0].toJSON().title,'🏠 HearthBound');assert.ok(!components(first.calls.replies[0]).some(c=>/onboarding|learning/.test(c.custom_id||'')));}finally{await closeDatabase(db);}
+});
+
+test('generic picker only offers page jump for multiple pages and fits navigation in one row',()=>{
+ for(const pages of [1,40]){const payload=ui.pickerPayload({title:'Results',description:'Results',customId:'hu:picker:state1',options:[{label:'Place',value:'0'}],pages});const controls=components(payload);assert.equal(controls.some(c=>c.label==='Jump to Page'),pages>1);for(const row of payload.components){assert.ok(row.toJSON().components.length<=5);for(const c of row.toJSON().components)assert.ok((c.custom_id||'').length<=100);}}
+});
+
+test('direct Add Comment opens one modal and returns to the identical house card navigation',async()=>{
+ const {db,menu}=await fixture();try{const opened=interaction('hu:context:view:global:1:hu%3Amy');await menu.button(opened.value);const original=opened.calls.updates[0],ids=components(original).map(c=>c.custom_id),add=components(original).find(c=>c.label==='Add Comment');assert.ok(add);const click=interaction(add.custom_id);click.value.message={embeds:original.embeds,components:original.components};click.value.showModal=async p=>click.calls.modal=p;await menu.button(click.value);assert.ok(click.calls.modal);assert.equal(click.calls.updates.length,0);const submit=interaction(click.calls.modal.toJSON().custom_id);submit.value.fields={getTextInputValue:()=> 'Wonderful garden'};submit.value.isFromMessage=()=>true;await menu.modal(submit.value);assert.deepEqual(components(submit.calls.updates[0]).map(c=>c.custom_id),ids);assert.deepEqual(submit.calls.updates[0].embeds,original.embeds.map(e=>e.toJSON()));assert.equal(Number((await one(db,'SELECT count(*) c FROM house_comments')).c),1);
+ const stale=interaction(add.custom_id);stale.value.message={embeds:original.embeds,components:original.components};stale.value.showModal=async p=>stale.calls.modal=p;await menu.button(stale.value);await db.query("UPDATE saved_houses SET scope='private',owner_user_id='other' WHERE id=1");const blocked=interaction(stale.calls.modal.toJSON().custom_id);blocked.value.fields={getTextInputValue:()=> 'Must not post'};await menu.modal(blocked.value);assert.match(blocked.calls.replies[0].content,/no longer available/);assert.equal(Number((await one(db,'SELECT count(*) c FROM house_comments')).c),1);
+ }finally{await closeDatabase(db);}
 });

@@ -23,15 +23,17 @@ test('Discord default continuation opens the Server registration modal',async()=
  }finally{await closeDatabase(db);}
 });
 
-test('restricted Discord members default Private from Home, Help and onboarding',async()=>{
+test('restricted Discord members default Private from Home and old registration shortcuts while retired learning opens Support',async()=>{
  const {db}=await fixture();try{
   await db.query("UPDATE guild_settings SET registration_policy='roles' WHERE guild_id='g'");const menu=createHousingMenu(db);
-  for(const customId of ['hu:register','hu:help:topic:houses','hu:onboarding:go:register:2']){
+  for(const customId of ['hu:register','hu:onboarding:go:register:2']){
    let payload;await menu.button({customId,guildId:'g',guild:{name:'Guild'},user:{id:'u',username:'Member'},member:{roles:{cache:new Map()}},reply:async()=>{},update:async value=>{payload=value;}});
    assert.equal(payload.components[0].toJSON().components[0].options.find(o=>o.default).value,'private',customId);
   }
  }finally{await closeDatabase(db);}
 });
+
+test('retired Help registration training opens Support without changing registration policy',async()=>{const {db}=await fixture();try{await db.query("UPDATE guild_settings SET registration_policy='roles' WHERE guild_id='g'");let payload;await createHousingMenu(db).button({customId:'hu:help:topic:houses',guildId:'g',guild:{name:'Guild'},user:{id:'u',username:'Member'},member:{roles:{cache:new Map()}},reply:async()=>{},update:async p=>payload=p});assert.match(payload.embeds[0].toJSON().title,/Support/);assert.ok(payload.components.flatMap(r=>r.toJSON().components).some(c=>c.custom_id==='hu:servermod'));assert.equal((await db.query("SELECT registration_policy FROM guild_settings WHERE guild_id='g'"))[0].registration_policy,'roles');}finally{await closeDatabase(db);}});
 
 test('web creation forms select Server while editing and Private-house tour starts retain Private',async()=>{
  const {db,svc,c}=await fixture();const server=createWebAdminServer({service:new WebAdminService(db),workspace:svc,config:{sessionSecret:'s'},resolveGuildMembership:async()=>({id:'g',name:'Guild',roleIds:[],esoServer:'pc_na'})});

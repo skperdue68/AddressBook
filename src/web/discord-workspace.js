@@ -9,6 +9,19 @@ export class DiscordWorkspace {
  visible(channel,c,actors){return channel?.guildId===c.guildId&&channel.permissionsFor(actors.user)?.has(P.ViewChannel)&&channel.permissionsFor(actors.bot)?.has(P.ViewChannel);}
  async checkChannel(c,channelId){const actors=await this.actors(c),channel=await actors.guild.channels.fetch(parseTourDestination(channelId,c.guildId),{force:true});if(!this.visible(channel,c,actors))throw new Error('Choose a channel visible to you and HearthBound.');return channel;}
  async roles(c){const {guild}=await this.actors(c);const roles=await guild.roles.fetch();return [...roles.values()].filter(Boolean).map(r=>({id:r.id,name:r.name})).sort((a,b)=>a.name.localeCompare(b.name));}
+ async roleMembers(c,roleIds){
+  if(!c.isServerAdmin&&!c.isOwner)throw new Error('Current Server administrator access is required.');
+  const wanted=new Set(roleIds.map(String));if(!wanted.size)return {complete:true,members:[]};
+  const {guild}=await this.actors(c),members=[];let after;
+  try{
+   for(;;){
+    const page=await guild.members.list({limit:1000,after,cache:false});
+    for(const m of page.values()){const ids=[...m.roles.cache.keys()].map(String);if(ids.some(id=>wanted.has(id)))members.push({id:String(m.id),displayName:m.displayName,username:m.user?.username,roleIds:ids});}
+    if(page.size<1000)return {complete:true,members};
+    const next=[...page.keys()].reduce((a,b)=>BigInt(a)>BigInt(b)?a:b);if(next===after)throw new Error('Member pagination did not advance.');after=next;
+   }
+  }catch{return {complete:false,members:[],notice:'Role-holder names require Discord Server Members Intent to be enabled for HearthBound. Individual grants and configured roles remain listed.'};}
+ }
  async destinations(c,parentId=null){
   const actors=await this.actors(c),channels=await actors.guild.channels.fetch();
   const parents=[...channels.values()].filter(h=>h&&types.has(h.type)&&this.visible(h,c,actors)).map(h=>({id:h.id,name:h.name})).sort((a,b)=>a.name.localeCompare(b.name));

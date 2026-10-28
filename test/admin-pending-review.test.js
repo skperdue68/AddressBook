@@ -13,6 +13,7 @@ test('Administration Pending Review acknowledges the button and opens the server
   try{
     await migrate(db);
     await db.query("INSERT INTO guild_settings(guild_id,eso_server) VALUES('guild-1','pc_na')");
+    await db.query("INSERT INTO server_moderators(guild_id,discord_user_id,approved_by,request_id,request_revision) VALUES('guild-1','moderator-1','fixture-admin',1,1)");
     await db.query("INSERT INTO houses(house_id,name,normalized_name) VALUES(1,'Grand Villa','grand villa')");
     await new RegistrationService(db).create({guildId:'guild-1',esoServer:'pc_na',houseId:1,esoOwner:'Owner',displayName:'Open House',createdBy:'submitter-1',status:'pending',scope:'public'});
     const updates=[];

@@ -227,3 +227,8 @@ for(const target of ['channel','thread','link','send-failure','record-failure'])
     }else{assert.equal(pass.message_id,'message');assert.equal(pass.status,'active');assert.match(response.content,/House Share Pass posted/);}
   }finally{await closeDatabase(db);}
 });
+
+test('direct Private pass comment revalidates revocation before posting',async()=>{
+ const {db,houses,passes}=await fixture();try{await db.query("INSERT INTO guild_settings(guild_id,eso_server) VALUES('g1','pc_na')");const house=await houses.createPrivate({esoServer:'pc_na',originGuildId:'g1',userId:'owner',houseId:62,esoOwner:'HouseOwner',createdBy:'owner'}),created=await passes.createHousePass({savedHouseId:house.id,createdBy:'owner',originGuildId:'g1',esoServer:'pc_na'}),handlers=createHandlers(db);let payload,modal;const base={guildId:'g1',channelId:'c',guild:{name:'Guild'},user:{id:'viewer'},member:{roles:{cache:new Map()}},update:async p=>payload=p,reply:async p=>payload=p,showModal:async p=>modal=p};await handlers.button({...base,customId:'hu:pass:house:view:'+created.token,message:{flags:{has:()=>true}}});const original=payload,controls=p=>p.components.flatMap(r=>(r.toJSON?.()||r).components),add=controls(original).find(c=>c.label==='Add Comment');assert.ok(add);await handlers.button({...base,customId:add.custom_id,message:{embeds:original.embeds,components:original.components}});assert.ok(modal,payload.content);await passes.revokeHousePass(created.pass.id,{actorId:'owner'});await handlers.modal({...base,customId:modal.toJSON().custom_id,fields:{getTextInputValue:()=> 'Denied'},isFromMessage:()=>true});assert.match(payload.content,/revoked/);assert.equal((await one(db,'SELECT count(*) n FROM house_comments')).n,0);
+ }finally{await closeDatabase(db);}
+});

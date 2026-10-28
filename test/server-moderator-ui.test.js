@@ -1,3 +1,4 @@
+import {serverAccessPayload} from '../src/ui/moderator-access-ui.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {openDatabase,migrate,closeDatabase} from '../src/db/database.js';
@@ -30,3 +31,5 @@ test('removing a configured staff role closes cached Discord administration',asy
  await db.query(`UPDATE guild_settings SET staff_role_ids='["replacement"]' WHERE guild_id='g1'`);
  await guilds.ensureModeratorAccess(i);assert.equal(guilds.isModerator(i),false);assert.equal(guilds.canAdmin(i),false);
 });
+
+test('first Server admin setup is visible only to an eligible initial administrator',()=>{for(const allowed of [true,false]){const p=serverAccessPayload({access:{setupRequired:true,canClaimFirstAdmin:allowed},hasReviewers:false});assert.equal(json(p).includes('hu:servermod:claim'),allowed);}});

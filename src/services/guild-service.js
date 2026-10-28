@@ -3,7 +3,17 @@ import { one } from '../db/database.js';
 const defaults=guildId=>({guild_id:guildId,eso_server:null,eso_server_selected_by:null,eso_server_selected_at:null,registration_policy:'open',staff_role_ids:[],registration_role_ids:[],tour_role_ids:[],bot_channel_id:null,timezone:null});
 export class GuildService{
   constructor(db,{env=process.env,serverModerators=new ServerModeratorService(db,env)}={}){this.db=db;this.cache=new Map();this.serverModerators=serverModerators;this.moderatorAccess=new Map();}
-  async ensureModeratorAccess(i){const access=await this.serverModerators.access({guildId:i.guildId,userId:i.user?.id,roleIds:[...(i.member?.roles?.cache?.keys?.()||[])]});this.moderatorAccess.set(`${i.guildId}:${i.user?.id}`,access);return access;}
+  async ensureModeratorAccess(i){const access=await this.serverModerators.access({guildId:i.guildId,userId:i.user?.id,roleIds:[...(i.member?.roles?.cache?.keys?.()||[])],setupAuthority:String(i.guild?.ownerId)===String(i.user?.id)||i.member?.permissions?.has?.('ManageGuild')===true});this.moderatorAccess.set(`${i.guildId}:${i.user?.id}`,access);return access;}
+  async claimFirstAdmin(i){
+    if(!i.guildId||!i.user?.id)throw new Error('Use first administrator setup in a Discord server.');
+    const guild=await i.guild?.fetch?.()||i.guild;
+    const member=await guild?.members?.fetch({user:String(i.user.id),force:true});
+    if(!member)throw new Error('Current Discord membership could not be verified.');
+    const setupAuthority=String(guild.ownerId)===String(i.user.id)||member.permissions?.has?.('ManageGuild')===true;
+    const result=await this.serverModerators.claimFirstAdmin({guildId:i.guildId,userId:i.user.id,setupAuthority});
+    this.moderatorAccess.delete(`${i.guildId}:${i.user.id}`);
+    await this.ensureModeratorAccess(i);return result;
+  }
   accessFor(i){return this.moderatorAccess.get(`${i.guildId}:${i.user?.id}`);}
   async ensureSettings(guildId){if(!guildId)return defaults(null);if(this.cache.has(guildId))return this.cache.get(guildId);await this.db.query('INSERT IGNORE INTO guild_settings(guild_id) VALUES(?)',[guildId]);const r=await one(this.db,'SELECT * FROM guild_settings WHERE guild_id=?',[guildId]);const parsed={...r,staff_role_ids:JSON.parse(r.staff_role_ids||'[]'),registration_role_ids:JSON.parse(r.registration_role_ids||'[]'),tour_role_ids:JSON.parse(r.tour_role_ids||'[]')};this.cache.set(guildId,parsed);return parsed;}
   getSettings(guildId){return this.cache.get(guildId)||defaults(guildId);}
@@ -17,7 +27,7 @@ export class GuildService{
   isHousingChannelAllowed(interaction){if(!interaction.guildId)return true;const s=this.getSettings(interaction.guildId);return !s.bot_channel_id||s.bot_channel_id===interaction.channelId;}
   isBotOwner(interaction){return this.serverModerators.isOwner(interaction.user?.id);}
   hasTrustedSubmitterRole(interaction){if(this.isBotOwner(interaction))return true;const s=this.getSettings(interaction.guildId),roles=interaction.member?.roles?.cache;return s.registration_role_ids.some(id=>roles?.has(id));}
-  canAdmin(interaction){if(this.isBotOwner(interaction))return true;const fresh=this.accessFor(interaction);if(fresh)return fresh.isModerator||fresh.bootstrap;const s=this.getSettings(interaction.guildId);if(this.accessFor(interaction)?.hasGrant)return true;if(s.staff_role_ids.length===0)return !(this.accessFor(interaction)?.activeGrantCount);const roles=interaction.member?.roles?.cache;return s.staff_role_ids.some(id=>roles?.has(id));}
+  canAdmin(interaction){if(this.isBotOwner(interaction))return true;const fresh=this.accessFor(interaction);if(fresh)return fresh.isModerator;const s=this.getSettings(interaction.guildId);if(this.accessFor(interaction)?.hasGrant)return true;const roles=interaction.member?.roles?.cache;return s.staff_role_ids.some(id=>roles?.has(id));}
   isModerator(interaction){if(this.isBotOwner(interaction))return true;const fresh=this.accessFor(interaction);if(fresh)return fresh.isModerator;const s=this.getSettings(interaction.guildId),roles=interaction.member?.roles?.cache;return s.staff_role_ids.some(id=>roles?.has(id));}
   hasHousingToursRole(interaction){if(this.isBotOwner(interaction))return true;if(!interaction.guildId)return false;const s=this.getSettings(interaction.guildId),roles=interaction.member?.roles?.cache;return s.tour_role_ids.some(id=>roles?.has(id));}
   canRunSharedPublicTour(interaction){if(!interaction.guildId)return false;const s=this.getSettings(interaction.guildId);if(s.tour_role_ids.length===0)return true;return this.isModerator(interaction)||this.hasHousingToursRole(interaction);}

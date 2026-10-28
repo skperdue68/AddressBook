@@ -40,7 +40,7 @@ test('contextual onboarding actions complete first use before opening real featu
   try{
     await db.query("INSERT INTO guild_settings(guild_id,eso_server) VALUES('g1','pc_na')");
     const menu=createHousingMenu(db),cases=[
-      ['search','Filters'],['register','Global'],['addressbook','My Houses'],['tours','Browse Tours'],['help','Show Introduction Again']
+      ['search','Filters'],['register','Global'],['addressbook','My Houses'],['tours','Browse Tours'],['help','Moderator Access']
     ];
     for(const [target,expected] of cases){
       const userId=`user-${target}`,updates=[],replies=[];
@@ -53,13 +53,13 @@ test('contextual onboarding actions complete first use before opening real featu
     }
 
     const click=async(userId,customId)=>{const updates=[];await menu.button({customId,guildId:'g1',channelId:'c1',guild:{id:'g1',name:'Guild'},user:{id:userId,username:userId},member:{displayName:userId,roles:{cache:new Map()}},update:p=>(updates.push(p),Promise.resolve(p)),reply:p=>Promise.resolve(p)});return updates;};
-    await click('skip-user','hu:onboarding:skip');assert.equal((await onboarding.get('skip-user')).status,'skipped');
-    await click('skip-user','hu:onboarding:1');assert.equal((await onboarding.get('skip-user')).status,'skipped');
-    await click('finish-user','hu:onboarding:finish');assert.equal((await onboarding.get('finish-user')).status,'completed');
+    await click('skip-user','hu:onboarding:skip');assert.equal(await onboarding.get('skip-user'),null);
+    await click('skip-user','hu:onboarding:1');assert.equal(await onboarding.get('skip-user'),null);
+    await click('finish-user','hu:onboarding:finish');assert.equal(await onboarding.get('finish-user'),null);
   }finally{await closeDatabase(db);}
 });
 
-test('trying a feature returns to the same Show Me Around page using Back',async()=>{
+test('old introduction Back controls return to Home',async()=>{
   const {db}=await fixture();
   try{
     await db.query("INSERT INTO guild_settings(guild_id,eso_server) VALUES('g1','pc_na')");
@@ -83,7 +83,7 @@ test('trying a feature returns to the same Show Me Around page using Back',async
         assert.equal(buttons(cleared).find(component=>component.label==='Back')?.custom_id,backId,'search actions must preserve the introduction return');
       }
       const returned=await click(backId);
-      assert.match(returned.embeds[0].toJSON().title,new RegExp(`${page} of 7`));
+      assert.equal(returned.embeds[0].toJSON().title,'🏠 HearthBound');
     }
   }finally{await closeDatabase(db);}
 });
@@ -139,7 +139,7 @@ test('continue items include only accessible active work',async()=>{
     assert.equal(result.editedTour.id,1);
     const payload=myAddressBookPayload({houses:0,tours:1,pending:0,recent:1,continueItems:result});
     assert.ok(labels(payload).includes('Resume Tour'));
-    assert.ok(labels(payload).includes('Open Recent House'));
+    assert.ok(!labels(payload).includes('Open Recent House'));
   }finally{await closeDatabase(db);}
 });
 

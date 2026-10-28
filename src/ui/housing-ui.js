@@ -28,7 +28,7 @@ function embed(title,description){ return new EmbedBuilder().setColor(color).set
 
 function appendPortalLink(payload,url){if(!url)return payload;const link=new ButtonBuilder().setLabel('Open Web Portal').setStyle(ButtonStyle.Link).setURL(url);const last=payload.components.at(-1);if(last&&last.components.length<5)last.addComponents(link);else if(payload.components.length<5)payload.components.push(new ActionRowBuilder().addComponents(link));return payload;}
 function homeButtonRows(isAdmin){return buttonRows(homeButtonSpecs(isAdmin),2);}
-export function homePayload({isAdmin=false,version='1.0.62',esoServer=null,adminInterface=adminInterfaceMode(),portalUrl=portalPublicUrl()}={}){ const environment=esoServer?`\n\n**ESO environment:** ${esoServerLabel(esoServer)}`:''; const adminNote=adminInterface==='web'?'\n\n**Administration:** Use the companion web console.':''; return appendPortalLink({embeds:[embed('🏠 HearthBound',`Your ESO housing directory and tour guide.\n\nFind saved homes, keep a Private address book, share Server or Global destinations, and lead or follow housing tours—all without memorizing commands.${environment}${adminNote}`).setFooter({text:`HearthBound • Version ${version} • Start anytime with /hearth`})],components:homeButtonRows(isAdmin)},portalUrl); }
+export function homePayload({isAdmin=false,version='1.0.62',esoServer=null,adminInterface=adminInterfaceMode(),portalUrl=portalPublicUrl()}={}){ const environment=esoServer?`\n\n**ESO environment:** ${esoServerLabel(esoServer)}`:''; const adminNote=adminInterface==='web'?'\n\n**Administration:** Use the companion web console.':''; return appendPortalLink({embeds:[embed('🏠 HearthBound',`Share a home. Build a tour. Explore ESO housing.\n\nRegister and share your houses, build housing tours, explore or try Random House, and save places in your address book.${environment}${adminNote}`).setFooter({text:`HearthBound • Version ${version} • Start anytime with /hearth`})],components:homeButtonRows(isAdmin)},portalUrl); }
 
 export function environmentSetupPayload({message=null}={}){
   const select=new StringSelectMenuBuilder().setCustomId('hu:environment:setup').setPlaceholder('Choose this Discord server’s ESO environment…').addOptions(esoServerOptions().map(option=>({label:option.label,value:option.value,description:`Use ${option.label} houses, tours, and Global results`})));
@@ -69,7 +69,7 @@ export function onboardingPayload({page=0}={}){
   return {embeds:[e],components:[...buttonRows(navigation),...buttonRows([{...contextual,style:'primary'}])]};
 }
 export function myAddressBookPayload({houses=0,tours=0,pending=0,recent=0,favorites=0,wantToVisit=0,visited=0,savedSearches=0,continueItems=null,legacy=null,esoServer=null,backId='hu:home'}={}){
-  const e=embed('📖 My Address Book','Your personal home base for the houses and tours you have created. Only you can see this dashboard.')
+  const e=embed('📖 My Address Book','Your houses, favorites, places to visit, and visited destinations. Only you can see this address book.')
     .addFields(
       {name:'🏠 My Houses',value:`**${Number(houses)}**`,inline:true},
       {name:'🗺️ My Tours',value:`**${Number(tours)}**`,inline:true},
@@ -82,12 +82,12 @@ export function myAddressBookPayload({houses=0,tours=0,pending=0,recent=0,favori
     );
   const continueActions=[];
   if(continueItems?.activeTour)continueActions.push({customId:`hu:my:resume:${continueItems.activeTour.id}`,label:'Resume Tour',style:'success'},{customId:`hu:my:restart:${continueItems.activeTour.id}`,label:'Start Over',style:'secondary'},{customId:`hu:my:end:${continueItems.activeTour.id}`,label:'End Tour',style:'secondary'});
-  if(continueItems?.recentHouse)continueActions.push({customId:`hu:context:view:${continueItems.recentHouse.scope==='private'?'personal':continueItems.recentHouse.scope==='global'?'global':'guild'}:${continueItems.recentHouse.id}:hu%3Amy`,label:'Open Recent House',style:'primary'});
   if(continueItems?.editedTour)continueActions.push({customId:`hu:tour:view:${continueItems.editedTour.id}`,label:'Open Recent Tour',style:'secondary'});
   if(continueActions.length)e.addFields({name:'▶️ Continue',value:'Resume where you left off or reopen recent work.'});
   const legacyCount=Number(legacy?.houses||0)+Number(legacy?.tours||0);
   if(legacyCount)e.addFields({name:'⚠️ Unassigned Legacy Data',value:`**${legacy.houses||0}** house${Number(legacy.houses)===1?'':'s'} and **${legacy.tours||0}** tour${Number(legacy.tours)===1?'':'s'} need an ESO environment. Review them before assigning them to ${esoServerLabel(esoServer)}.`});
   return {embeds:[e],components:[...buttonRows(continueActions),...buttonRows([
+    {customId:'hu:my:library',label:'All Saved Places',style:'primary',emoji:'📖'},
     {customId:'hu:my:houses',label:'My Houses',style:'primary',emoji:'🏠'},
     {customId:'hu:my:tours',label:'My Tours',style:'secondary',emoji:'🗺️'},
     {customId:'hu:my:pending',label:'Pending',style:'secondary',emoji:'⏳'},
@@ -99,7 +99,7 @@ export function myAddressBookPayload({houses=0,tours=0,pending=0,recent=0,favori
     {customId:'hu:my:searches',label:'Saved Searches',style:'secondary',emoji:'🔎'},
     ...(legacyCount?[{customId:'hu:legacy:preview',label:`Assign to ${esoServerLabel(esoServer)}`,style:'success'}]:[]),
     {customId:backId,label:'Back',style:'secondary',emoji:'↩️'},
-    {customId:'hu:help:learning',label:'Help & Learning',style:'secondary',emoji:'❓'}
+    {customId:'hu:help',label:'Support & Access',style:'secondary',emoji:'❓'}
   ],4)]};
 }
 
@@ -140,18 +140,14 @@ export function myPendingPayload({houses=[],requests=[],serverRequests=[]}={}){
   const actions=[];if(!total)actions.push({customId:'hu:register',label:'Register a House',style:'success'});actions.push({customId:'hu:my',label:'Back to My Address Book',style:'secondary',emoji:'↩️'});
   return {embeds:[embed('⏳ My Pending Requests',description)],components:buttonRows(actions)};
 }
-export function toursPayload(count=0,{backId='hu:home'}={}){ return {embeds:[embed('🗺️ Housing Tours',`There ${count===1?'is':'are'} **${count}** tour${count===1?'':'s'} available to you.\n\nStart one, browse the route, or build and manage tours without remembering tour commands.`)],components:buttonRows([...toursButtonSpecs().map(spec=>spec.customId==='hu:home'?{...spec,customId:backId,label:backId==='hu:home'?'Main Menu':'Back to Introduction'}:spec),{customId:'hu:help:learning',label:'Help & Learning',style:'secondary'}])}; }
+export function toursPayload(count=0,{backId='hu:home'}={}){ return {embeds:[embed('🗺️ Housing Tours',`There ${count===1?'is':'are'} **${count}** tour${count===1?'':'s'} available to you.\n\nStart one, browse the route, or build and manage tours without remembering tour commands.`)],components:buttonRows([...toursButtonSpecs().map(spec=>spec.customId==='hu:home'?{...spec,customId:backId,label:backId==='hu:home'?'Main Menu':'Back to Introduction'}:spec),{customId:'hu:help',label:'Support & Access',style:'secondary'}])}; }
 export function helpPayload({backId='hu:home',portalUrl=portalPublicUrl()}={}){
-  const e=embed('❓ HearthBound Help','**Start with `/hearth`.** The menus will walk you through almost everything the bot can do.')
-    .addFields(
-      {name:'🔎 Search Houses',value:'Search Global houses in this ESO environment, this server’s Server houses, your Private houses, and optionally Non-Player Homes.'},
-      {name:'➕ Register New House',value:'Register a house with Global, Server, or Private visibility. Global and Server submissions use this server’s registration policy; Private houses remain visible only to you.'},
-      {name:'🗺️ Housing Tours',value:'Follow Global, Server, or Private tours in Self Paced or Shared mode. Eligible stops are selected automatically by visibility. Browse Featured Housing from this menu.'},
-      {name:'📖 My Address Book',value:'Open your personal dashboard for your houses, tours, pending requests, recently viewed destinations, and persistent Self-Paced Tour Progress.'},
-      {name:'⚙️ Administration',value:'Authorized Housing Moderators can manage policy, roles, and the HearthBound channel from the Administration button.'}
-    );
+  const e=embed('❓ Support & Access','Request moderator access, send feedback, or open HearthBound in your browser. Use /hearth anytime to return to the main menu.').addFields({name:'Moderator access',value:'Server and Global access requests are reviewed by authorized administrators. Private content remains visible only to its owner.'});
   if(portalUrl)e.addFields({name:'🌐 Web Portal',value:'Search and register houses, build tours, reorder stops and explore community activity in your browser. Sign in with Discord; the same access rules apply.'});
-  return appendPortalLink({embeds:[e],components:buttonRows([{customId:'hu:help:moderators',label:'Moderator Access',style:'secondary'},{customId:'hu:help:learning',label:'Show Introduction Again',style:'primary'},{customId:backId,label:'Back',style:'secondary',emoji:'↩️'}])},portalUrl);
+  const feedback=portalUrl?new ButtonBuilder().setLabel('Send Feedback').setStyle(ButtonStyle.Link).setURL(new URL('/app/feedback',portalUrl).href):null;
+  const payload=appendPortalLink({embeds:[e],components:buttonRows([{customId:'hu:servermod',label:'Server Access',style:'primary'},{customId:'hu:globalmod',label:'Global Access',style:'primary'},{customId:'hu:help:moderators',label:'Moderator Access',style:'secondary'},{customId:backId,label:'Back',style:'secondary',emoji:'↩️'}])},portalUrl);
+  if(feedback){const last=payload.components.at(-1);if(last.components.length<5)last.addComponents(feedback);else payload.components.push(new ActionRowBuilder().addComponents(feedback));}
+  return payload;
 }
 
 export function helpLearningPayload({latestVersion='1.0.62',seenVersion=null,acknowledgedFeatures=[]}={}){
@@ -187,11 +183,12 @@ export function learningTopicPayload(topic='search'){
   return {embeds:[embed(title,description)],components:buttonRows([{customId:action,label,style:'primary'},{customId:'hu:help:learning',label:'Back to Help & Learning',style:'secondary',emoji:'↩️'}])};
 }
 
+export function pickerPageModal(stateId,{page=1,pages=1}={}){return new ModalBuilder().setCustomId(`hu:modal:pickerpage:${stateId}`).setTitle('Jump to Page').addComponents(textField('page',`Page number (1–${pages})`,{value:String(page),required:true,maxLength:10}));}
 export function pickerPayload({title,description,customId,options,page=0,pages=1,backId='hu:home',multiple=false,actions=[],paginationArrows=false}){
   if(!options.length)return {embeds:[embed(title,description||'No options are available. Try again.')],components:buttonRows([...actions,{customId:backId,label:'Back',style:'secondary'}])};
   const select=new StringSelectMenuBuilder().setCustomId(customId).setPlaceholder(multiple?'Choose one or more options…':'Choose an option…').addOptions(options.map(o=>({label:safe(o.label),value:safe(o.value,100),description:o.description?safe(o.description,100):undefined,default:!!o.default}))).setMinValues(1).setMaxValues(multiple?Math.min(25,Math.max(1,options.length)):1);
   const nav=[];
-  if(pages>1){ nav.push({customId:`hu:picker:prev:${customId.split(':').pop()}`,label:'Previous',style:'secondary',emoji:paginationArrows?'⬅️':undefined,disabled:page<=0},{customId:`hu:picker:next:${customId.split(':').pop()}`,label:'Next',style:'secondary',emoji:paginationArrows?'➡️':undefined,disabled:page>=pages-1}); }
+  if(pages>1){ nav.push({customId:`hu:picker:prev:${customId.split(':').pop()}`,label:'Previous',style:'secondary',emoji:paginationArrows?'⬅️':undefined,disabled:page<=0},{customId:`hu:picker:next:${customId.split(':').pop()}`,label:'Next',style:'secondary',emoji:paginationArrows?'➡️':undefined,disabled:page>=pages-1},{customId:`hu:picker:jump:${customId.split(':').pop()}`,label:'Jump to Page',style:'secondary'}); }
   nav.push({customId:backId,label:'Back',style:'secondary',emoji:'↩️'});
   return {embeds:[embed(title,description)],components:[new ActionRowBuilder().addComponents(select),...buttonRows(actions,2),...buttonRows(nav)]};
 }
@@ -275,6 +272,14 @@ function houseNavigationSpecs(navigation,showDetails=false){
     {customId:`hu:house-nav:${stateId}:${Math.min(total-1,index+1)}${detailState}`,label:'Next House',style:'secondary',emoji:'➡️',disabled:index>=total-1}
   ];
 }
+export function houseStateSpecs(r,sourceKind='saved'){
+ const state=r.personal_state||{},favorite=Number(state.is_favorite)===1,visit=state.visit_state||'none';
+ const context=r.personal_token||`${sourceKind}-${sourceKind==='official'?r.house_id:r.id}`;
+ const specs=['favorite','want','visited'].map((action,index)=>({customId:`hu:mark:${action}:${context}`,label:[favorite?'Unfavorite':'Favorite',visit==='want_to_visit'?'Unmark Want to Visit':'Want to Visit',visit==='visited'?'Unmark Visited':'Visited'][index],style:(index===0?favorite:visit===(index===1?'want_to_visit':'visited'))?'success':'secondary'}));
+ if(sourceKind!=='official')specs.push({customId:`hu:comment:quick:${context}`,label:'Add Comment',style:'primary'});
+ return specs;
+}
+
 export function destinationMenuPayload(r,{canEdit=false,backId='hu:home',showDetails=false,navigation=null,surpriseToken=null}={}){
   const scope=r.scope==='personal'?'personal':r.scope==='global'?'global':'guild';
   const detailBack=encodeURIComponent(backId);
@@ -289,7 +294,7 @@ export function destinationMenuPayload(r,{canEdit=false,backId='hu:home',showDet
     {customId:`hu:comments:${r.scope}:${Number(r.id)}:${encodeURIComponent(commentsBackId)}`,label:'Comments',style:'primary',emoji:'💬'},
     {customId:`hu:pass:house:share:${Number(r.id)}`,label:'Share House',style:'success'},
     {customId:`hu:report:houseid:${Number(r.id)}`,label:'Report a Problem',style:'secondary'},
-    {customId:`hu:personal:open:saved:${Number(r.id)}`,label:'Personal Actions',style:'secondary',emoji:'⭐'}
+    ...houseStateSpecs(r)
   ];
   const editSpecs=canEdit?[
     {customId:`hu:${scope}:edit:${Number(r.id)}:${actionBack}`,label:'Edit House',style:'secondary',emoji:'✏️'},
@@ -298,7 +303,7 @@ export function destinationMenuPayload(r,{canEdit=false,backId='hu:home',showDet
   ]:[];
   const navSpecs=houseNavigationSpecs(navigation,showDetails);
   const backSpecs=[...(surpriseToken?[{customId:`hu:surprise:again:${surpriseToken}`,label:'Another Random House',style:'success',emoji:'🎲'}]:[]),{customId:backId,label:/^hu:(results:|advanced:)/.test(backId)?'Back to Results':backId==='hu:my'?'My Address Book':backId==='hu:home'?'Main Menu':'Back',style:'secondary',emoji:'↩️'}];
-  return {embeds:[cleanDestinationEmbed(r,{showDetails})],components:[...buttonRows(primarySpecs),...buttonRows(editSpecs),...buttonRows(navSpecs,2),...buttonRows(backSpecs)]};
+  return {embeds:[cleanDestinationEmbed(r,{showDetails})],components:buttonRows([...primarySpecs,...editSpecs,...navSpecs,...backSpecs])};
 }
 
 export function officialHousePayload(house,backId='hu:find',showDetails=false,navigation=null,surpriseToken=null){
@@ -312,7 +317,7 @@ export function officialHousePayload(house,backId='hu:find',showDetails=false,na
   addCleanHouseMetadata(e,house,{showDetails});
   const specs=[
     {customId:`hu:details:official:${Number(house.house_id)}:${showDetails?'hide':'show'}:${encodeURIComponent(backId)}`,label:showDetails?'Hide Details':'More Details',style:'primary',emoji:showDetails?'🔼':'🔽'},
-    {customId:`hu:personal:open:official:${Number(house.house_id)}`,label:'Personal Actions',style:'secondary',emoji:'⭐'}
+    ...houseStateSpecs(house,'official')
   ];
   const navSpecs=houseNavigationSpecs(navigation,showDetails);
   const backSpecs=[...(surpriseToken?[{customId:`hu:surprise:again:${surpriseToken}`,label:'Another Random House',style:'success',emoji:'🎲'}]:[]),{customId:backId,label:'Back',style:'secondary',emoji:'↩️'}];
@@ -791,7 +796,7 @@ Trusted submitter role used by the selected registration policy. It does not gra
     ['globalmod','Global Moderation','Manage Global Moderator access.'],
     ...(isOwner?[['catalog','Add Official House','Bot owners: add a newly released official house.'],['catalog_edit','Edit Official House','Bot owners: correct existing official catalog details.']]:[])
   ].filter(([value])=>adminInterface!=='web'||!['health','audit','export','maintenance','pending','reports'].includes(value)).map(([value,label,description])=>({value,label,description})));
-  components.push(new ActionRowBuilder().addComponents(tools),...buttonRows([{customId:'hu:admin:settings',label:'Administration Settings',style:'primary'},{customId:'hu:help:learning',label:'Help & Learning',style:'secondary'},{customId:'hu:home',label:'Back',style:'secondary',emoji:'↩️'}]));
+  components.push(new ActionRowBuilder().addComponents(tools),...buttonRows([{customId:'hu:admin:settings',label:'Administration Settings',style:'primary'},{customId:'hu:help',label:'Support & Access',style:'secondary'},{customId:'hu:home',label:'Back',style:'secondary',emoji:'↩️'}]));
   return {embeds:[e],components};
 }
 

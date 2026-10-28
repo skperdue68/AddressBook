@@ -12,6 +12,7 @@ async function fixture(){
   const db=openDatabase({DB_TYPE:'sqlite',DATABASE_PATH:path.join(dir,'legacy-tours.sqlite')});
   await migrate(db);
   await db.query("INSERT INTO guild_settings(guild_id,guild_name,eso_server) VALUES('g1','Guild One','pc_na'),('g2','Guild Two','pc_eu')");
+    await db.query("INSERT INTO server_moderators(guild_id,discord_user_id,approved_by,request_id,request_revision) VALUES('g1','mod','fixture-admin',1,1)");
   await db.query("INSERT INTO houses(house_id,name,normalized_name) VALUES(1,'House One','house one'),(2,'House Two','house two'),(3,'House Three','house three')");
   await db.query("INSERT INTO housing_destinations(id,eso_server,eso_owner,normalized_owner,house_id) VALUES(1,'pc_na','One','one',1),(2,'pc_na','Two','two',2),(3,'pc_eu','Three','three',3)");
   await db.query(`INSERT INTO saved_houses(id,destination_id,eso_server,scope,guild_id,origin_guild_id,owner_user_id,house_id,eso_owner,normalized_owner,status,created_by,updated_by) VALUES

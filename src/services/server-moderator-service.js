@@ -12,14 +12,32 @@ async function serialized(db,fn){
 export class ServerModeratorService{
  constructor(db,env=process.env){this.db=db;this.owners=botOwnerIds(env);}
  isOwner(userId){return this.owners.has(String(userId||''));}
- async access({guildId,userId,roleIds=[]},conn=this.db){
+ async access({guildId,userId,roleIds=[],setupAuthority=false},conn=this.db){
   if(!guildId)return {isModerator:false,hasGrant:false,activeGrantCount:0,canReviewRequests:false,bootstrap:false};
   const settings=await one(conn,'SELECT staff_role_ids FROM guild_settings WHERE guild_id=?',[String(guildId)]);
   const configured=JSON.parse(settings?.staff_role_ids||'[]');
   const grants=await conn.query('SELECT discord_user_id FROM server_moderators WHERE guild_id=?',[String(guildId)]);
   const hasGrant=grants.some(g=>g.discord_user_id===String(userId));
   const isModerator=this.isOwner(userId)||hasGrant||configured.some(r=>roleIds.includes(r));
-  return {isModerator,hasGrant,activeGrantCount:grants.length,canReviewRequests:isModerator,bootstrap:configured.length===0&&grants.length===0};
+  return {isModerator,hasGrant,activeGrantCount:grants.length,canReviewRequests:isModerator,bootstrap:false,setupRequired:configured.length===0&&grants.length===0,canClaimFirstAdmin:configured.length===0&&grants.length===0&&(setupAuthority===true||this.isOwner(userId))};
+ }
+ async claimFirstAdmin({guildId,userId,setupAuthority=false}){
+  if(!guildId||!userId)throw new Error('A server and signed-in member are required.');
+  if(setupAuthority!==true&&!this.isOwner(userId))throw new Error('First setup requires a verified Discord server owner or Manage Server permission.');
+  return serialized(this.db,()=>withTransaction(this.db,async conn=>{
+   const settings=await one(conn,'SELECT guild_id FROM guild_settings WHERE guild_id=? FOR UPDATE',[String(guildId)]);
+   if(!settings)throw new Error('Configure HearthBound for this server first.');
+   const access=await this.access({guildId,userId,setupAuthority},conn);
+   if(!access.setupRequired)throw new Error('A HearthBound Server administrator is already configured. Request access instead.');
+   const ids=[String(guildId),String(userId)];
+   const old=await one(conn,'SELECT * FROM server_moderator_requests WHERE guild_id=? AND discord_user_id=? FOR UPDATE',ids);
+   if(old)await conn.query("UPDATE server_moderator_requests SET reason=?,status='approved',revision=revision+1,requested_at=CURRENT_TIMESTAMP,reviewed_at=CURRENT_TIMESTAMP,reviewed_by=? WHERE id=?",['Initial verified server administrator setup',String(userId),old.id]);
+   else await conn.query("INSERT INTO server_moderator_requests(guild_id,discord_user_id,reason,status,reviewed_by,reviewed_at) VALUES(?,?,?,'approved',?,CURRENT_TIMESTAMP)",[...ids,'Initial verified server administrator setup',String(userId)]);
+   const request=await one(conn,'SELECT id,revision FROM server_moderator_requests WHERE guild_id=? AND discord_user_id=?',ids);
+   await conn.query('INSERT INTO server_moderators(guild_id,discord_user_id,approved_by,request_id,request_revision) VALUES(?,?,?,?,?)',[...ids,String(userId),request.id,request.revision]);
+   await this.audit(conn,guildId,userId,'claim_first_server_admin',userId);
+   return this.access({guildId,userId},conn);
+  }));
  }
  async request({guildId,userId,reason,names={}}){
   if(!guildId||!userId||!String(reason||'').trim())throw new Error('A server, applicant, and reason are required.');

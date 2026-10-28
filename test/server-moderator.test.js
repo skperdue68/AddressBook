@@ -27,7 +27,8 @@ test('server grants require current scoped reviewers and protect rerequest revis
 });
 test('bootstrap closes when individual grants exist and role access survives grant removal',async t=>{
  const {s}=await fixture(t);
- assert.equal((await s.access({guildId:'g2',userId:'x',roleIds:[]})).bootstrap,true);
+ assert.equal((await s.access({guildId:'g2',userId:'x',roleIds:[]})).bootstrap,false);
+ assert.equal((await s.access({guildId:'g2',userId:'x',roleIds:[]})).setupRequired,true);
  const r=await s.request({guildId:'g1',userId:'u1',reason:'help'});
  await s.review({guildId:'g1',requestId:r.id,revision:r.revision,reviewer:{userId:'admin',roleIds:['staff']},decision:'approve'});
  await s.revoke({guildId:'g1',userId:'u1',reviewer:{userId:'admin',roleIds:['staff']}});

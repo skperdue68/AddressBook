@@ -3,6 +3,7 @@ import {UsageActivityService} from './usage-activity-service.js';
 import {WebActionsService} from './web-actions-service.js';
 import {HouseCatalogService} from './house-catalog-service.js';
 import {CommunityStatisticsService} from './community-statistics-service.js';
+import {normalizeAccount} from '../utils/eso.js';
 import {createHash} from 'node:crypto';
 import {TourService} from './tour-service.js';
 import {TourProgressService} from './tour-progress-service.js';
@@ -26,11 +27,14 @@ export class WebWorkspaceService{
   const rows=await this.db.query(`SELECT s.id,s.house_id,s.scope,s.guild_id,s.owner_user_id,s.display_name,s.eso_owner,s.tags,h.name catalog_house_name,h.zone,h.classification,h.house_type,h.style FROM saved_houses s JOIN houses h ON h.house_id=s.house_id WHERE s.eso_server=? AND s.status='active' AND (s.scope='global' OR (s.scope='public' AND s.guild_id=?) OR (s.scope='private' AND s.owner_user_id=?))`,[c.esoServer,c.guildId,c.userId]);
   return withCatalogHouseNames(rows).sort((a,b)=>tourNameOrder.compare(a.display_name||a.house_name,b.display_name||b.house_name)||Number(a.id)-Number(b.id));
  }
- async listHouses(c,{q='',scope='',page=1,personal=false}={}){
+ async listHouses(c,{q='',scope='',page=1,personal=false,houseId='',ownerExact=''}={}){
   const clauses=['s.eso_server=?'],args=[c.esoServer];
   if(personal){clauses.push("s.status<>'archived' AND ((s.scope='private' AND s.owner_user_id=?) OR (s.scope<>'private' AND s.created_by=? AND (s.scope='global' OR s.guild_id=?)))");args.push(c.userId,c.userId,c.guildId);}
   else{clauses.push("s.status='active' AND (s.scope='global' OR (s.scope='public' AND s.guild_id=?) OR (s.scope='private' AND s.owner_user_id=?))");args.push(c.guildId,c.userId);}
   if(['private','public','global'].includes(scope)){clauses.push('s.scope=?');args.push(scope);}
+  if(scope==='shared'){clauses.push("s.scope IN ('public','global')");}
+  if(houseId!==''){clauses.push('s.house_id=?');args.push(Number(houseId)||0);}
+  if(ownerExact!==''){clauses.push('s.normalized_owner=?');args.push(normalizeAccount(ownerExact));}
   if(q){clauses.push("(lower(h.name) LIKE ? OR lower(coalesce(s.display_name,'')) LIKE ? OR lower(s.eso_owner) LIKE ? OR lower(coalesce(h.zone,'')) LIKE ?)");const term=`%${String(q).slice(0,200).toLowerCase()}%`;args.push(term,term,term,term);}
   const where=clauses.join(' AND '),total=Number((await one(this.db,`SELECT count(*) c FROM saved_houses s JOIN houses h ON h.house_id=s.house_id WHERE ${where}`,args)).c),p=pageNumber(page);
   const rows=await this.db.query(`SELECT s.*,h.name catalog_house_name,h.zone,h.classification,h.house_type,h.style FROM saved_houses s JOIN houses h ON h.house_id=s.house_id WHERE ${where} ORDER BY lower(coalesce(s.display_name,h.name)),s.id LIMIT 25 OFFSET ?`,[...args,(p-1)*25]);
@@ -58,7 +62,15 @@ export class WebWorkspaceService{
  }
  async randomHouse(c){const rows=await this.db.query("SELECT id FROM saved_houses WHERE eso_server=? AND status='active' AND (scope='global' OR (scope='public' AND guild_id=?) OR (scope='private' AND owner_user_id=?))",[c.esoServer,c.guildId,c.userId]);return rows.length?this.getHouse(c,rows[Math.floor(Math.random()*rows.length)].id):null;}
  featured(c){return this.featuredService.list({guildId:c.guildId,esoServer:c.esoServer});}
- async listTours(c,{mine=false,q=''}={}){const rows=await this.tours.list({creatorId:c.userId,guildId:c.guildId,esoServer:c.esoServer,includeOtherServers:c.isGlobalAdmin});return rows.filter(t=>(this.policy.canViewTour(t,c)||this.policy.canEditTour(t,c))&&(!mine||t.creator_id===c.userId)&&(!q||t.name.toLowerCase().includes(String(q).toLowerCase()))).sort((a,b)=>tourNameOrder.compare(a.name.trim(),b.name.trim())||Number(a.id)-Number(b.id)).map(t=>({...t,canEdit:this.policy.canEditTour(t,c),canView:this.policy.canViewTour(t,c)}));}
+ async listTours(c,{mine=false,q='',scope='',houseId=''}={}){
+  const rows=await this.tours.list({creatorId:c.userId,guildId:c.guildId,esoServer:c.esoServer,includeOtherServers:c.isGlobalAdmin});
+  let matching=null;
+  if(houseId!==''){
+   const stops=await this.db.query(`SELECT DISTINCT ts.tour_id FROM tour_stops ts JOIN saved_houses s ON s.id=ts.saved_house_id WHERE s.house_id=? AND s.eso_server=? AND s.status='active' AND (s.scope='global' OR (s.scope='public' AND s.guild_id=?)${scope==='shared'?"":" OR (s.scope='private' AND s.owner_user_id=?)"})`,scope==='shared'?[Number(houseId)||0,c.esoServer,c.guildId]:[Number(houseId)||0,c.esoServer,c.guildId,c.userId]);
+   matching=new Set(stops.map(s=>Number(s.tour_id)));
+  }
+  return rows.filter(t=>(scope?this.policy.canViewTour(t,c):(this.policy.canViewTour(t,c)||this.policy.canEditTour(t,c)))&&(!mine||t.creator_id===c.userId)&&(!scope||(scope==='shared'?(t.visibility==='global'||(t.visibility==='public'&&t.guild_id===c.guildId)):t.visibility===scope))&&(!matching||matching.has(Number(t.id)))&&(!q||t.name.toLowerCase().includes(String(q).toLowerCase()))).sort((a,b)=>tourNameOrder.compare(a.name.trim(),b.name.trim())||Number(a.id)-Number(b.id)).map(t=>({...t,canEdit:this.policy.canEditTour(t,c),canView:this.policy.canViewTour(t,c)}));
+ }
  async tourSnapshot(conn,id){const tour=await one(conn,'SELECT * FROM tours WHERE id=? FOR UPDATE',[Number(id)]);if(!tour)return null;const stops=await conn.query('SELECT * FROM tour_stops WHERE tour_id=? ORDER BY position,id',[Number(id)]);return {tour,stops,version:createHash('sha256').update(JSON.stringify({tour,stops})).digest('hex')};}
  async getTourDraft(c,id){const snap=await this.tourSnapshot(this.db,id);if(!snap||(!this.policy.canViewTour(snap.tour,c)&&!this.policy.canEditTour(snap.tour,c)))throw new Error('Tour is not available.');const stops=[];for(const stop of snap.stops){const h=await this.saved.get(stop.saved_house_id);const visible=this.policy.canViewHouse(h,c);stops.push({...stop,display_name:visible?(stop.custom_title||h.display_name||h.house_name):'Restricted or unavailable stop',eso_owner:visible?h.eso_owner:null,house_name:visible?h.house_name:null,source_scope:visible?h.scope:null});}return {...snap,stops,canEdit:this.policy.canEditTour(snap.tour,c),canView:this.policy.canViewTour(snap.tour,c)};}
  async saveTourDraft(context,{id=null,version=null,details={},stopIds=[]}){
