@@ -1,5 +1,5 @@
 import {WebWorkspaceService} from './services/web-workspace-service.js';
-import {discordHouseGallery,galleryContext} from './ui/house-gallery.js';
+import {discordHouseGallery,galleryContext,galleryCaptionModal} from './ui/house-gallery.js';
 import { createHousingMenu } from './ui/housing-menu.js';
 import { IdentityService } from './services/identity-service.js';
 
@@ -31,8 +31,8 @@ export function createHandlers(db){
       await identities.refreshInternalNames();
       return result;
     },
-    async button(i){const gallery=/^hu:gallery:(?:(page|cover|remove):)?(\d+):(-?\d+)$/.exec(i.customId||'');if(gallery)return dispatch(interaction=>discordHouseGallery(workspace,interaction,{houseId:Number(gallery[2]),index:gallery[1]&&gallery[1]!=='page'?0:Number(gallery[3]),action:gallery[1]==='page'?null:gallery[1],imageId:gallery[1]&&gallery[1]!=='page'?Number(gallery[3]):null}),i);return dispatch(housingMenu.button,i);},
+    async button(i){const caption=/^hu:gallery:edit-caption:(\d+):(\d+):(\d+)$/.exec(i.customId||'');if(caption)return dispatch(interaction=>galleryCaptionModal(workspace,interaction,{houseId:Number(caption[1]),imageId:Number(caption[2]),index:Number(caption[3])}),i);const gallery=/^hu:gallery:(?:(page|cover|remove):)?(\d+):(-?\d+)$/.exec(i.customId||'');if(gallery)return dispatch(interaction=>discordHouseGallery(workspace,interaction,{houseId:Number(gallery[2]),index:gallery[1]&&gallery[1]!=='page'?0:Number(gallery[3]),action:gallery[1]==='page'?null:gallery[1],imageId:gallery[1]&&gallery[1]!=='page'?Number(gallery[3]):null}),i);return dispatch(housingMenu.button,i);},
     async select(i){ return dispatch(housingMenu.select,i); },
-    async modal(i){ return dispatch(housingMenu.modal,i); }
+    async modal(i){const caption=/^hu:gallery:caption:(\d+):(\d+):(\d+)$/.exec(i.customId||'');if(caption)return dispatch(interaction=>discordHouseGallery(workspace,interaction,{houseId:Number(caption[1]),imageId:Number(caption[2]),index:Number(caption[3]),action:'caption',caption:i.fields.getTextInputValue('caption')}),i);return dispatch(housingMenu.modal,i);}
   };
 }

@@ -14,6 +14,7 @@ test('gallery validates images, respects Private ownership, selects cover and re
  const gallery=new HouseImageService(svc,{directory:dir}),h=await svc.registerHouse(c,{houseId:1,esoOwner:'Builder',visibility:'private'}),png=await sharp({create:{width:80,height:50,channels:3,background:'#eabb55'}}).png().toBuffer();
  const first=await gallery.add(c,h.id,png,'Garden <view>'),second=await gallery.add(c,h.id,png,'Waterfall');
  assert.equal((await gallery.list(c,h.id))[0].id,first.id);await gallery.setCover(c,h.id,second.id);assert.equal((await gallery.list(c,h.id))[0].id,second.id);
+ await gallery.updateCaption(c,h.id,first.id,'A better caption');assert.equal((await gallery.list(c,h.id)).find(i=>i.id===first.id).caption,'A better caption');await assert.rejects(()=>gallery.updateCaption({...c,userId:'1'},h.id,first.id,'No'),/not available/);
  const image=await gallery.read(c,h.id,first.id);assert.equal((await sharp(image).metadata()).format,'webp');
  await assert.rejects(()=>gallery.list({...c,userId:'1'},h.id),/not available/);
  await assert.rejects(()=>gallery.add(c,h.id,Buffer.from('<svg onload="bad()"/>')),/PNG|JPEG|WebP/);
