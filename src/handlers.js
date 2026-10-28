@@ -1,3 +1,4 @@
+import {attachmentSafeInteraction} from './ui/message-attachments.js';
 import {WebWorkspaceService} from './services/web-workspace-service.js';
 import {discordHouseGallery,galleryContext,galleryCaptionModal} from './ui/house-gallery.js';
 import { createHousingMenu } from './ui/housing-menu.js';
@@ -14,7 +15,7 @@ export function createHandlers(db){
   const workspace=new WebWorkspaceService(db);
   const dispatch=async(method,i)=>{
     await identities.syncInteraction(i);
-    const result=await method(i);
+    const result=await method(attachmentSafeInteraction(i));
     await identities.refreshInternalNames();
     return result;
   };

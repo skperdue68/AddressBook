@@ -1,3 +1,4 @@
+import {HouseImageService} from '../services/house-image-service.js';
 import {commentReaderPayload,commentPageSize,commentPageModal} from './comment-reader.js';
 import {eligibleTourHouses,filterTourHouses,tourHouseFiltersModal,tourStopNotesModal,tourHouseAddedPayload} from './tour-house-builder.js';
 import {UsageActivityService} from '../services/usage-activity-service.js';
@@ -93,7 +94,7 @@ export function searchCriteria(searchType,filters={}){
 ${lines.length?lines.join('\n'):'• No parameters supplied'}`;
 }
 
-export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),adminInterface=adminInterfaceMode()}={}){
+export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),adminInterface=adminInterfaceMode(),images=null}={}){
   const houses=new HouseService(db),regs=new RegistrationService(db),bookmarks=new BookmarkService(db),visits=new VisitService(db),tours=new TourService(db),guilds=new GuildService(db),environments=new GuildEnvironmentService(db,{guildService:guilds}),comments=new CommentService(db),saved=new SavedHouseService(db),sessions=new TourSessionService(db),globalMods=new GlobalModeratorService(db),myAddressBook=new MyAddressBookService(db);
   const progress=new TourProgressService(db),featured=new FeaturedContentService(db),readiness=new TourReadinessService(db),auditLog=new AuditLogService(db),dataExport=new DataExportService(db),maintenance=new HouseMaintenanceService(db);
   const usage=new UsageActivityService(db);
@@ -147,6 +148,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
   const isGlobalTourAdmin=i=>globalMods.isGlobalModeratorCached(i.user.id,guilds.getEsoServer(i.guildId));
   const handleCatalog=createCatalogMenu(new HouseCatalogService(db));
   const contentPolicy=new ContentPolicyService(db);
+  const galleryImages=images||new HouseImageService({db,saved,policy:contentPolicy,fresh:context=>contentPolicy.context(context)});
   const policyContext=i=>({...contextFor(i),isServerAdmin:isModerator(i),isGlobalAdmin:isGlobalTourAdmin(i)});
   const canManageTour=(i,t)=>contentPolicy.canEditTour(t?{...t,visibility:t.visibility||({personal:'private',server:'public'}[t.scope]||t.scope)}:null,policyContext(i));
   const tourUpdateContext=(i,t)=>isGlobalTourAdmin(i)?{
@@ -210,7 +212,13 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
   const personalRow=r=>({...r,scope:'personal',display_name:r.nickname||r.house_name,description:r.notes});
   const guildRow=r=>({...r,scope:'server'});
   const withCount=async r=>({...r,comment_count:await comments.count(r.scope,r.id,r.eso_server)});
-  const withHouseCardContext=async(i,r)=>{ await myAddressBook.recordView(i.user.id,r.id); const stateToken=token();personalActionStates.set(stateToken,{userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId),sourceKind:'saved',sourceId:r.id,target:houseTarget(r),created:Date.now()}); return {...await withCount(r),personal_token:stateToken,personal_state:await personalStates.get(i.user.id,houseTarget(r)),associated_tours:await tours.visibleForHouse(r.id,{creatorId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)})}; };
+  const withHouseCardContext=async(i,r)=>{ await myAddressBook.recordView(i.user.id,r.id); const stateToken=token();personalActionStates.set(stateToken,{userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId),sourceKind:'saved',sourceId:r.id,target:houseTarget(r),created:Date.now()}); let discordCover=null,coverNeedsPermission=false;
+    const imageContext={...contextFor(i),memberRoleIds:[...(i.member?.roles?.cache?.keys?.()||i.member?.roles||[])].map(String)};
+    try{const [image]=await galleryImages.list(imageContext,r.id);if(image){
+      if(i.appPermissions&&!i.appPermissions.has(PermissionFlagsBits.AttachFiles))coverNeedsPermission=true;
+      else discordCover={attachment:await galleryImages.read(imageContext,r.id,image.id),name:'house-cover.webp',description:String(image.caption||r.display_name||r.house_name||'House screenshot').slice(0,1024)};
+    }}catch{/* Missing or newly inaccessible screenshots must not break the house card. */}
+    return {...await withCount(r),discordCover,coverNeedsPermission,personal_token:stateToken,personal_state:await personalStates.get(i.user.id,houseTarget(r)),associated_tours:await tours.visibleForHouse(r.id,{creatorId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)})}; };
   const dashboard=async(i,{backId='hu:home'}={})=>{await recordUsage(i,'used_personal');const esoServer=guilds.getEsoServer(i.guildId);return myAddressBookPayload({...await myAddressBook.summary(i.user.id,i.guildId,esoServer),continueItems:await myAddressBook.continueItems(i.user.id,i.guildId,esoServer),legacy:await myAddressBook.legacyUnassigned(i.user.id),esoServer,backId});};
   const progressView=async(i,item)=>{
     if(!item)return null;
@@ -411,7 +419,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
   async function openQuickComment(i,context,{shared=false}={}){
     const source=await personalActionSource(i,context),target=houseTarget(source.row);
     if(context.target&&houseTargetKey(context.target)!==houseTargetKey(target))throw new Error('That house destination changed. Open the house again.');
-    const stateToken=token(),snapshot={embeds:(i.message?.embeds||[]).map(value=>value.toJSON?.()||value),components:(i.message?.components||[]).map(value=>value.toJSON?.()||value)};
+    const stateToken=token(),snapshot={attachments:[...(i.message?.attachments?.values?.()||[])].map(file=>({id:String(file.id)})),embeds:(i.message?.embeds||[]).map(value=>value.toJSON?.()||value),components:(i.message?.components||[]).map(value=>value.toJSON?.()||value)};
     quickCommentDrafts.set(stateToken,{...context,userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId),target,created:Date.now(),snapshot,shared});
     return i.showModal(commentModal('global',source.row.id,'hu:home',destinationLabel(source.row)).setCustomId(`hu:modal:quickcomment:${stateToken}`));
   }
@@ -1287,7 +1295,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
         const view={backId,showDetails:parts[4]==='hide',navigation:navigationFromBackId(backId),surpriseToken:random?(random.custom_id||random.customId).split(':')[3]:null};
         houseManagementStates.set(sid,{view});
         const returnId=`hu:house-return:${sid}`,actionBack=encodeURIComponent(returnId),scope=row.scope==='personal'?'personal':row.scope==='global'?'global':'guild';
-        return i.update({embeds:rawDestinationMenuPayload(await withHouseCardContext(i,row),{showDetails:view.showDetails}).embeds,components:buttonRows([
+        return i.update({...destinationMenuPayload(await withHouseCardContext(i,row),{showDetails:view.showDetails}),components:buttonRows([
           {customId:`hu:${scope}:edit:${row.id}:${actionBack}`,label:'Edit House',style:'secondary'},
           {customId:`hu:scope:change:${row.id}:${actionBack}`,label:'Change Visibility',style:'secondary'},
           {customId:`hu:${scope}:remove:${row.id}:${actionBack}`,label:'Delete House',style:'danger'},
