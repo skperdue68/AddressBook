@@ -1,3 +1,4 @@
+import {commentReaderPayload,commentPageSize,commentPageModal} from './comment-reader.js';
 import {eligibleTourHouses,filterTourHouses,tourHouseFiltersModal,tourStopNotesModal,tourHouseAddedPayload} from './tour-house-builder.js';
 import {UsageActivityService} from '../services/usage-activity-service.js';
 import {createCatalogMenu} from './catalog-menu.js';
@@ -47,7 +48,7 @@ import {
   pickerPayload, destinationMenuPayload, officialHousePayload, buttonRows,
   advancedSearchPayload, advancedAttributePayload, advancedManagePayload, advancedRemovePayload, advancedTextModal, searchFiltersModal, houseEditModal, registerHouseFormModal, confirmPayload,
   registrationNotFoundPayload, destinationInputModal, registrationDestinationReviewPayload, registrationMetadataModal, registrationFinalReviewPayload,
-  commentsPayload, commentModal, tourDetailPayload, tourManagePayload, tourStartChoicePayload,
+  commentModal, tourDetailPayload, tourManagePayload, tourStartChoicePayload,
   tourCreateModal, tourVisibilityPayload, featuredExpiryModal, tourEditDetailsPayload,
   tourEditVisibilityPayload, tourEditModal, stopEditModal, reorderPayload, adminPayload as renderAdminPayload, adminOtherRolesPayload, pendingReviewPayload,
   bulkTourChoicePayload, bulkTourSelectionPayload, bulkTourCreateModal, bulkTourVisibilityPayload,
@@ -113,6 +114,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
   const personalActionStates=new Map();
   const savedSearchStates=new Map();
   const quickCommentDrafts=new Map();
+  const commentReaders=new Map();
   const activeAdvancedByUser=new Map();
   const surpriseStates=new Map();
 
@@ -445,15 +447,39 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
   }
   function modalResponse(i,payload){ if(typeof i.isFromMessage==='function'&&i.isFromMessage())return i.update(payload); return i.reply({...payload,flags:MessageFlags.Ephemeral}); }
   function respond(i,payload,mode='update'){ if(mode==='reply')return i.reply({...payload,flags:MessageFlags.Ephemeral}); if(mode==='modal')return modalResponse(i,payload); return i.update(payload); }
-  async function resolveComments(i,scope,id,limit=25){
-    return Promise.all((await comments.list(scope,id,limit,guilds.getEsoServer(i.guildId))).map(async c=>{ let name=String(c.discord_user_id||'Author unavailable'); try{const m=await i.guild?.members.fetch(c.discord_user_id); if(m)name=m.displayName;}catch{try{const u=await i.client.users.fetch(c.discord_user_id);name=u.globalName||u.username;}catch{}} return {...c,author_name:name}; }));
+  async function resolveComments(i,scope,id,limit=25,offset=0){
+    return Promise.all((await comments.list(scope,id,limit,guilds.getEsoServer(i.guildId),offset)).map(async c=>{ let name=String(c.discord_user_id||'Author unavailable'); try{const m=await i.guild?.members.fetch(c.discord_user_id); if(m)name=m.displayName;}catch{try{const u=await i.client.users.fetch(c.discord_user_id);name=u.globalName||u.username;}catch{}} return {...c,author_name:name}; }));
   }
   async function loadSavedReference(i,id){const result=await accessContexts.forHouse({userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId),savedHouseId:id});if(!result.environmentMatch)throw new Error(result.message);return result;}
   async function getSaved(scope,id,i){const access=await loadSavedReference(i,id);if(!access.canView)return null;const r=access.record;if(scope==='personal')return r.scope==='private'?personalRow(r):null;if(scope==='global'||r.scope==='global')return r.scope==='global'?{...r,scope:'global'}:null;return r.scope==='public'&&r.guild_id===i.guildId?{...r,scope:'server'}:null;}
+  async function commentReaderHouse(i,state){
+    let house;
+    if(state.kind==='pass')house=(await sharePasses.resolveHousePass(state.passToken,{userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)})).house;
+    else if(state.kind==='tour'){const {stop}=await passTourStopContext(i,state.sessionId,state.stopId);house=await saved.get(stop.source_id);}
+    else house=await getSaved(state.scope,state.id,i);
+    if(!house||house.status!=='active')throw new Error('That saved house is no longer available.');
+    if(state.destinationId&&Number(house.destination_id)!==Number(state.destinationId))throw new Error('That house destination changed. Open Comments again.');
+    state.destinationId=house.destination_id;return house;
+  }
+  function commentReaderState(i,sid){
+    const state=commentReaders.get(sid);
+    if(!state||Date.now()-state.created>30*60*1000)throw new Error('That comments reader expired. Open Comments again.');
+    if(state.userId!==i.user.id)throw new Error('That comments reader belongs to another user.');
+    if(state.guildId!==i.guildId||state.channelId!==i.channelId||state.esoServer!==guilds.getEsoServer(i.guildId))throw new Error('That comments reader belongs to another server, channel or ESO environment.');
+    return state;
+  }
+  async function showCommentReader(i,sid,page=1,mode='update',content){
+    const state=commentReaderState(i,sid),house=await commentReaderHouse(i,state),total=await comments.count('global',house.id,state.esoServer),pages=Math.max(1,Math.ceil(total/commentPageSize));
+    const current=Math.min(pages,Math.max(1,Math.floor(Number(page)||1))),rows=await resolveComments(i,'global',house.id,commentPageSize,(current-1)*commentPageSize);
+    return respond(i,{...commentReaderPayload({house,rows,total,page:current,token:sid,backId:state.backId}),content:content||''},mode);
+  }
+  async function openCommentReader(i,descriptor,mode='update'){
+    for(const [sid,state] of commentReaders)if(Date.now()-state.created>30*60*1000)commentReaders.delete(sid);
+    const sid=token();commentReaders.set(sid,{...descriptor,userId:i.user.id,guildId:i.guildId,channelId:i.channelId,esoServer:guilds.getEsoServer(i.guildId),created:Date.now()});
+    try{return await showCommentReader(i,sid,1,mode);}catch(error){commentReaders.delete(sid);throw error;}
+  }
   async function commentsScreen(i,scope,id,mode='update',backId='hu:find'){
-    const r=await getSaved(scope,id,i); if(!r)return respond(i,{content:'That saved house is no longer available.',embeds:[],components:[]},mode);
-    const rows=await resolveComments(i,scope,id,25);
-    return respond(i,commentsPayload({label:destinationLabel(r),owner:r.eso_owner,rows,scope,id,backId:backId||'hu:find'}),mode);
+    return openCommentReader(i,{kind:'saved',scope,id,backId:backId||'hu:find'},mode);
   }
   async function tourAddHousePayload(i,t,{stateId=null}={}){
     const candidates=await tours.houseCandidates({creatorId:t.creator_id,sourceGuildId:t.source_guild_id||t.guild_id||i.guildId,esoServer:guilds.getEsoServer(i.guildId),visibility:t.visibility}),stops=await tours.getStops(t.id),rows=eligibleTourHouses(candidates,stops);
@@ -844,10 +870,8 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       const scope=currentStop.source_scope||'server',targetId=currentStop.source_id;
       if(scope==='personal'&&!await getSaved('personal',targetId,i)){
         if(session.mode!=='shared'&&(!sessionPass||sessionPass.status!=='active'))return i.reply({content:'This tour stop is no longer available through its Share Pass.',flags:MessageFlags.Ephemeral});
-        const rows=await resolveComments(i,scope,targetId,25),backId=`tour:return:${session.id}:${currentStop.id}:${detailState}`;
-        const payload=commentsPayload({label:destinationLabel(currentStop),owner:currentStop.eso_owner,rows,scope,id:targetId,backId});
-        payload.components=buttonRows([{customId:`hu:pass:tour:comment:add:${session.id}:${currentStop.id}:${detailState}`,label:'Add Comment',style:'primary'},{customId:backId,label:'Back',style:'secondary',emoji:'↩️'}]);
-        return i.reply({...payload,flags:MessageFlags.Ephemeral});
+        const backId=`tour:return:${session.id}:${currentStop.id}:${detailState}`;
+        return openCommentReader(i,{kind:'tour',sessionId:session.id,stopId:currentStop.id,backId},'reply');
       }
       return commentsScreen(i,scope,targetId,'reply',`tour:return:${session.id}:${currentStop.id}:${detailState}`);
     }
@@ -1260,12 +1284,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     if(id.startsWith('hu:pass:house:comments:')){
       const passToken=id.split(':').slice(4).join(':');
       try{
-        const resolved=await sharePasses.resolveHousePass(passToken,{userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)});
-        const house=resolved.house,scope=house.scope==='private'?'personal':house.scope==='global'?'global':'server';
-        const rows=await resolveComments(i,scope,house.id,25);
-        const payload=commentsPayload({label:destinationLabel(house),owner:house.eso_owner,rows,scope,id:house.id,backId:`hu:pass:house:view:${passToken}`});
-        payload.components=buttonRows([{customId:`hu:pass:house:comment:add:${passToken}`,label:'Add Comment',style:'primary'},{customId:`hu:pass:house:view:${passToken}`,label:'Back',style:'secondary',emoji:'↩️'}]);
-        return i.update(payload);
+        return await openCommentReader(i,{kind:'pass',passToken,backId:`hu:pass:house:view:${passToken}`});
       }catch(error){return i.reply({content:error.message,flags:MessageFlags.Ephemeral});}
     }
     if(id.startsWith('hu:pass:house:comment:add:')){
@@ -1580,6 +1599,14 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       const savedScope=scope==='personal'?'personal':scope==='global'?'global':'server',r=await getSaved(savedScope,rid,i); if(!r)return i.update({content:'That saved house is no longer available.',embeds:[],components:[]});
       return i.update(destinationMenuPayload(await withHouseCardContext(i,r),{canEdit:canEditSaved(i,r),backId,showDetails,navigation,surpriseToken}));
     }
+    if(id.startsWith('hu:discussion:')){
+      const parts=id.split(':'),sid=parts[3];
+      try{
+        if(parts[2]==='page')return await showCommentReader(i,sid,parts[4]);
+        if(parts[2]==='jump'){const state=commentReaderState(i,sid),house=await commentReaderHouse(i,state),total=await comments.count('global',house.id,state.esoServer);return i.showModal(commentPageModal(sid,Math.max(1,Math.ceil(total/commentPageSize))));}
+        if(parts[2]==='add'){const state=commentReaderState(i,sid),house=await commentReaderHouse(i,state);return i.showModal(commentModal('global',house.id,'hu:home',destinationLabel(house)).setCustomId(`hu:modal:discussion:${sid}`));}
+      }catch(error){return i.reply({content:error.message,flags:MessageFlags.Ephemeral});}
+    }
     if(id.startsWith('hu:comments:')){ const p=id.split(':'),scope=p[2],rid=Number(p[3]),backId=decodeURIComponent(p.slice(4).join(':')||'hu:find'); return commentsScreen(i,scope,rid,'update',backId); }
     if(id.startsWith('hu:comment:add:')){ const p=id.split(':'),scope=p[3],rid=Number(p[4]),backId=decodeURIComponent(p.slice(5).join(':')); const r=await getSaved(scope,rid,i); if(!r)return i.reply({content:'That saved house is no longer available.',flags:MessageFlags.Ephemeral}); return i.showModal(commentModal(scope,rid,backId,destinationLabel(r))); }
 
@@ -1837,6 +1864,18 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
   async function modal(i){
     if(!await prepareInteraction(i))return;
     const id=i.customId;
+    if(id.startsWith('hu:modal:discussionpage:')){
+      try{const sid=id.split(':')[3],state=commentReaderState(i,sid),house=await commentReaderHouse(i,state),total=await comments.count('global',house.id,state.esoServer),pages=Math.max(1,Math.ceil(total/commentPageSize)),value=String(i.fields.getTextInputValue('page')).trim(),page=Number(value);
+        if(!/^\d+$/.test(value)||!Number.isSafeInteger(page)||page<1||page>pages)throw new Error(`Enter a page number from 1 to ${pages}.`);
+        return await showCommentReader(i,sid,page,'modal');
+      }catch(error){return i.reply({content:error.message,flags:MessageFlags.Ephemeral});}
+    }
+    if(id.startsWith('hu:modal:discussion:')){
+      try{const sid=id.split(':')[3],state=commentReaderState(i,sid),house=await commentReaderHouse(i,state);
+        await comments.add({esoServer:state.esoServer,savedHouseId:house.id,commenterUserId:i.user.id,text:i.fields.getTextInputValue('comment')});
+        return await showCommentReader(i,sid,1,'modal','Comment added.');
+      }catch(error){return i.reply({content:error.message,flags:MessageFlags.Ephemeral});}
+    }
     if(id.startsWith('hu:modal:quickcomment:')){
       try{const context=quickCommentContext(i,id.split(':')[3]),source=await personalActionSource(i,context),target=houseTarget(source.row);if(houseTargetKey(target)!==houseTargetKey(context.target))throw new Error('That house destination changed. Open the house again.');
         await comments.add({esoServer:context.esoServer,savedHouseId:source.row.id,destinationId:source.row.destination_id,commenterUserId:i.user.id,text:i.fields.getTextInputValue('comment')});context.used=true;
@@ -1955,10 +1994,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       try{
         const {stop}=await passTourStopContext(i,sessionId,stopId),esoServer=guilds.getEsoServer(i.guildId);
         await comments.add({esoServer,savedHouseId:stop.source_id,commenterUserId:i.user.id,text:i.fields.getTextInputValue('comment')});
-        const rows=await resolveComments(i,'personal',stop.source_id,25),backId=`tour:return:${sessionId}:${stopId}:${detailState}`;
-        const payload=commentsPayload({label:destinationLabel(stop),owner:stop.eso_owner,rows,scope:'personal',id:stop.source_id,backId});
-        payload.components=buttonRows([{customId:`hu:pass:tour:comment:add:${sessionId}:${stopId}:${detailState}`,label:'Add Comment',style:'primary'},{customId:backId,label:'Back',style:'secondary',emoji:'↩️'}]);
-        return modalResponse(i,payload);
+        return await openCommentReader(i,{kind:'tour',sessionId,stopId,backId:`tour:return:${sessionId}:${stopId}:${detailState}`},'modal');
       }catch(error){return i.reply({content:error.message,flags:MessageFlags.Ephemeral});}
     }
     if(id.startsWith('hu:modal:pass:house:comment:')){
@@ -1966,11 +2002,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       try{
         const resolved=await sharePasses.resolveHousePass(passToken,{userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)});
         await comments.add({esoServer:guilds.getEsoServer(i.guildId),savedHouseId:resolved.house.id,commenterUserId:i.user.id,text:i.fields.getTextInputValue('comment')});
-        const scope=resolved.house.scope==='private'?'personal':resolved.house.scope==='global'?'global':'server';
-        const rows=await resolveComments(i,scope,resolved.house.id,25);
-        const payload=commentsPayload({label:destinationLabel(resolved.house),owner:resolved.house.eso_owner,rows,scope,id:resolved.house.id,backId:`hu:pass:house:view:${passToken}`});
-        payload.components=buttonRows([{customId:`hu:pass:house:comment:add:${passToken}`,label:'Add Comment',style:'primary'},{customId:`hu:pass:house:view:${passToken}`,label:'Back',style:'secondary',emoji:'↩️'}]);
-        return modalResponse(i,payload);
+        return await openCommentReader(i,{kind:'pass',passToken,backId:`hu:pass:house:view:${passToken}`},'modal');
       }catch(error){return i.reply({content:error.message,flags:MessageFlags.Ephemeral});}
     }
     if(id.startsWith('hu:modal:comment:')){
