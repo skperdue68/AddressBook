@@ -152,3 +152,7 @@ Access & Settings shows the selected server’s configured administrator, truste
 The full role-holder roster is fetched with the Discord List Guild Members REST endpoint and requires **Server Members Intent** enabled for the bot in the Discord Developer Portal. No privileged Gateway intent is added automatically. If Discord cannot provide a complete roster, the page explicitly shows the configured roles and individual grants instead of pretending the cache is complete. See [Discord’s official privileged-intent documentation](https://github.com/discord/discord-api-docs/blob/main/developers/events/gateway.mdx).
 
 The feedback inbox has a visible status selector that saves in place. Internal notes are separate, owner-only edits. Saving either refreshes the item’s revision; stale edits are rejected without silently overwriting another reviewer. The inbox retains its status filter, page and scroll position. Send feedback belongs in Support and the account menu, outside the review inbox.
+
+## House image storage
+
+See [the 1.0.70 upgrade guide](upgrade-v1.0.70.md) for the automatic schema migration, persistent `HOUSE_IMAGE_DIR`, Nginx upload limit and Discord command refresh. Back up the image directory alongside the database. Gallery management follows house-edit permissions; administrator access never exposes another creator’s Private house images.

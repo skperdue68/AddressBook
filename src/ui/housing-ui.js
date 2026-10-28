@@ -292,6 +292,7 @@ export function destinationMenuPayload(r,{canEdit=false,backId='hu:home',showDet
     ...registrationTourActions({savedHouseId:r.id,status:r.status}),
     {customId:`hu:details:${scope}:${Number(r.id)}:${showDetails?'hide':'show'}:${detailBack}`,label:showDetails?'Hide Details':'More Details',style:'primary',emoji:showDetails?'🔼':'🔽'},
     {customId:`hu:comments:${r.scope}:${Number(r.id)}:${encodeURIComponent(commentsBackId)}`,label:'Comments',style:'primary',emoji:'💬'},
+    {customId:`hu:gallery:${Number(r.id)}:0`,label:'Screenshots',style:'secondary',emoji:'🖼️'},
     {customId:`hu:pass:house:share:${Number(r.id)}`,label:'Share House',style:'success'},
     {customId:`hu:report:houseid:${Number(r.id)}`,label:'Report a Problem',style:'secondary'},
     ...houseStateSpecs(r)

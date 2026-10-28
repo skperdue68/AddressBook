@@ -28,6 +28,7 @@ if(String(process.env.DB_TYPE||'sqlite').toLowerCase()==='mariadb')await ensureM
 const db=openDatabase();
 await migrate(db);
 await seedHouses(db);
+await new WebWorkspaceService(db).images.cleanupOrphans().catch(error=>console.warn('HearthBound screenshot cleanup:',error.message));
 const handlers=createHandlers(db);
 const client=new Client({intents:[GatewayIntentBits.Guilds]});
 const worker=new EngagementWorker({featured:new FeaturedContentService(db),intervalMs:60_000});

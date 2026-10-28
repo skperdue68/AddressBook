@@ -1,3 +1,4 @@
+import {houseGalleryRoute} from './house-gallery.js';
 import {readFile} from 'node:fs/promises';
 import {renderWorkspace,csrfField} from './workspace-render.js';
 import {ESO_SERVERS} from '../utils/eso-server.js';
@@ -130,6 +131,7 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
       if(request.method!=='GET')return send(response,405,'Method not allowed',{allow:'GET, POST'});
       return send(response,200,renderWorkspace({title:'Choose this server’s ESO environment',user:session,context:context.memberContext,body:`<p>This is the same initial setup offered in Discord. Choose carefully; later changes require administration and an impact confirmation.</p><form action="/app/setup" method="post">${csrfField(session.csrf)}<label>ESO environment<select name="esoServer">${ESO_SERVERS.map(s=>`<option value="${s.value}">${s.label}</option>`).join('')}</select></label><button class="primary">Complete initial setup</button></form>`}));
     }
+    if(workspace&&context.memberContext){const gallery=await houseGalleryRoute({request,response,url,workspace,context:context.memberContext,session,send,redirect,readBody});if(gallery!==null)return gallery;}
     if(workspace&&(url.pathname==='/'||url.pathname==='/app'||url.pathname.startsWith('/app/'))){return handleWorkspaceRoute({request,response,url,session,context:context.memberContext,workspace,serverContexts:context.availableContexts||[],memberLookup,claimFirstAdmin,readBody,send,redirect});}
     const common = { guildId: guild.id, esoServer };
     const reportMutation = /^\/admin\/reports\/(\d+)\/(review|resolve|dismiss)$/.exec(url.pathname);
