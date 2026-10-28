@@ -295,9 +295,9 @@ export function destinationMenuPayload(r,{canEdit=false,backId='hu:home',showDet
   const navSpecs=houseNavigationSpecs(navigation,showDetails);
   const backSpecs=[...(surpriseToken?[{customId:`hu:surprise:again:${surpriseToken}`,label:'Another Random House',style:'success',emoji:'🎲'}]:[]),{customId:backId,label:/^hu:(results:|advanced:)/.test(backId)?'Back to Results':backId==='hu:my'?'My Address Book':backId==='hu:home'?'Main Menu':'Back',style:'secondary',emoji:'↩️'}];
   const houseEmbed=cleanDestinationEmbed(r,{showDetails});
-  if(r.discordCover)houseEmbed.setImage('attachment://house-cover.webp');
+  const embeds=r.discordCover?[new EmbedBuilder().setColor(houseEmbed.data.color??0x5865f2).setImage('attachment://house-cover.webp'),houseEmbed]:[houseEmbed];
   if(r.coverNeedsPermission)houseEmbed.setFooter({text:'Screenshots are available. HearthBound needs Attach Files permission to show them in Discord.'});
-  return {attachments:[],files:r.discordCover?[r.discordCover]:[],embeds:[houseEmbed],components:buttonRows([...primarySpecs,...editSpecs,...navSpecs,...backSpecs])};
+  return {attachments:[],files:r.discordCover?[r.discordCover]:[],embeds,components:buttonRows([...primarySpecs,...editSpecs,...navSpecs,...backSpecs])};
 }
 
 export function officialHousePayload(house,backId='hu:find',showDetails=false,navigation=null,surpriseToken=null){
