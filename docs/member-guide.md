@@ -198,3 +198,5 @@ After setup, administrators can configure Server roles and review Server access 
 Tour builders can enter optional tour-specific notes directly on each draft stop, or when adding a house from its detail page. These notes guide visitors during that tour and never replace the house description. Save tour keeps stop order and notes together.
 
 House screenshots: open a house’s gallery on the web or select Screenshots in Discord. Add up to eight images with optional captions using the web upload form or `/hearth house:… screenshot:… caption:…` (also `/housing`). Only house editors can upload, choose the cover, or remove screenshots. Private images remain creator-only.
+
+House discovery uses descriptive cards with Favorite, visit status, View house and Add to tour actions. Basic Search also offers Compact list. Cards and pagination retain filters; tags open matching searches. My Address Book puts All saved, Favorites, Want to Visit and Visited first on web and Discord, followed by submitted records and organizing tools.

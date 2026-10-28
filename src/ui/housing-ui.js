@@ -69,7 +69,7 @@ export function onboardingPayload({page=0}={}){
   return {embeds:[e],components:[...buttonRows(navigation),...buttonRows([{...contextual,style:'primary'}])]};
 }
 export function myAddressBookPayload({houses=0,tours=0,pending=0,recent=0,favorites=0,wantToVisit=0,visited=0,savedSearches=0,continueItems=null,legacy=null,esoServer=null,backId='hu:home'}={}){
-  const e=embed('📖 My Address Book','Your houses, favorites, places to visit, and visited destinations. Only you can see this address book.')
+  const e=embed('📖 My Address Book','Keep places that stand out to you: favorites, places to visit, and visited destinations. Houses you submit appear here too. Your saved lists are personal.')
     .addFields(
       {name:'🏠 My Houses',value:`**${Number(houses)}**`,inline:true},
       {name:'🗺️ My Tours',value:`**${Number(tours)}**`,inline:true},
@@ -88,18 +88,17 @@ export function myAddressBookPayload({houses=0,tours=0,pending=0,recent=0,favori
   if(legacyCount)e.addFields({name:'⚠️ Unassigned Legacy Data',value:`**${legacy.houses||0}** house${Number(legacy.houses)===1?'':'s'} and **${legacy.tours||0}** tour${Number(legacy.tours)===1?'':'s'} need an ESO environment. Review them before assigning them to ${esoServerLabel(esoServer)}.`});
   return {embeds:[e],components:[...buttonRows(continueActions),...buttonRows([
     {customId:'hu:my:library',label:'All Saved Places',style:'primary',emoji:'📖'},
-    {customId:'hu:my:houses',label:'My Houses',style:'primary',emoji:'🏠'},
-    {customId:'hu:my:tours',label:'My Tours',style:'secondary',emoji:'🗺️'},
-    {customId:'hu:my:pending',label:'Pending',style:'secondary',emoji:'⏳'},
-    {customId:'hu:my:recent',label:'Recently Viewed',style:'secondary',emoji:'🕘'},
     {customId:'hu:my:favorites',label:'Favorites',style:'secondary',emoji:'⭐'},
     {customId:'hu:my:want',label:'Want to Visit',style:'secondary',emoji:'📌'},
     {customId:'hu:my:visited',label:'Visited',style:'secondary',emoji:'✅'},
+    {customId:'hu:my:houses',label:'Submitted Houses',style:'secondary',emoji:'🏠'},
+    {customId:'hu:my:tours',label:'My Tours',style:'secondary',emoji:'🗺️'},
     {customId:'hu:my:progress',label:'Tour Progress',style:'secondary',emoji:'🧭'},
+    {customId:'hu:my:recent',label:'Recently Viewed',style:'secondary',emoji:'🕘'},
     {customId:'hu:my:searches',label:'Saved Searches',style:'secondary',emoji:'🔎'},
+    {customId:'hu:my:pending',label:'Pending',style:'secondary',emoji:'⏳'},
     ...(legacyCount?[{customId:'hu:legacy:preview',label:`Assign to ${esoServerLabel(esoServer)}`,style:'success'}]:[]),
-    {customId:backId,label:'Back',style:'secondary',emoji:'↩️'},
-    {customId:'hu:help',label:'Support & Access',style:'secondary',emoji:'❓'}
+    {customId:backId,label:backId==='hu:home'?'Main Menu':'Back',style:'secondary',emoji:'↩️'}
   ],4)]};
 }
 

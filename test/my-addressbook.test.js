@@ -26,8 +26,8 @@ test('My Address Book renders personal counts and dashboard actions',()=>{
     ['✅ Visited','**0**'],['🔎 Saved Searches','**0**']
   ]);
   assert.deepEqual(labels(payload),[
-    'All Saved Places','My Houses','My Tours','Pending','Recently Viewed',
-    'Favorites','Want to Visit','Visited','Tour Progress','Saved Searches','Back','Support & Access'
+    'All Saved Places','Favorites','Want to Visit','Visited','Submitted Houses',
+    'My Tours','Tour Progress','Recently Viewed','Saved Searches','Pending','Main Menu'
   ]);
 });
 

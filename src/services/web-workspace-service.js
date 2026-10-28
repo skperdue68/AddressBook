@@ -38,8 +38,17 @@ export class WebWorkspaceService{
   if(ownerExact!==''){clauses.push('s.normalized_owner=?');args.push(normalizeAccount(ownerExact));}
   if(q){clauses.push("(lower(h.name) LIKE ? OR lower(coalesce(s.display_name,'')) LIKE ? OR lower(s.eso_owner) LIKE ? OR lower(coalesce(h.zone,'')) LIKE ?)");const term=`%${String(q).slice(0,200).toLowerCase()}%`;args.push(term,term,term,term);}
   const where=clauses.join(' AND '),total=Number((await one(this.db,`SELECT count(*) c FROM saved_houses s JOIN houses h ON h.house_id=s.house_id WHERE ${where}`,args)).c),p=pageNumber(page);
-  const rows=await this.db.query(`SELECT s.*,(SELECT hi.id FROM house_images hi WHERE hi.saved_house_id=s.id ORDER BY hi.position,hi.id LIMIT 1) cover_image_id,h.name catalog_house_name,h.zone,h.classification,h.house_type,h.style FROM saved_houses s JOIN houses h ON h.house_id=s.house_id WHERE ${where} ORDER BY lower(coalesce(s.display_name,h.name)),s.id LIMIT 25 OFFSET ?`,[...args,(p-1)*25]);
+  const rows=await this.db.query(`SELECT s.*,h.name catalog_house_name,h.zone,h.classification,h.house_type,h.style FROM saved_houses s JOIN houses h ON h.house_id=s.house_id WHERE ${where} ORDER BY lower(coalesce(s.display_name,h.name)),s.id LIMIT 25 OFFSET ?`,[...args,(p-1)*25]);
   return {rows:withCatalogHouseNames(rows).map(h=>({...h,canEdit:this.policy.canEditHouse(h,c)})),total,page:p,hasNext:p*25<total};
+ }
+ async decorateHouses(c,rows){
+  if(!rows.length)return rows;
+  const ids=[...new Set(rows.filter(h=>h.scope!=='official'&&Number(h.id)>0).map(h=>Number(h.id)))],targets=[...new Set(rows.map(h=>Number(h.scope==='official'?h.house_id:h.destination_id)).filter(id=>id>0))];
+  const covers=ids.length?await this.db.query(`SELECT id,saved_house_id FROM house_images WHERE saved_house_id IN (${ids.map(()=>'?').join(',')}) ORDER BY position,id`,ids):[];
+  const coverMap=new Map();for(const image of covers)if(!coverMap.has(Number(image.saved_house_id)))coverMap.set(Number(image.saved_house_id),image.id);
+  const states=targets.length?await this.db.query(`SELECT * FROM user_house_states WHERE discord_user_id=? AND target_id IN (${targets.map(()=>'?').join(',')})`,[c.userId,...targets]):[];
+  const stateMap=new Map(states.map(state=>[`${state.target_kind}:${Number(state.target_id)}`,state]));
+  return rows.map(h=>({...h,cover_image_id:h.scope==='official'?null:coverMap.get(Number(h.id))||null,personal_state:stateMap.get(`${h.scope==='official'?'official':'destination'}:${Number(h.scope==='official'?h.house_id:h.destination_id)}`)||{is_favorite:0,visit_state:'none'}}));
  }
  async getHouse(c,id){const h=await this.saved.get(id);if(!h||(!this.policy.canViewHouse(h,c)&&!(this.policy.canEditHouse(h,c)&&h.status==='pending')))throw new Error('House is not available.');return {...h,canEdit:this.policy.canEditHouse(h,c)};}
  async registerHouse(context,{houseId,esoOwner,visibility,displayName=null,description=null,tags=[]}){

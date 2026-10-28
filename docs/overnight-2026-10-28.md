@@ -34,3 +34,16 @@ Next candidates: polish gallery upload/empty states and caption editing; unify d
 - No schema, storage, slash-command definition or environment changes beyond the gallery foundation. Merge after the gallery PR; pull and restart.
 
 Round 2 verification: 717/717 full-suite tests passed. An additional targeted gallery rerun passed after upload controls were disabled during an in-flight request. Real Chrome verified an actual AJAX upload, enlarged-viewer arrow keys, and desktop/mobile layouts. Independent review found no actionable defects. The gallery foundation is [PR #28](https://github.com/skperdue68/HearthBound/pull/28); review PRs in dependency order.
+
+## Round 3: consistent house discovery and saved places
+
+- Search, advanced/saved searches and My Address Book use the same descriptive cards: official house name, ESO owner, zone, classification, style, tags, short description and available cover image. Tags link to a matching search. Text-only houses do not get fake images.
+- Cards expose reversible Favorite and visit-state controls alongside View house and Add to tour. Updates stay on the filtered list; the non-JavaScript form fallback also returns to that list. A compact-list option remains available for basic search, preserving filters and pagination.
+- My Address Book leads with All saved, Favorites, Want to Visit and Visited. Submitted records and organizing tools come next. Empty legacy recovery links are hidden. Discord follows the same saved-first order and ends with Main Menu.
+- Research: [ESO Housing's community gallery](https://esohousing.com/gallery) combines build identity, owner, classification/style, summaries and discovery filters. Its transferable lesson is to make the home understandable before opening it. HearthBound keeps its own permissions and tour-oriented actions.
+- Batched cover/current-user-state loading avoids per-card calls. Privacy checks remain in the existing listing/action services, and image requests retain their own permission checks.
+- Review caught a stray house-layout variable in the tour-list route; both Housing Tours and Your Tours now have a direct HTTP regression check. Focused tests and real Chrome checks cover filtered saves, compact view, mobile overflow and action-row alignment.
+
+Gallery experience improvements are [PR #29](https://github.com/skperdue68/HearthBound/pull/29), following #28 and #27.
+
+Round 3 verification: 721/721 full-suite tests passed. A final targeted rerun covered the clearer empty-list messages. Real Chrome verified Favorite/visit autosave without navigation, compact list, return-preserving filters, mobile overflow and alignment before/after saving. Independent review confirmed the tour-list fix and found no further actionable issues. Empty personal lists now explain how to populate that particular list.
