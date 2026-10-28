@@ -1,4 +1,4 @@
-import {ActionRowBuilder,ButtonBuilder,ButtonStyle,EmbedBuilder,MessageFlags} from 'discord.js';
+import {ActionRowBuilder,ButtonBuilder,ButtonStyle,EmbedBuilder,MessageFlags,ModalBuilder,TextInputBuilder,TextInputStyle} from 'discord.js';
 import {one} from '../db/database.js';
 import {portalPublicUrl} from '../web/portal-url.js';
 import {HOUSE_IMAGE_BYTES} from '../services/house-image-service.js';
@@ -21,12 +21,20 @@ export async function discordHouseGallery(workspace,i,{houseId,index=0,attachmen
   if(attachment)await workspace.images.add(c,houseId,await attachmentBytes(attachment,fetchImpl),caption);
   if(action==='remove')await workspace.images.remove(c,houseId,imageId);
   if(action==='cover')await workspace.images.setCover(c,houseId,imageId);
-  const house=await workspace.getHouse(c,houseId),images=await workspace.images.list(c,houseId);index=Math.min(Math.max(0,Number(index)||0),Math.max(0,images.length-1));const image=images[index];
+  if(action==='caption')await workspace.images.updateCaption(c,houseId,imageId,caption);
+  const house=await workspace.getHouse(c,houseId),images=await workspace.images.list(c,houseId);index=Math.min(Math.max(0,Number(index)||0),Math.max(0,images.length-1));if(action==='caption')index=Math.max(0,images.findIndex(image=>Number(image.id)===Number(imageId)));const image=images[index];
   const embed=new EmbedBuilder().setColor(0xe5bc71).setTitle(String(house.display_name||house.house_name).slice(0,256)).setDescription(`${house.house_name} · ${house.eso_owner}\n\n${image?image.caption||'Explore the details of this home.':'No screenshots yet.'}`).setFooter({text:`${images.length?`${index+1} / ${images.length} · `:''}Add screenshots with /hearth house:… screenshot:…`});
   const buttons=[];if(images.length>1)buttons.push(new ButtonBuilder().setCustomId(`hu:gallery:page:${houseId}:${index-1}`).setLabel('Previous image').setStyle(ButtonStyle.Secondary).setDisabled(index===0),new ButtonBuilder().setCustomId(`hu:gallery:page:${houseId}:${index+1}`).setLabel('Next image').setStyle(ButtonStyle.Primary).setDisabled(index===images.length-1));
-  if(image&&house.canEdit){if(index)buttons.push(new ButtonBuilder().setCustomId(`hu:gallery:cover:${houseId}:${image.id}`).setLabel('Use as cover').setStyle(ButtonStyle.Secondary));buttons.push(new ButtonBuilder().setCustomId(`hu:gallery:remove:${houseId}:${image.id}`).setLabel('Remove screenshot').setStyle(ButtonStyle.Danger));}
+  const manage=[];if(image&&house.canEdit){manage.push(new ButtonBuilder().setCustomId(`hu:gallery:edit-caption:${houseId}:${image.id}:${index}`).setLabel('Edit caption').setStyle(ButtonStyle.Secondary));if(index)manage.push(new ButtonBuilder().setCustomId(`hu:gallery:cover:${houseId}:${image.id}`).setLabel('Use as cover').setStyle(ButtonStyle.Secondary));manage.push(new ButtonBuilder().setCustomId(`hu:gallery:remove:${houseId}:${image.id}`).setLabel('Remove screenshot').setStyle(ButtonStyle.Danger));}
   const portal=portalPublicUrl();if(portal)buttons.push(new ButtonBuilder().setLabel(house.canEdit?'Manage screenshots on web':'View house on web').setStyle(ButtonStyle.Link).setURL(new URL(`/app/houses/${houseId}#screenshots`,portal).toString()));
   const files=image?[{attachment:await workspace.images.read(c,houseId,image.id),name:'house.webp'}]:[];if(image)embed.setImage('attachment://house.webp');
-  return i.editReply({attachments:[],allowedMentions:{parse:[]},embeds:[embed],files,components:buttons.length?[new ActionRowBuilder().addComponents(buttons)]:[]});
+  return i.editReply({attachments:[],allowedMentions:{parse:[]},embeds:[embed],files,components:[...(buttons.length?[new ActionRowBuilder().addComponents(buttons)]:[]),...(manage.length?[new ActionRowBuilder().addComponents(manage)]:[])]});
  }catch(error){return i.editReply({content:error.message,attachments:[],embeds:[],components:[],allowedMentions:{parse:[]}});}
+}
+
+export async function galleryCaptionModal(workspace,i,{houseId,imageId,index=0}){
+ try{const c=await galleryContext(workspace,i);await workspace.images.access(c,houseId,true);const image=(await workspace.images.list(c,houseId)).find(image=>Number(image.id)===Number(imageId));if(!image)throw new Error('Screenshot is unavailable.');
+ const field=new TextInputBuilder().setCustomId('caption').setLabel('What does this screenshot show?').setStyle(TextInputStyle.Paragraph).setMaxLength(250).setRequired(false).setPlaceholder('Describe a detail visitors should look for');if(image.caption)field.setValue(image.caption);
+ return i.showModal(new ModalBuilder().setCustomId(`hu:gallery:caption:${houseId}:${imageId}:${index}`).setTitle('Edit screenshot caption').addComponents(new ActionRowBuilder().addComponents(field)));
+ }catch(error){return i.reply({content:error.message,flags:MessageFlags.Ephemeral,allowedMentions:{parse:[]}});}
 }

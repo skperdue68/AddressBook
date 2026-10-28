@@ -38,6 +38,13 @@ export class HouseImageService{
  }
  filePath(key){if(!/^[a-f0-9-]{36}\.webp$/.test(key))throw new Error('Screenshot is unavailable.');return join(this.directory,key);}
  async read(context,houseId,imageId){await this.access(context,houseId);const image=await one(this.db,'SELECT storage_key FROM house_images WHERE saved_house_id=? AND id=?',[Number(houseId),Number(imageId)]);if(!image)throw new Error('Screenshot is unavailable.');return readFile(this.filePath(image.storage_key));}
+ async updateCaption(context,houseId,imageId,caption){
+  caption=String(caption||'').trim();if(caption.length>250)throw new Error('Keep the caption to 250 characters.');
+  return withTransaction(this.db,async conn=>{await one(conn,'SELECT id FROM saved_houses WHERE id=? FOR UPDATE',[Number(houseId)]);await this.access(context,houseId,true,conn);
+   const image=await one(conn,'SELECT id FROM house_images WHERE saved_house_id=? AND id=?',[Number(houseId),Number(imageId)]);if(!image)throw new Error('Screenshot is unavailable.');
+   await conn.query('UPDATE house_images SET caption=? WHERE id=?',[caption,image.id]);
+  });
+ }
  async setCover(context,houseId,imageId){return withTransaction(this.db,async conn=>{
   await one(conn,'SELECT id FROM saved_houses WHERE id=? FOR UPDATE',[Number(houseId)]);await this.access(context,houseId,true,conn);
   const image=await one(conn,'SELECT id FROM house_images WHERE saved_house_id=? AND id=?',[Number(houseId),Number(imageId)]);if(!image)throw new Error('Screenshot is unavailable.');

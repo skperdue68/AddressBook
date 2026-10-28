@@ -24,3 +24,13 @@ Work is proposed in reviewable PRs. Nothing is merged or deployed by the agent.
 - [Airbnb wishlists](https://www.airbnb.co.uk/help/article/1236) expose direct saving and existing/new collection choices. Proposed application: keep Favorite and Add to tour visible near the house rather than behind management flows.
 
 Next candidates: polish gallery upload/empty states and caption editing; unify discovery and saved-house actions; shorten Discord tour-building paths. Each round should preserve permissions, return context and unsaved work, and use an appropriately scoped PR with evidence.
+
+## Round 2: browsing and managing galleries
+
+- Images open in an enlarged in-page viewer with Previous/Next, arrow keys, Escape, and focus returned to the original thumbnail. Ordinary image links still work without JavaScript.
+- The upload form supports choosing or dropping one file, previewing it, and seeing upload progress. Server/network errors stay beside the form and preserve the file and caption for retry.
+- Existing captions can be edited on the web or through a Discord modal. Discord returns to the same image rather than another menu. Navigation and editing controls use separate bounded rows.
+- Research: [GOV.UK file upload](https://design-system.service.gov.uk/components/file-upload/) supports standard choosing and drag/drop with clear errors; [W3C modal dialogs](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/) specifies keyboard focus, Escape and focus return. These informed progressive enhancement and the viewer's interaction design.
+- No schema, storage, slash-command definition or environment changes beyond the gallery foundation. Merge after the gallery PR; pull and restart.
+
+Round 2 verification: 717/717 full-suite tests passed. An additional targeted gallery rerun passed after upload controls were disabled during an in-flight request. Real Chrome verified an actual AJAX upload, enlarged-viewer arrow keys, and desktop/mobile layouts. Independent review found no actionable defects. The gallery foundation is [PR #28](https://github.com/skperdue68/HearthBound/pull/28); review PRs in dependency order.
