@@ -291,7 +291,7 @@ test('Featured management selector exposes all five entries and selected control
 });
 
 test('Featured tours have bounded Open controls for viewers and managers', () => {
-  const items=Array.from({length:5},(_,index)=>({target_kind:'tour',target_id:index+1,target_name:`Route ${index+1}`,position:index+1}));
+  const items=Array.from({length:4},(_,index)=>({target_kind:'tour',target_id:index+1,target_name:`Route ${index+1}`,position:index+1}));
   for(const canManage of [false,true]){
     const payload=featuredPayload({items,canManage,selectedItem:canManage?items[0]:null});
     const ids=payload.components.flatMap(row=>row.toJSON().components).map(c=>c.custom_id);
@@ -302,8 +302,8 @@ test('Featured tours have bounded Open controls for viewers and managers', () =>
 });
 
 test('Featured houses and tours expose Open controls within Discord row limits', () => {
-  const houses=Array.from({length:5},(_,index)=>({target_kind:'house',target_id:index+1,target_name:`House ${index+1}`,position:index+1}));
-  const tours=Array.from({length:5},(_,index)=>({target_kind:'tour',target_id:index+11,target_name:`Tour ${index+1}`,position:index+1}));
+  const houses=Array.from({length:4},(_,index)=>({target_kind:'house',target_id:index+1,target_name:`House ${index+1}`,position:index+1}));
+  const tours=Array.from({length:4},(_,index)=>({target_kind:'tour',target_id:index+11,target_name:`Tour ${index+1}`,position:index+1}));
   for(const canManage of [false,true]){
     const payload=featuredPayload({items:[...houses,...tours],canManage,selectedItem:canManage?houses[0]:null});
     const ids=payload.components.flatMap(row=>row.toJSON().components).map(c=>c.custom_id);

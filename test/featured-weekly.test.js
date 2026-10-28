@@ -10,13 +10,13 @@ test('weekly selection persists deadlines and avoids previous destinations acros
  const initial=await service.rotateHouses({guildId:'g',esoServer:'pc_na'});assert.equal(initial.rotated,false);assert.equal(initial.items.length,1);assert.equal(initial.nextRotationAt.toISOString(),'2026-10-28T12:00:00.000Z');
  service=make();now+=7*DAY-1;assert.equal((await service.rotateHouses({guildId:'g',esoServer:'pc_na'})).rotated,false);now++;
  const result=await Promise.all([service.rotateHouses({guildId:'g',esoServer:'pc_na'}),make().rotateHouses({guildId:'g',esoServer:'pc_na'})]);assert.equal(result.filter(r=>r.rotated).length,1);
- const rows=await service.list({guildId:'g',esoServer:'pc_na',targetKind:'house'});assert.equal(rows.length,5);assert.ok(rows.every(r=>r.target_id!==1));
- const prior=rows.map(r=>r.target_id);now+=7*DAY;const next=await service.rotateHouses({guildId:'g',esoServer:'pc_na'});assert.equal(next.items.length,5);assert.ok(next.items.every(r=>!prior.includes(r.target_id)));
+ const rows=await service.list({guildId:'g',esoServer:'pc_na',targetKind:'house'});assert.equal(rows.length,4);assert.ok(rows.every(r=>r.target_id!==1));
+ const prior=rows.map(r=>r.target_id);now+=7*DAY;const next=await service.rotateHouses({guildId:'g',esoServer:'pc_na'});assert.equal(next.items.length,4);assert.ok(next.items.every(r=>!prior.includes(r.target_id)));
 });
 for(const count of [0,1,4,5,6])test(`weekly pool ${count} fills distinct slots and empty retries immediately`,async t=>{
  const db=await fixture(t,count);let now=Date.parse('2026-10-21T12:00:00Z');const service=new FeaturedContentService(db,{clock:()=>now});
- const args={guildId:'g',esoServer:'pc_na'};const first=await service.rotateHouses(args);assert.equal(first.items.length,Math.min(5,count));assert.equal(first.nextRotationAt===null,count===0);
- if(count){const due=first.nextRotationAt.getTime();await service.remove({guildId:'g',targetKind:'house',targetId:first.items[0].target_id,isModerator:true});now+=DAY;await service.rotateHouses(args);assert.equal(new Date((await one(db,'SELECT last_rotated_at FROM featured_house_cycles')).last_rotated_at).getTime(),due-7*DAY);now=due;const next=await service.rotateHouses(args);assert.equal(next.items.length,Math.min(5,count));assert.equal(new Set(next.items.map(r=>r.target_id)).size,next.items.length);}
+ const args={guildId:'g',esoServer:'pc_na'};const first=await service.rotateHouses(args);assert.equal(first.items.length,Math.min(4,count));assert.equal(first.nextRotationAt===null,count===0);
+ if(count){const due=first.nextRotationAt.getTime();await service.remove({guildId:'g',targetKind:'house',targetId:first.items[0].target_id,isModerator:true});now+=DAY;await service.rotateHouses(args);assert.equal(new Date((await one(db,'SELECT last_rotated_at FROM featured_house_cycles')).last_rotated_at).getTime(),due-7*DAY);now=due;const next=await service.rotateHouses(args);assert.equal(next.items.length,Math.min(4,count));assert.equal(new Set(next.items.map(r=>r.target_id)).size,next.items.length);}
 });
 
 test('weekly selection excludes wrong scopes and deduplicates destinations without changing tours',async t=>{
@@ -27,4 +27,13 @@ test('weekly selection excludes wrong scopes and deduplicates destinations witho
  const result=await service.rotateHouses({guildId:'g',esoServer:'pc_na'});assert.equal(result.items.length,2);assert.ok(result.items.every(r=>r.target_id!==4));
  assert.equal((await service.list({guildId:'g',esoServer:'pc_na',targetKind:'tour'})).length,1);
  await db.query("UPDATE saved_houses SET status='archived'");const changed=await service.rotateHouses({guildId:'g',esoServer:'pc_eu'});assert.equal(changed.items.length,0);assert.equal(changed.nextRotationAt,null);
+});
+test('weekly engagement uses destination states and legacy five-card lists are capped immediately',async t=>{
+ const db=await fixture(t,6),service=new FeaturedContentService(db,{clock:()=>Date.parse('2026-10-28T12:00:00Z'),random:()=>0.5});
+ await db.query("INSERT INTO user_house_states(discord_user_id,target_kind,target_id,is_favorite,visit_state) VALUES('fan','destination',6,1,'visited')");
+ const result=await service.rotateHouses({guildId:'g',esoServer:'pc_na'});
+ assert.equal(result.items.length,4);assert.equal(Number(result.items[0].target_id),6);
+ await assert.rejects(()=>service.set({guildId:'g',esoServer:'pc_na',targetKind:'house',targetId:5,isModerator:true,actorId:'mod'}),/at most four/);
+ await db.query("INSERT INTO featured_items(guild_id,target_kind,target_id,position,selected_by) VALUES('g','house',5,5,'legacy')");
+ assert.equal((await service.list({guildId:'g',esoServer:'pc_na',targetKind:'house'})).length,4);
 });
