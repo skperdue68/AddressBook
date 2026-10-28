@@ -123,3 +123,16 @@ Reliable list pagination is [PR #35](https://github.com/skperdue68/HearthBound/p
 - HTTP tests cover 26 saved searches, result/house return metadata, rename/cancel, deletion of the only item on the last page and malicious source-page input. Chrome followed the actual mobile results/house/back/rename/delete path and submitted forms successfully. Independent review found no actionable issues.
 
 Round 9 verification: all 737 tests passed. A final 15-test return/navigation rerun passed after the concise save notice. Real Chrome completed the mobile navigation and mutation sequence; independent review found no actionable issues. No schema, dependency, environment or permission changes.
+
+
+Saved-search return improvements are [PR #36](https://github.com/skperdue68/HearthBound/pull/36).
+
+## Round 10: keep editor drafts after failed saves
+
+- Found that house/tour validation failures led to a generic error page with no form or submitted values. House errors now keep entered nickname, ESO owner, description, tags and filtered return context. Tour errors restore name, description, visibility, selected stop order and multiline tour-specific notes.
+- Error summaries receive keyboard focus. Recovered tours remain marked as unsaved so leaving triggers the existing draft warning. Errors stay escaped, and existing validation and atomic tour saves remain in the services.
+- A tour version conflict keeps the submitted version, disables Save and opens the latest editor in another tab for comparison. It never replaces the stale token with the current one or silently overwrites newer changes.
+- Recovery rechecks edit access before redisplaying saved metadata. Stop details come only from authorized candidates or already-masked tour data; unknown/private selections get a generic removable placeholder. Recovery displays up to 1,000 selected stops with an explicit warning beyond that, while the existing 250-stop save limit remains enforced.
+- HTTP checks cover invalid house input, retained formatting/filters, failed new-tour atomicity and corrected resubmission, stale versions, inaccessible Private houses, access revoked during failure, and preserving versus explicitly clearing existing notes. Chrome checked desktop/mobile recovery, focused summaries and successful correction/resubmission. Independent review found no actionable issues.
+
+Round 10 verification: 743/743 full-suite tests passed. A focused 16-test editor/house/tour rerun passed. Chrome confirmed desktop/mobile bounds, retained multiline fields, error focus and correction/resubmission. No schema, dependency, environment or permission changes.

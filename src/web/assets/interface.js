@@ -27,3 +27,6 @@ document.querySelectorAll('[data-mobile-navigation]').forEach(sidebar=>{
  document.addEventListener('click',event=>{if(media.matches&&open&&!sidebar.contains(event.target))show(false);});
  media.addEventListener?.('change',()=>{show(media.matches&&nav.contains(document.activeElement));});
 });
+
+// Keep failed-save feedback reachable for keyboard and screen-reader users.
+document.querySelector('[data-form-error]')?.focus();
