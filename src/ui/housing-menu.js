@@ -532,7 +532,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       const tourReturn=action==='edit'?await tourReturnPayload(i,returnTo,'House updated.'):null;
       if(tourReturn)return respond(i,tourReturn,mode);
       return respond(i,destinationMenuPayload(await withHouseCardContext(i,row),{canEdit,backId:returnTo,navigation:navigationFromBackId(returnTo)}),mode);
-    }catch(e){ return respond(i,{content:`Could not save that house: ${e.message}`,components:[],embeds:[]},mode); }
+    }catch(e){ return respond(i,{content:e.code==='VISIBLE_REGISTRATION_EXISTS'?e.message:`Could not save that house: ${e.message}`,components:e.code==='VISIBLE_REGISTRATION_EXISTS'?buttonRows([{customId:`hu:registration:house:${e.existingHouseId}`,label:'Open existing house',style:'primary'}]):[],embeds:[]},mode); }
   }
   async function submitHouseForm(i,scope,action,id=null,backId=''){
     const data=houseFormData(i),resolved=await houses.resolve(data.house);

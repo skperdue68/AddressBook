@@ -12,7 +12,7 @@ import {welcomePage,guildPickerPage} from './public-pages.js';
 const cookieValue = (request, name) => String(request.headers.cookie || '').split(';').map(item => item.trim()).find(item => item.startsWith(`${name}=`))?.slice(name.length + 1) || null;
 const send = (response, status, body, headers = {}) => { response.writeHead(status, { 'content-type': 'text/html; charset=utf-8', 'referrer-policy':'no-referrer', 'cache-control':'private, no-store', ...headers }); response.end(body); };
 const redirect = (response, location, headers = {}) => { response.writeHead(302, { location, ...headers }); response.end(); };
-const sessionCookie = (value, secure = false, lifetimeSeconds = sessionLifetimeSeconds()) => `addressbook_session=${value}; HttpOnly; SameSite=Lax;${secure ? ' Secure;' : ''} Path=/; Max-Age=${lifetimeSeconds}`;
+const sessionCookie = (value, secure = false, lifetimeSeconds = sessionLifetimeSeconds(), issuedAt = Date.now()) => `addressbook_session=${value}; HttpOnly; SameSite=Lax;${secure ? ' Secure;' : ''} Path=/; Max-Age=${lifetimeSeconds}; Expires=${new Date(Number(issuedAt) + lifetimeSeconds * 1000).toUTCString()}`;
 const pendingPage = value => Math.min(1000000, Math.max(1, Math.floor(Number(value) || 1)));
 const readBody = (request,limit=8192) => new Promise((resolve, reject) => {
   let data = '';
@@ -30,6 +30,12 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
     if (!response.ok) throw new Error('Discord identity lookup failed.');
     return response.json();
   });
+
+  const memberLookup=async ({userId,guildId})=>{
+    if(!resolveGuildMembership)throw new Error('Live Discord membership lookup is unavailable. Try again later.');
+    const current=await resolveGuildMembership({userId,guildId,strict:true});
+    return current?(current.member||{id:String(userId),displayName:String(userId)}):null;
+  };
 
   async function sessionContext(request, url) {
     const session = readSession(cookieValue(request, 'addressbook_session'), now(), cfg.sessionSecret);
@@ -53,7 +59,7 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
     const selected = choices.find(item => String(item.guild.id) === requestedGuildId) || (!requestedGuildId && choices.length === 1 ? choices[0] : null);
     if (!selected) return { session, forbidden: true };
     const selectionChanged = url.searchParams.has('guildId') && String(session.selectedGuildId || '') !== String(selected.guild.id);
-    return { session, ...selected, selectionCookie: selectionChanged ? sessionCookie(createSession({ ...session, selectedGuildId: selected.guild.id }, now(), cfg.sessionSecret, cfg.lifetimeSeconds), String(cfg.oauth.redirectUri || '').startsWith('https://'), cfg.lifetimeSeconds) : null };
+    return { session, ...selected, availableContexts:choices.map(item=>item.memberContext).filter(Boolean), selectionCookie: selectionChanged ? sessionCookie(createSession({ ...session, selectedGuildId: selected.guild.id }, now(), cfg.sessionSecret, cfg.lifetimeSeconds), String(cfg.oauth.redirectUri || '').startsWith('https://'), cfg.lifetimeSeconds, now()) : null };
   }
 
   async function route(request, response) {
@@ -64,7 +70,7 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
     }
     if(url.pathname==='/'){
       if(!['GET','HEAD'].includes(request.method))return send(response,405,'Method not allowed',{allow:'GET, HEAD'});
-      return send(response,200,welcomePage(cfg.oauth));
+      return send(response,200,welcomePage(cfg.oauth,readSession(cookieValue(request, 'addressbook_session'), now(), cfg.sessionSecret)));
     }
     if (url.pathname === '/auth/discord') {
       const { state } = createOAuthState(url.searchParams.get('returnTo') || '/admin', now(), cfg.sessionSecret);
@@ -77,8 +83,8 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
         const tokens = await exchangeDiscordCode(url.searchParams.get('code'), cfg.oauth, fetchImpl);
         const identity = await identityResolver(tokens);
         const cookie = createSession(identity, now(), cfg.sessionSecret, cfg.lifetimeSeconds);
-        const secure = String(cfg.oauth.redirectUri || '').startsWith('https://') ? ' Secure;' : '';
-        return redirect(response, returnTo, { 'set-cookie': sessionCookie(cookie, secure, cfg.lifetimeSeconds) });
+        const secure = String(cfg.oauth.redirectUri || '').startsWith('https://');
+        return redirect(response, returnTo, { 'set-cookie': sessionCookie(cookie, secure, cfg.lifetimeSeconds, now()) });
       } catch (error) { return send(response, 502, page('OAuth Error', `<p>${escape(error.message)}</p>`)); }
     }
     if (url.pathname === '/auth/logout') return redirect(response, '/admin', { 'set-cookie': 'addressbook_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0' });
@@ -117,7 +123,7 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
       if(request.method!=='GET')return send(response,405,'Method not allowed',{allow:'GET, POST'});
       return send(response,200,renderWorkspace({title:'Choose this server’s ESO environment',user:session,context:context.memberContext,body:`<p>This is the same initial setup offered in Discord. Choose carefully; later changes require administration and an impact confirmation.</p><form action="/app/setup" method="post">${csrfField(session.csrf)}<label>ESO environment<select name="esoServer">${ESO_SERVERS.map(s=>`<option value="${s.value}">${s.label}</option>`).join('')}</select></label><button class="primary">Complete initial setup</button></form>`}));
     }
-    if(workspace&&(url.pathname==='/'||url.pathname==='/app'||url.pathname.startsWith('/app/'))){return handleWorkspaceRoute({request,response,url,session,context:context.memberContext,workspace,readBody,send,redirect});}
+    if(workspace&&(url.pathname==='/'||url.pathname==='/app'||url.pathname.startsWith('/app/'))){return handleWorkspaceRoute({request,response,url,session,context:context.memberContext,workspace,serverContexts:context.availableContexts||[],memberLookup,readBody,send,redirect});}
     const common = { guildId: guild.id, esoServer };
     const reportMutation = /^\/admin\/reports\/(\d+)\/(review|resolve|dismiss)$/.exec(url.pathname);
     if (reportMutation) {

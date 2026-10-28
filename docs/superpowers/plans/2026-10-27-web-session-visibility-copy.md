@@ -1,0 +1,7 @@
+# Web login, visibility confirmation and cross-server copy
+
+Recognize valid persistent sessions on the public landing page and keep browser cookies small enough for multi-server members. Preserve legacy signed cookies, expiry, logout and live authorization; never put OAuth tokens/secrets into cookies. Fix the observed visibility UI trap where a changed dropdown could submit a stale hidden target by separating selection, impact preview and explicit target confirmation. Existing backend policies/optimistic checks remain.
+
+Add a member-visible copy action only for server administrators, bot owners and Global administrators, limited to authorized target servers in the same ESO environment. Revalidate both contexts and source privacy on confirmation, preserve original creator/metadata and source registration/tour stops, reuse an existing destination registration without overwriting it, and audit copies. Keep a separate delete-original review link where existing permissions allow deletion. Private houses remain creator-only; copying one's own Private house to Server requires an explicit disclosure.
+
+Implementation uses focused cookie/page fixes and a separate copy service/routes module; no database migration. Test real HTTP preview/confirmation, CSRF/context, stale data, permission revocation, duplicates and cookie persistence; visually inspect a real browser including closing/reopening with the same profile; run full tests and independent review before PR.

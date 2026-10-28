@@ -76,3 +76,41 @@ Configured bot owners see **Feedback inbox** in the sidebar, with newest submiss
 ## Default visibility for new entries
 
 New houses and tours default to **Server** visibility in the web portal. Discord house registration preselects Server and offers Continue with Server; tour creation presents Server as the primary/default action while keeping an explicit confirmation. You can still choose Private or Global. Existing entries retain their saved visibility when edited. Role-restricted members who cannot submit shared houses default to Private, and a new tour started from a Private house also starts Private to keep its first stop compatible. Shared-house approval policies still apply. No database migration is needed for this change.
+
+
+## Saved login and house visibility
+
+The welcome page recognizes a valid saved Discord session and shows your account menu and **Continue to HearthBound**. Login persists for `WEB_SESSION_DAYS` (30 by default), including browser close/reopen. Keep the configured `WEB_SESSION_SECRET` stable. Large multi-server sessions use a compact signed cookie; old signed cookies remain accepted until their normal expiry. Permissions and membership are still checked on protected requests.
+
+To change a house’s visibility, open its details, choose **Change visibility**, select the target and click **Preview impact**. The next screen names the original and target visibility, shows affected tour stops and approval status, and provides **Confirm change to Server/Global/Private**. To change the target, use **Choose a different visibility**. This prevents submitting an old hidden target after changing a separate dropdown.
+
+## Copy a house between servers
+
+On a house detail page, eligible administrators see **Copy to another server**. Choose a destination and preview, then confirm the named server. The destination must have HearthBound installed, use the same ESO environment, and be a server where you are a current member with one of these capabilities:
+
+- Server administrator access in both source and destination;
+- Bot owner access; or
+- Global administrator access for that ESO environment.
+
+The new registration has **Server** visibility, retains the nickname/description/tags, and records the acting administrator in the audit log. Source registration and tour stops remain intact. An existing destination registration is reused without overwriting its details. Comments remain associated with the same ESO destination. Other users’ Private houses cannot be accessed or copied, even by owners or administrators; copying your own Private house requires an explicit notice that the target registration is Server-visible.
+
+After copying, **Open destination house** switches to the destination server. If the original was registered in the wrong server, **Review deleting original** is available only where your existing deletion permissions allow it, with the normal impact/confirmation screen. Copies never silently delete the original or rearrange tours.
+
+
+## Submitter and tour creator reassignment
+
+For shared records, authorized administrators see **Change submitter** on house details and **Change tour creator** on tour details. Enter a current server member’s Discord ID or mention, check the live lookup and preview, then confirm. Server administrators manage their server’s Server records; Global administrators and bot owners manage shared records within their authorized ESO environment. Private records remain creator-only and cannot be reassigned with these controls.
+
+A house’s Discord submitter is separate from its ESO account owner. Reassignment changes creator editing rights, never the ESO visit destination or tour stops. The audit log records both identities. When copying between servers, the original submitter is retained only if they are a current member of the destination; otherwise the administrator performing the copy becomes the submitter. The preview states which identity will be used. Unavailable membership checks stop the operation so an outage cannot silently change ownership.
+
+## Server housing statistics
+
+Statistics includes **Most registered houses** and **ESO owners with the most registrations** for the selected server. These count active Server registrations in that server and ESO environment. ESO owner means the account in the visit command, not the Discord member who submitted the record. Private, Global, inactive and other-server records do not inflate these server rankings. Shared community statistics remain a separate section.
+
+## Finding and adding tour stops
+
+Open **Housing Tours**, select a tour you can edit and choose **Add houses** to jump directly to its house picker. The editor keeps selection and order in a draft until **Save tour**. Search by house or ESO owner, combine tags and visibility, and expand additional filters when needed. A registered house’s detail page also lists eligible existing tours under **Add to tour**, alongside creating a new tour.
+
+## Duplicate house registrations
+
+Registering a house checks the official house ID and normalized ESO account owner. An existing visible active registration at the requested scope or higher is reused by directing you to that record instead of registering a duplicate. For a Private registration, your Private, the selected server’s Server and Global registrations qualify. For Server, Server and Global qualify; for Global, only Global qualifies. Other users’ Private records and registrations in unrelated servers or ESO environments never block registration or appear in duplicate messages. Explicit administrative copying remains a separate confirmed workflow.

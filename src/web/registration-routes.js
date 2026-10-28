@@ -1,10 +1,13 @@
 import {parseDestinationInput} from '../utils/destination-input.js';
 import {escape} from './render.js';
-import {csrfField,input,scopeLabel} from './workspace-render.js';
+import {csrfField,input,scopeLabel,linkButton} from './workspace-render.js';
 
 export async function registerHousePage({workspace:w,context:c,session,form,query,render,redirect,response}){
  const action=form?.get('registrationAction')||'save';
- if(form&&action==='save'){const house=await w.registerHouse(c,Object.fromEntries(form));return redirect(response,`/app/houses/${house.id}?saved=1`);}
+ if(form&&action==='save'){
+  try{const house=await w.registerHouse(c,Object.fromEntries(form));return redirect(response,`/app/houses/${house.id}?saved=1`);}
+  catch(error){if(error.code!=='VISIBLE_REGISTRATION_EXISTS')throw error;return render('House already registered',`<div class="panel"><p role="status">${escape(error.message)}</p>${linkButton('Open existing house',`/app/houses/${error.existingHouseId}`)} ${linkButton('Back to registration','/app/register')}</div>`,'register',409);}
+ }
  let selectedId=query.houseId||'',owner='',source='',error='',resolved=null;
  if(form){
   source=String(form.get('destinationInput')||'');
