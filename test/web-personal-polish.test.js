@@ -15,8 +15,7 @@ test('personal controls expose auto-save forms, selected visit state and reversi
  const html=await houseQuickActions({workspace:{actions:{states:{get:async()=>({is_favorite:1,visit_state:'visited'})}}},context:{},session:{csrf:'token'},house:{id:1,destination_id:1,status:'active',canEdit:false},returnTo:'/app/personal'});
  assert.match(html,/data-personal-action="favorite"/);
  assert.match(html,/>Unfavorite</);
- assert.match(html,/data-personal-action="visit"/);
- assert.match(html,/<noscript><button>Save visit status<\/button><\/noscript>/);
+ assert.doesNotMatch(html,/data-personal-action="visit"/);
  assert.match(html,/role="status"/);
 });
 test('personal action responds with JSON state without redirecting when requested',async()=>{

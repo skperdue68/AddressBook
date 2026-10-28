@@ -35,7 +35,7 @@ function interaction(customId,userId='u1'){
 test('Personal Actions panel reflects Favorite and visit state',()=>{
   assert.equal(typeof ui.personalActionsPayload,'function');
   const payload=ui.personalActionsPayload({token:'state1',target:{kind:'destination',id:7},state:{is_favorite:1,visit_state:'want_to_visit'},backId:'hu:home'});
-  assert.deepEqual(labels(payload),['Remove Favorite','Want to Visit','Mark Visited','Clear Visit Status','Return to House']);
+  assert.deepEqual(labels(payload),['Remove Favorite','Return to House']);
   assert.match(payload.embeds[0].toJSON().description,/Only you/i);
 });
 
@@ -43,8 +43,8 @@ test('saved and Non-Player cards expose Personal Actions without crowding compon
   const saved=ui.destinationMenuPayload({id:1,scope:'global',destination_id:44,house_id:62,eso_owner:'Owner',house_name:'Villa',display_name:'Villa',associated_tours:[]});
   const official=ui.officialHousePayload({house_id:62,name:'Villa'});
   assert.ok(labels(saved).includes('Favorite'));
-  assert.ok(labels(saved).includes('Want to Visit'));
-  assert.ok(labels(saved).includes('Visited'));
+  assert.ok(!labels(saved).includes('Want to Visit'));
+  assert.ok(!labels(saved).includes('Visited'));
   assert.ok(labels(official).includes('Favorite'));
   const editable=ui.destinationMenuPayload({id:1,scope:'personal',house_id:62,eso_owner:'Owner',house_name:'Villa'},{canEdit:true,navigation:{stateId:'abc123',index:1,total:3},surpriseToken:'random'});
   for(const payload of [saved,official,editable]){assert.ok(payload.components.length<=5);for(const row of payload.components){assert.ok(row.toJSON().components.length<=5);for(const c of row.toJSON().components)assert.ok((c.custom_id||'').length<=100);}}
@@ -53,11 +53,11 @@ test('saved and Non-Player cards expose Personal Actions without crowding compon
 test('My Address Book exposes personal discovery sections and their counts',()=>{
   const payload=ui.myAddressBookPayload({favorites:3,wantToVisit:2,visited:7,savedSearches:4});
   assert.ok(labels(payload).includes('Favorites'));
-  assert.ok(labels(payload).includes('Want to Visit'));
-  assert.ok(labels(payload).includes('Visited'));
+  assert.ok(!labels(payload).includes('Want to Visit'));
+  assert.ok(!labels(payload).includes('Visited'));
   assert.ok(labels(payload).includes('Saved Searches'));
   const embed=JSON.stringify(payload.embeds[0].toJSON());
-  for(const count of ['3','2','7','4'])assert.match(embed,new RegExp(`\\*\\*${count}\\*\\*`));
+  for(const count of ['3','4'])assert.match(embed,new RegExp(`\\*\\*${count}\\*\\*`));
 });
 
 test('personal action tokens are owner-bound and stale houses do not mutate state',async()=>{
@@ -78,7 +78,7 @@ test('personal action tokens are owner-bound and stale houses do not mutate stat
     assert.match(own.calls.updates[0].content,/favorite/i);
     assert.equal(Number((await one(db,"SELECT is_favorite FROM user_house_states WHERE discord_user_id='u1'")).is_favorite),1);
 
-    const visited=components(own.calls.updates[0]).find(component=>component.label==='Mark Visited');
+    const visited=components(own.calls.updates[0]).find(component=>component.label==='Remove Favorite');
     await db.query("UPDATE saved_houses SET status='archived' WHERE id=1");
     const stale=interaction(visited.custom_id,'u1');
     await menu.button(stale.value);
@@ -130,7 +130,7 @@ test('direct card toggles restore unmarked state in the same message and reject 
  try{
  const opened=interaction('hu:context:view:global:1:hu%3Amy');await menu.button(opened.value);
  let payload=opened.calls.updates[0];const original=components(payload).filter(c=>!c.custom_id?.startsWith('hu:mark:'));
- for(const label of ['Favorite','Unfavorite','Want to Visit','Unmark Want to Visit','Visited','Unmark Visited']){
+ for(const label of ['Favorite','Unfavorite']){
  const button=components(payload).find(c=>c.label===label);assert.ok(button,label);
  const click=interaction(button.custom_id);click.value.message={components:payload.components};await menu.button(click.value);
  payload={...payload,...click.calls.updates[0]};
@@ -163,8 +163,8 @@ test('generic picker only offers page jump for multiple pages and fits navigatio
  for(const pages of [1,40]){const payload=ui.pickerPayload({title:'Results',description:'Results',customId:'hu:picker:state1',options:[{label:'Place',value:'0'}],pages});const controls=components(payload);assert.equal(controls.some(c=>c.label==='Jump to Page'),pages>1);for(const row of payload.components){assert.ok(row.toJSON().components.length<=5);for(const c of row.toJSON().components)assert.ok((c.custom_id||'').length<=100);}}
 });
 
-test('direct Add Comment opens one modal and returns to the identical house card navigation',async()=>{
- const {db,menu}=await fixture();try{const opened=interaction('hu:context:view:global:1:hu%3Amy');await menu.button(opened.value);const original=opened.calls.updates[0],ids=components(original).map(c=>c.custom_id),add=components(original).find(c=>c.label==='Add Comment');assert.ok(add);const click=interaction(add.custom_id);click.value.message={embeds:original.embeds,components:original.components};click.value.showModal=async p=>click.calls.modal=p;await menu.button(click.value);assert.ok(click.calls.modal);assert.equal(click.calls.updates.length,0);const submit=interaction(click.calls.modal.toJSON().custom_id);submit.value.fields={getTextInputValue:()=> 'Wonderful garden'};submit.value.isFromMessage=()=>true;await menu.modal(submit.value);assert.deepEqual(components(submit.calls.updates[0]).map(c=>c.custom_id),ids);assert.deepEqual(submit.calls.updates[0].embeds,original.embeds.map(e=>e.toJSON()));assert.equal(Number((await one(db,'SELECT count(*) c FROM house_comments')).c),1);
+test('legacy Add Comment refreshes its count while retaining house card navigation',async()=>{
+ const {db,menu}=await fixture();try{const opened=interaction('hu:context:view:global:1:hu%3Amy');await menu.button(opened.value);const original=opened.calls.updates[0],ids=components(original).map(c=>c.custom_id),add={custom_id:components(original).find(c=>c.label==='Favorite').custom_id.replace('hu:mark:favorite:','hu:comment:quick:')};assert.ok(!components(original).some(c=>c.label==='Add Comment'));const click=interaction(add.custom_id);click.value.message={embeds:original.embeds,components:original.components};click.value.showModal=async p=>click.calls.modal=p;await menu.button(click.value);assert.ok(click.calls.modal);assert.equal(click.calls.updates.length,0);const submit=interaction(click.calls.modal.toJSON().custom_id);submit.value.fields={getTextInputValue:()=> 'Wonderful garden'};submit.value.isFromMessage=()=>true;await menu.modal(submit.value);assert.deepEqual(components(submit.calls.updates[0]).map(c=>c.custom_id),ids);assert.equal(submit.calls.updates[0].embeds[0].fields.find(f=>f.name.includes('Comments')).value,'1 comment');assert.equal(Number((await one(db,'SELECT count(*) c FROM house_comments')).c),1);
  const stale=interaction(add.custom_id);stale.value.message={embeds:original.embeds,components:original.components};stale.value.showModal=async p=>stale.calls.modal=p;await menu.button(stale.value);await db.query("UPDATE saved_houses SET scope='private',owner_user_id='other' WHERE id=1");const blocked=interaction(stale.calls.modal.toJSON().custom_id);blocked.value.fields={getTextInputValue:()=> 'Must not post'};await menu.modal(blocked.value);assert.match(blocked.calls.replies[0].content,/no longer available/);assert.equal(Number((await one(db,'SELECT count(*) c FROM house_comments')).c),1);
  }finally{await closeDatabase(db);}
 });

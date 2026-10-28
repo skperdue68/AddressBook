@@ -46,3 +46,33 @@ document.querySelector('[data-form-error]')?.focus();
   if(localized&&note)note.textContent=`Times shown in your local time zone (${formatter.resolvedOptions().timeZone}).`;
  }catch{/* Keep the explicit UTC fallback without guessing the viewer's zone. */}
 }
+
+// These are independent rankings; synchronize their geometry, never their data.
+document.querySelectorAll('[data-server-rankings]').forEach(group=>{
+ const sections=[...group.children],tables=sections.map(section=>section.querySelector('table'));
+ if(tables.length!==2||tables.some(table=>!table))return;
+ const headings=sections.map(section=>section.querySelector('h3'));
+ const managed=[...headings,...tables.flatMap(table=>[...table.rows])].filter(Boolean);
+ let pending=false,lastWidth=-1;
+ const align=()=>{
+  pending=false;
+  managed.forEach(element=>element.style.removeProperty('height'));
+  if(getComputedStyle(group).gridTemplateColumns.split(' ').length<2)return;
+  const match=elements=>{
+   const present=elements.filter(Boolean);if(present.length<2)return;
+   const height=Math.ceil(Math.max(...present.map(element=>element.getBoundingClientRect().height)));
+   present.forEach(element=>element.style.height=`${height}px`);
+  };
+  match(headings);match(tables.map(table=>table.tHead?.rows[0]));
+  const bodies=tables.map(table=>[...table.tBodies[0].rows]);
+  for(let i=0;i<Math.min(...bodies.map(rows=>rows.length));i++)match(bodies.map(rows=>rows[i]));
+ };
+ const schedule=()=>{if(!pending){pending=true;requestAnimationFrame(align);}};
+ // Only width changes trigger another measurement, avoiding row-height feedback.
+ if(typeof ResizeObserver!=='undefined')new ResizeObserver(entries=>{
+  const width=entries[0].contentRect.width;
+  if(width!==lastWidth){lastWidth=width;schedule();}
+ }).observe(group);
+ window.addEventListener('resize',schedule);
+ document.fonts?.ready.then(schedule);schedule();
+});

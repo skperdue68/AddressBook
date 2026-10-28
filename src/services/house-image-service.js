@@ -45,6 +45,17 @@ export class HouseImageService{
    await conn.query('UPDATE house_images SET caption=? WHERE id=?',[caption,image.id]);
   });
  }
+ async move(context,houseId,imageId,direction){
+  if(![-1,1].includes(Number(direction)))throw new Error('Choose a valid movement direction.');
+  return withTransaction(this.db,async conn=>{
+   await one(conn,'SELECT id FROM saved_houses WHERE id=? FOR UPDATE',[Number(houseId)]);await this.access(context,houseId,true,conn);
+   const rows=await conn.query('SELECT id FROM house_images WHERE saved_house_id=? ORDER BY position,id',[Number(houseId)]),index=rows.findIndex(r=>Number(r.id)===Number(imageId));
+   if(index<0)throw new Error('Screenshot is unavailable.');const next=index+Number(direction);
+   if(next<0||next>=rows.length)return;
+   [rows[index],rows[next]]=[rows[next],rows[index]];
+   for(let n=0;n<rows.length;n++)await conn.query('UPDATE house_images SET position=? WHERE saved_house_id=? AND id=?',[n,Number(houseId),rows[n].id]);
+  });
+ }
  async setCover(context,houseId,imageId){return withTransaction(this.db,async conn=>{
   await one(conn,'SELECT id FROM saved_houses WHERE id=? FOR UPDATE',[Number(houseId)]);await this.access(context,houseId,true,conn);
   const image=await one(conn,'SELECT id FROM house_images WHERE saved_house_id=? AND id=?',[Number(houseId),Number(imageId)]);if(!image)throw new Error('Screenshot is unavailable.');

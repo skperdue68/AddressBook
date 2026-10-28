@@ -12,6 +12,12 @@ export class SharePassService{
     this.db=db;this.tokens=tokens;this.rateLimiter=rateLimiter;this.settings=settings;this.access=new AccessContextService(db);this.readiness=new TourReadinessService(db);
   }
 
+  async lastPostedDestination(userId,guildId){
+    const rows=await this.db.query(`SELECT channel_id,channel_name,created_at FROM house_share_passes WHERE created_by=? AND origin_guild_id=? AND message_id IS NOT NULL AND channel_id IS NOT NULL
+      UNION ALL SELECT channel_id,channel_name,created_at FROM tour_share_passes WHERE created_by=? AND origin_guild_id=? AND message_id IS NOT NULL AND channel_id IS NOT NULL ORDER BY created_at DESC,channel_id DESC LIMIT 1`,[String(userId),String(guildId),String(userId),String(guildId)]);
+    return rows[0]||null;
+  }
+
   #consume(userId){
     const result=this.rateLimiter.consume({bucket:'share-pass',userId,...this.settings.share});
     if(!result.allowed)throw new Error(`Please wait ${Math.ceil(result.retryAfterMs/1000)} seconds before using another Share Pass.`);

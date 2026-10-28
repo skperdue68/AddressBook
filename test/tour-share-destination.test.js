@@ -142,3 +142,10 @@ test('removal from a private thread after preview prevents posting through cache
  await handleTourShareDestination(post,{tours:{get:async()=>assert.fail('removed member must be denied before pass creation')}});
  assert.match(post.updates[0].content,/Both you and HearthBound must have access to this private thread/);
 });
+test('remembered Discord destination is offered only after current permissions are checked and never posts automatically',async()=>{
+ const previous=channel('previous',{type:ChannelType.PublicThread,parentId:'parent'});previous.send=async()=>assert.fail('selection must not post');
+ const rows=new Map([['parent',channel('parent')],['previous',previous]]),sharePasses={lastPostedDestination:async(user,guild)=>{assert.equal(user,'u1');assert.equal(guild,'g1');return {channel_id:'previous'};}};
+ const i=interaction('hu:pass:house:share:1',rows);await handleTourShareDestination(i,{sharePasses});
+ assert.ok(components(i.updates[0]).some(b=>b.custom_id==='hu:pass:house:confirm:1:previous'));
+ rows.set('previous',channel('previous',{permissions:[]}));const denied=interaction('hu:pass:house:share:1',rows);await handleTourShareDestination(denied,{sharePasses});assert.ok(!components(denied.updates[0]).some(b=>b.custom_id==='hu:pass:house:confirm:1:previous'));
+});

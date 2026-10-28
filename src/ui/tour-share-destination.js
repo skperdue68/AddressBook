@@ -56,7 +56,10 @@ export async function handleTourShareDestination(i,{sharePasses,tours,guilds,loa
     if(action==='share'){
       const fetched=await i.guild.channels.fetch();
       const channels=sortChannels([...fetched.values()].filter(c=>c&&parentTypes.has(c.type)&&visible(c,i,actors)));
-      return i.editReply(tourShareChannelPayload(tourId,{channels,page:parts[5],kind}));
+      let remembered=null;
+      const last=await sharePasses?.lastPostedDestination?.(i.user.id,i.guildId);
+      if(last)try{const previous=await fetchDestination(i,last.channel_id);await validateTourDestination(previous,i,actors);remembered=previous;}catch{/* A stale destination is never offered. */}
+      return i.editReply(tourShareChannelPayload(tourId,{channels,page:parts[5],kind,remembered}));
     }
     const resolved=action==='resolve'?await fetchDestination(i,parseTourDestination(i.fields.getTextInputValue('destination'),i.guildId)):null;
     if(action==='channel'||action==='threads'||(resolved&&parentTypes.has(resolved.type))){

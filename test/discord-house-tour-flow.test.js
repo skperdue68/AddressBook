@@ -12,7 +12,7 @@ const house={id:1,house_id:1,house_name:'Villa',eso_owner:'Builder',scope:'guild
 test('Discord readers see tour addition without source editing; pending houses omit it and payloads fit limits',()=>{
  for(const canEdit of [false,true]){
   const p=destinationMenuPayload(house,{canEdit,backId:'hu:results:back:abc:1',navigation:{stateId:'abc',index:0,total:2}}),buttons=controls(p);
-  assert.equal(buttons[0].label,'Add to a Tour');assert.equal(buttons[0].custom_id,'hu:registration:tour:1');assert.equal(buttons.some(b=>b.label==='Edit House'),canEdit);assert.equal(buttons.some(b=>b.label==='Delete House'),canEdit);assert.ok(buttons.some(b=>b.label==='Back to Results'));
+  assert.equal(buttons[0].label,'Add to a Tour');assert.equal(buttons[0].custom_id,'hu:registration:tour:1');assert.equal(buttons.some(b=>b.label==='Manage House'),canEdit);assert.equal(buttons.some(b=>b.label==='Delete House'),false);assert.ok(buttons.some(b=>b.label==='Back to Results'));
   assert.ok(p.components.length<=5);for(const row of p.components){assert.ok(row.toJSON().components.length<=5);for(const b of row.toJSON().components)assert.ok(b.custom_id.length<=100);}
  }
  assert.ok(!controls(destinationMenuPayload({...house,status:'pending'},{canEdit:false})).some(b=>b.label==='Add to a Tour'));
