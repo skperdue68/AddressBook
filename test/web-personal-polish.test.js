@@ -69,3 +69,10 @@ test('requested access kind selects the intended permission request without defa
  let html='';const args={request:{headers:{}},url:new URL('https://example.test/app/request-access?kind=server'),session:{csrf:'token'},context:{userId:'u',guildId:'g',esoServer:'pc_na'},workspace:{actions:{},policy:{server:{status:async()=>({})},global:{statusForUser:async()=>({requests:[]})}}},render:(title,body)=>{html=body;}};
  await handleWebActions(args);assert.match(html,/name="kind" value="server"/);assert.doesNotMatch(html,/name="kind" value="global"/);
 });
+test('house editors get a visible top edit action for active and pending houses while readers do not',async()=>{
+ const args={workspace:{actions:{states:{get:async()=>({})}}},context:{userId:'u'},session:{csrf:'x'},returnTo:'/app/houses?scope=public&view=cards'};
+ for(const status of ['active','pending']){
+  const editable=await houseQuickActions({...args,house:{id:158,destination_id:2,status,canEdit:true}});assert.match(editable,/>Edit house<\/a>/);assert.match(editable,/\/app\/houses\/158\/edit\?returnTo=/);assert.doesNotMatch(editable,/name="action" value="delete"/);
+  const reader=await houseQuickActions({...args,house:{id:158,destination_id:2,status,canEdit:false}});assert.doesNotMatch(reader,/>Edit house<\/a>|\/158\/edit/);
+ }
+});

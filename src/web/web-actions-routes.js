@@ -32,9 +32,10 @@ export function filterData(values){
 
 const personalJson=async(request,response,state,send)=>{if(!String(request.headers?.accept||'').includes('application/json'))return false;const payload=JSON.stringify({ok:true,state:state||{is_favorite:0,visit_state:'none'}}),headers={'content-type':'application/json; charset=utf-8','cache-control':'no-store'};if(send)await send(response,200,payload,headers);else{response.writeHead(200,headers);response.end(payload);}return true;};
 export async function houseQuickActions({workspace:w,context:c,session,house:h,returnTo}){
- if(h.status!=='active')return '';
+ const edit=h.canEdit?linkButton('Edit house',withHouseReturn(`/app/houses/${Number(h.id)}/edit`,returnTo)):'';
+ if(h.status!=='active')return edit?`<div class="house-personal-toolbar">${edit}</div>`:'';
  const state=await w.actions.states.get(c.userId,houseTarget(h));
- return `<div class="house-personal-toolbar">${personalControls(`/app/houses/${Number(h.id)}/actions`,session,state,returnTo)}${linkButton('Share house',withActionReturn(`/app/houses/${Number(h.id)}/share`,houseFlowHref(h.id,returnTo)))}</div>`;
+ return `<div class="house-personal-toolbar">${personalControls(`/app/houses/${Number(h.id)}/actions`,session,state,returnTo)}${linkButton('Share house',withActionReturn(`/app/houses/${Number(h.id)}/share`,houseFlowHref(h.id,returnTo)))}${edit}</div>`;
 }
 export async function houseTools({workspace:w,context:c,session,house:h,serverContexts=[],returnTo}){
  const reassignButton=canReassignShared(h,'house',c)?linkButton('Change submitter',withActionReturn(`/app/houses/${h.id}/reassign`,houseFlowHref(h.id,returnTo))):'';
