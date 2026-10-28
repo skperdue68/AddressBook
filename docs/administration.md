@@ -4,6 +4,12 @@
 
 HearthBound provides Discord housing discovery and tours plus a Discord-authenticated member portal. The web portal serves ordinary members and administrators; administration is a protected area inside that workspace. `/hearth` is the primary Discord command and `/housing` is an equivalent compatibility alias.
 
+## Finding administration tools
+
+Open **Administration** from the signed-in portal navigation. The section tabs highlight your current location: Overview, Pending review, Problem reports, Maintenance, Audit log, Backup & export, then Access & settings. These tools require the existing HearthBound staff permissions for the selected server and ESO environment.
+
+The overview's count cards open their corresponding queues. Pending review offers Approve and Reject together; problem reports offer Mark reviewing, Resolve and Dismiss together. Wide records scroll within their table on smaller screens. Audit logs and problem reports offer numbered pages and a Jump to page field; audit filters remain applied while paging. Pending review uses Previous/Next because its queue does not expose a total count.
+
 ## Access and privacy
 
 The portal header identifies the selected Discord server and exact ESO environment. **Your Access** lists every applicable role rather than only the highest role. Current Discord membership, configured Server roles, individual grants, environment-specific Global grants, and configured bot owners determine access. Native Discord Administrator permission alone does not grant HearthBound administration.

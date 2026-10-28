@@ -1,9 +1,10 @@
+import {adminNavigation,adminContent} from './admin-navigation.js';
 import {renderAccountMenu} from './account-menu.js';
-import {renderWorkspace,linkButton} from './workspace-render.js';
+import {renderWorkspace} from './workspace-render.js';
 const escape = value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
 
 export function page(title, body, user = null, context = null, { moderation = false } = {}) {
-  if(context&&user?.accessContext){const groups=`<div class="actions">${linkButton('Reviews & reports','/admin/pending')}${linkButton('Problem reports','/admin/reports')}${linkButton('Access & settings','/app/settings')}${linkButton('Maintenance','/admin/maintenance')}${linkButton('Audit log','/admin/audit')}${linkButton('Backup & export','/admin/backup')}${linkButton('Back to Administration','/admin')}</div>`;return renderWorkspace({title,body:groups+`<div class="panel">${body}</div>`,user,context:user.accessContext,active:'admin'});}
+  if(context&&user?.accessContext)return renderWorkspace({title,body:adminNavigation(context.path||'/admin')+adminContent(body),user,context:user.accessContext,active:'admin'});
   const identity = user ? `Signed in as ${escape(user.username || user.id)}` : 'HearthBound Administration';
   const contextLine = context ? `${escape(context.guildName || context.guildId)} · ${escape(context.esoServer)}` : '';
   const badge = moderation ? 'moderation actions enabled' : 'read-only administration';
