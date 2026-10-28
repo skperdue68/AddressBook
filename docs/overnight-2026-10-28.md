@@ -84,3 +84,17 @@ Mobile navigation improvements are [PR #32](https://github.com/skperdue68/Hearth
 - Browser verification covered all six administration sections, a real pending submission and problem report, aligned moderation controls, 320/390px layouts and 1440px desktop. Existing authorization and Private-record exclusion paths are unchanged. Independent review found no actionable issues.
 
 Round 6 verification: the full suite passed with no failures, followed by a final two-test renderer check after removing an unused import. HTTP regressions cover filtered page jumps and out-of-range redirects; browser checks cover eight administration layouts. No schema, dependency, environment or permission changes.
+
+
+Administration workspace improvements are [PR #33](https://github.com/skperdue68/HearthBound/pull/33).
+
+## Round 7: Discord comments reader
+
+- Found that the previous reader loaded only the newest 25 comments and sliced the combined discussion at Discord's description limit. Added a newest-first reader with two comments per page, separate author/date headers and enough room for supported 2,000-character comments.
+- First/Previous/Next/Last and a validated Jump to page modal reach older comments. Add Comment returns to the newest page; Back preserves the original house or tour-stop destination. Existing direct quick-comment actions continue to restore the original house/stop card.
+- Reader tokens are bound to user, guild, channel and ESO environment with a 30-minute lifetime. Every interaction rechecks ordinary visibility or the original House/Tour Share Pass. A changed destination or current tour stop cannot be used through stale controls.
+- Regression checks cover discussions beyond 25 comments, long text, wrong-user navigation, invalid page jumps, a house becoming Private, revoked passes before paging/submission, changed tour stops, and MariaDB Date/SQLite timestamp formats. No schema, slash-command, environment or dependency changes.
+
+Discord layout reference: [Discord message/embed limits](https://github.com/discord/discord-api-docs/blob/main/developers/resources/message.mdx) informed the bounded reader layout rather than slicing a whole discussion into one description.
+
+Round 7 verification: all 732 tests passed. Four focused reader tests passed again after final formatting. Independent review found no remaining actionable issues. Two existing return-navigation tests were updated for the clearer Back to house label and still verify expanded details and house-list navigation.

@@ -132,7 +132,7 @@ test('returning from Featured house comments retains expanded details', async ()
     await run(control('More Details').custom_id);
     assert.ok(control('Hide Details'));
     await run(control('Comments').custom_id);
-    await run(control('Back').custom_id);
+    await run(control('Back to house').custom_id);
     assert.ok(control('Hide Details'));
     assert.equal(control('Back').custom_id,'hu:tours:featured');
   }finally{await closeDatabase(db);}

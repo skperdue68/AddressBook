@@ -65,6 +65,8 @@ HearthBound cannot bypass ESO visitor permissions.
 
 Comments attach to the environment-specific ESO destination, not to one visibility entry. Matching Global, Server, and Private entries for the same ESO owner and official house share their comment history inside that environment.
 
+In Discord, Comments opens a newest-first reader with two comments per page. The author and date appear above each comment. First/Previous/Next/Last and Jump to page make older discussions reachable; Add Comment returns to the newest page, and Back returns to the house or current tour stop. Direct Add Comment on a house or stop still returns to that original card. Every page and submission rechecks access, including Share Pass revocation and changes to a tour's current stop.
+
 Every accessible player or Non-Player house includes **Personal Actions**. A member can independently mark a destination as a Favorite and set one visit state: Want to Visit, Visited, or neither. These private preferences do not change house visibility or grant access. My Address Book provides paginated Favorites, Want to Visit, Visited, and Saved Searches lists, and inaccessible destinations are removed from personal list results at read time.
 
 
