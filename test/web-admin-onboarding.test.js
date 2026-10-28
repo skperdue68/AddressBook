@@ -58,3 +58,11 @@ test('bot owner setup needs no native permission and Server and Global request e
  assert.equal((await one(f.db,"SELECT count(*) n FROM global_moderator_requests WHERE discord_user_id='applicant' AND eso_server='pc_na' AND status='pending'")).n,1);
  assert.equal((await one(f.db,"SELECT count(*) n FROM server_moderators WHERE discord_user_id='applicant'")).n,0);assert.equal((await one(f.db,"SELECT count(*) n FROM global_moderators WHERE discord_user_id='applicant'")).n,0);
 });
+
+test('routine pages prompt only eligible first-server administrators, not bot owners or ordinary members',async t=>{
+ const f=await serverFixture(t),owner=f.session('1'),ordinary=f.session('ordinary'),eligible=f.session('server-owner');
+ const ownerPage=await(await f.request(owner,'/app')).text();assert.doesNotMatch(ownerPage,/class="setup-banner"/);assert.match(ownerPage,/Bot Owner/);
+ assert.doesNotMatch(await(await f.request(ordinary,'/app')).text(),/class="setup-banner"/);
+ f.authority.set('g:server-owner',true);assert.match(await(await f.request(eligible,'/app')).text(),/class="setup-banner"/);
+ assert.match(await(await f.request(owner,'/app/support')).text(),/Set up Server administration/);assert.equal((await f.request(owner,'/app/setup-admin')).status,200);
+});
