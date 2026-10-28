@@ -63,3 +63,12 @@ Discovery and saved-place improvements are [PR #30](https://github.com/skperdue6
 These PRs are stacked so each diff shows only its round. Start with #27. Before merging the next PR, its target must be retargeted/rebased to `master` after the preceding merge. Do not merge a later round into its predecessor's feature branch. The agent will handle this restacking and verify the resulting diff during the morning review. Nothing is deployed automatically.
 
 Round 4 verification: 723/723 full-suite tests passed. A final targeted run verified maximum Discord custom-ID/embed limits and the blank-filter regression. The complete interaction test covers filtering, adding, multiline notes, retained filters, clearing/reopening filters and rejecting another user. Registration-flow tests also confirm Back to House survives a notes edit. No new schema, environment or slash-command definition changes.
+
+## Round 5: mobile wayfinding
+
+- Replaced the horizontally clipped portal navigation with a compact mobile Menu. The same permission-filtered links are grouped in two columns, with a separate Support group; the desktop sidebar remains visible.
+- The disclosure supports click/keyboard activation, optional ArrowDown into links, Escape with focus return, outside-click/focus dismissal, and responsive focus handling. Without JavaScript, navigation stays visible as wrapped links.
+- Research: [W3C disclosure navigation guidance](https://www.w3.org/WAI/ARIA/apg/patterns/disclosure/examples/disclosure-navigation/) informed semantic navigation and disclosure states; this is ordinary navigation, not an ARIA menu widget.
+- Verification: 25 targeted renderer/auth/account/onboarding/gallery/discovery/browser checks passed. Real Chrome at 320px and 390px verified all owner/admin destinations, no horizontal overflow and 44px touch targets; desktop was checked at 1440px. Independent review found no actionable issues. No backend/permissions/schema/dependency/environment changes.
+
+Discord tour-building improvements are [PR #31](https://github.com/skperdue68/HearthBound/pull/31). As with the other rounds, restack the next PR to master during review rather than merging into a predecessor's feature branch.

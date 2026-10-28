@@ -160,6 +160,8 @@ Featured Housing is also available directly from Home. Opening a featured house 
 
 ## The HearthBound web portal
 
+On a phone, use **Menu** beside the HearthBound logo to open the full navigation. Links are grouped by discovery, your places, community, management (when authorized), and support. Escape closes the menu and returns focus to its button.
+
 Use **Open Web Portal** on the Discord main menu or in Support & Access, or visit your server's configured portal URL. Sign in with Discord and choose a server. The header shows the selected server and ESO environment. **Your Access** lists every applicable role: Member, Server Administrator with server name, Global Administrator with environment, and Bot Owner. Both `/hearth` and the `/housing` compatibility alias open the same Discord menu.
 
 The portal remembers sign-in for 30 days by default. Sign Out clears this browser's login; membership and permissions are still checked on protected requests. Administrators can configure `WEB_SESSION_DAYS`. A browser that clears cookies or uses private browsing may require another sign-in.
