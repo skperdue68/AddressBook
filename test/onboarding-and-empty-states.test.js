@@ -75,7 +75,7 @@ test('trying a feature returns to the same Show Me Around page using Back',async
         return updates[0];
       };
       const feature=await click(tryId);
-      const backId=buttons(feature).find(component=>component.label==='Back')?.custom_id;
+      const backId=buttons(feature).find(component=>component.label===(page===5||page===6?'Back to Introduction':'Back'))?.custom_id;
       assert.equal(backId,`hu:onboarding:${page}`,`page ${page} must keep its return destination`);
       if(page===3){
         const clearId=buttons(feature).find(component=>component.label==='Clear Filters')?.custom_id;
@@ -92,7 +92,7 @@ test('ordinary feature navigation still returns to the housing menu',()=>{
   const buttons=payload=>payload.components.flatMap(row=>row.toJSON().components);
   for(const payload of [myAddressBookPayload(),toursPayload(),onboardingPayload({page:0})]){
     if(payload.embeds[0].toJSON().title.includes('Welcome'))continue;
-    assert.equal(buttons(payload).find(component=>component.label==='Back')?.custom_id,'hu:home');
+    assert.equal(buttons(payload).find(component=>['Back','Main Menu'].includes(component.label))?.custom_id,'hu:home');
   }
 });
 
@@ -152,8 +152,8 @@ test('empty states explain what to do and always provide a useful action plus Ba
   ];
   for(const payload of payloads){
     const actionLabels=labels(payload);
-    assert.ok(actionLabels.some(label=>!/^Back/.test(label)),actionLabels.join(','));
-    assert.ok(actionLabels.some(label=>/^Back/.test(label)),actionLabels.join(','));
+    assert.ok(actionLabels.some(label=>!/^(Back|Main Menu$)/.test(label)),actionLabels.join(','));
+    assert.ok(actionLabels.some(label=>/^(Back|Main Menu$)/.test(label)),actionLabels.join(','));
     assert.ok((payload.content||payload.embeds?.[0]?.toJSON().description||'').length>10);
   }
 });

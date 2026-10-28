@@ -140,7 +140,7 @@ export function myPendingPayload({houses=[],requests=[],serverRequests=[]}={}){
   const actions=[];if(!total)actions.push({customId:'hu:register',label:'Register a House',style:'success'});actions.push({customId:'hu:my',label:'Back to My Address Book',style:'secondary',emoji:'↩️'});
   return {embeds:[embed('⏳ My Pending Requests',description)],components:buttonRows(actions)};
 }
-export function toursPayload(count=0,{backId='hu:home'}={}){ return {embeds:[embed('🗺️ Housing Tours',`There ${count===1?'is':'are'} **${count}** tour${count===1?'':'s'} available to you.\n\nStart one, browse the route, or build and manage tours without remembering tour commands.`)],components:buttonRows([...toursButtonSpecs().map(spec=>spec.customId==='hu:home'?{...spec,customId:backId}:spec),{customId:'hu:help:learning',label:'Help & Learning',style:'secondary'}])}; }
+export function toursPayload(count=0,{backId='hu:home'}={}){ return {embeds:[embed('🗺️ Housing Tours',`There ${count===1?'is':'are'} **${count}** tour${count===1?'':'s'} available to you.\n\nStart one, browse the route, or build and manage tours without remembering tour commands.`)],components:buttonRows([...toursButtonSpecs().map(spec=>spec.customId==='hu:home'?{...spec,customId:backId,label:backId==='hu:home'?'Main Menu':'Back to Introduction'}:spec),{customId:'hu:help:learning',label:'Help & Learning',style:'secondary'}])}; }
 export function helpPayload({backId='hu:home',portalUrl=portalPublicUrl()}={}){
   const e=embed('❓ HearthBound Help','**Start with `/hearth`.** The menus will walk you through almost everything the bot can do.')
     .addFields(
@@ -284,6 +284,7 @@ export function destinationMenuPayload(r,{canEdit=false,backId='hu:home',showDet
     :showDetails?`hu:details:${scope}:${Number(r.id)}:show:${encodeURIComponent(backId)}`
       :`hu:context:view:${scope}:${Number(r.id)}:${encodeURIComponent(backId)}`;
   const primarySpecs=[
+    ...registrationTourActions({savedHouseId:r.id,status:r.status}),
     {customId:`hu:details:${scope}:${Number(r.id)}:${showDetails?'hide':'show'}:${detailBack}`,label:showDetails?'Hide Details':'More Details',style:'primary',emoji:showDetails?'🔼':'🔽'},
     {customId:`hu:comments:${r.scope}:${Number(r.id)}:${encodeURIComponent(commentsBackId)}`,label:'Comments',style:'primary',emoji:'💬'},
     {customId:`hu:pass:house:share:${Number(r.id)}`,label:'Share House',style:'success'},
@@ -291,13 +292,12 @@ export function destinationMenuPayload(r,{canEdit=false,backId='hu:home',showDet
     {customId:`hu:personal:open:saved:${Number(r.id)}`,label:'Personal Actions',style:'secondary',emoji:'⭐'}
   ];
   const editSpecs=canEdit?[
-    ...registrationTourActions({savedHouseId:r.id,status:r.status}),
     {customId:`hu:${scope}:edit:${Number(r.id)}:${actionBack}`,label:'Edit House',style:'secondary',emoji:'✏️'},
     {customId:`hu:scope:change:${Number(r.id)}:${actionBack}`,label:'Change Visibility',style:'secondary',emoji:'🔄'},
     {customId:`hu:${scope}:remove:${Number(r.id)}:${actionBack}`,label:'Delete House',style:'danger',emoji:'🗑️'}
   ]:[];
   const navSpecs=houseNavigationSpecs(navigation,showDetails);
-  const backSpecs=[...(surpriseToken?[{customId:`hu:surprise:again:${surpriseToken}`,label:'Another Random House',style:'success',emoji:'🎲'}]:[]),{customId:backId,label:'Back',style:'secondary',emoji:'↩️'}];
+  const backSpecs=[...(surpriseToken?[{customId:`hu:surprise:again:${surpriseToken}`,label:'Another Random House',style:'success',emoji:'🎲'}]:[]),{customId:backId,label:/^hu:(results:|advanced:)/.test(backId)?'Back to Results':backId==='hu:my'?'My Address Book':backId==='hu:home'?'Main Menu':'Back',style:'secondary',emoji:'↩️'}];
   return {embeds:[cleanDestinationEmbed(r,{showDetails})],components:[...buttonRows(primarySpecs),...buttonRows(editSpecs),...buttonRows(navSpecs,2),...buttonRows(backSpecs)]};
 }
 
@@ -422,7 +422,7 @@ export function advancedSearchPayload({token,filters={},title='Search Houses',ba
     `**Tour Membership:** ${filters.notOnPublicTours?'Not on a Server or Global Tour':'Any'}`,
     `**Non-Player Homes:** ${includeNonPlayer?'Included':'Excluded'}`
   ].join('\n');
-  const e=embed(`🔎 ${title}`,`Build one cumulative search below. House / Nickname and Owner each use one partial-match value. Every populated filter category is combined with **AND**. Multiple selections inside the same attribute category are **OR** matches. Nothing is searched until you press **Search**.\n\n${summary}\n\nPress **Search** with no filters to return all eligible houses.`);
+  const e=embed(`🔎 ${title}`,`Choose filters, then press **Search**. House and owner text can match part of a name. Different filter categories narrow the results together; multiple values in one category match any selected value.\n\n${summary}\n\nPress **Search** with no filters to return all eligible houses.`);
   const removals=advancedDirectRemovalSpecs(token,filters);
   const components=[];
   if(removals.length)components.push(new ActionRowBuilder().addComponents(...removals.map(button)));
@@ -651,7 +651,7 @@ export function tourDetailPayload(tour,stops,canEdit=false,navigation=null,featu
     {name:'Tour Visibility',value:visibility,inline:true}
   );
   if(stops.length)e.addFields({name:'Route',value:stops.map(s=>`${s.position}. **${destinationLabel(s)}** — @${String(s.eso_owner).replace(/^@/,'')}`).join('\n').slice(0,1024)});
-  let specs=tourDetailButtonSpecs(canEdit).map(spec=>({...spec,customId:spec.customId==='hu:tour:start'?`hu:tour:start:${tour.id}${navigation?`:${navigation.stateId}:${navigation.index}`:featuredSource?`:featured:${featuredSource}`:''}`:spec.customId==='hu:tour:manage'?`hu:tour:manage:${tour.id}`:featuredSource&&spec.customId==='hu:tours'?(featuredSource==='admin'?'hu:admin:featured':featuredSource==='home'?'hu:featured':'hu:tours:featured'):spec.customId,label:featuredSource&&spec.customId==='hu:tours'?'Back to Featured':spec.label}));
+  let specs=tourDetailButtonSpecs(canEdit).map(spec=>({...spec,customId:spec.customId==='hu:tour:start'?`hu:tour:start:${tour.id}${navigation?`:${navigation.stateId}:${navigation.index}`:featuredSource?`:featured:${featuredSource}`:''}`:spec.customId==='hu:tour:manage'?`hu:tour:manage:${tour.id}`:spec.customId==='hu:tour:add'?`hu:tour:add:${tour.id}`:featuredSource&&spec.customId==='hu:tours'?(featuredSource==='admin'?'hu:admin:featured':featuredSource==='home'?'hu:featured':'hu:tours:featured'):spec.customId,label:featuredSource&&spec.customId==='hu:tours'?'Back to Featured':spec.label}));
   specs.splice(1,0,{customId:`hu:pass:tour:share:${tour.id}`,label:'Share Tour Pass',style:'success'});
   specs.splice(2,0,{customId:`hu:report:tourid:${tour.id}`,label:'Report a Problem',style:'secondary'});
   if(navigation){
@@ -674,7 +674,7 @@ export function tourManagePayload(tour,stops){
   }
   const omitted=Math.max(0,lines.length-kept.length);
   const route=kept.length?`${kept.join('\n')}${omitted?`\n… plus ${omitted} more stop${omitted===1?'':'s'}`:''}`:'No stops yet.';
-  const e=embed(`✏️ Edit Tour — ${tour.name}`,`${stops.length} stop${stops.length===1?'':'s'}\n\nChoose what you want to change. No command syntax required.`)
+  const e=embed(`✏️ Edit Tour — ${tour.name}`,`${stops.length} stop${stops.length===1?'':'s'}\n\nAdd houses, arrange stops, then update the tour details. Changes are applied when you confirm each action.`)
     .addFields({name:'Current Tour Route',value:route});
   return {embeds:[e],components:buttonRows(tourManageButtonSpecs().map(spec=>({...spec,customId:spec.customId==='hu:tours'?`hu:tour:view:${tour.id}`:`${spec.customId}:${tour.id}`})),3)};
 }

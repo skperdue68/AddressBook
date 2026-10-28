@@ -114,3 +114,14 @@ Open **Housing Tours**, select a tour you can edit and choose **Add houses** to 
 ## Duplicate house registrations
 
 Registering a house checks the official house ID and normalized ESO account owner. An existing visible active registration at the requested scope or higher is reused by directing you to that record instead of registering a duplicate. For a Private registration, your Private, the selected server’s Server and Global registrations qualify. For Server, Server and Global qualify; for Global, only Global qualifies. Other users’ Private records and registrations in unrelated servers or ESO environments never block registration or appear in duplicate messages. Explicit administrative copying remains a separate confirmed workflow.
+
+
+## House-to-tour shortcuts and returning to results
+
+Search Houses now shows **View house** and **Add to tour** beside each active registration. On phones, each result becomes a compact card with both actions visible. Add to tour opens the house’s eligible tour picker. The detail page also offers creating a tour with the house and a shortcut that opens the copy-ready ESO visit commands.
+
+Opening a house from normal, advanced, saved or personal search carries its filters/page in the link. **Back to search results** (or **Back to My Address Book**) restores that view, including after saving an edit, favorite, visit status or comment. Adding to a tour opens the updated route with confirmation and a return link. Return links are restricted to internal house-search/personal pages and never grant access.
+
+House editing and administrative actions are under **Manage house**, visible only when an applicable action is authorized. Personal favorites, visit status and sharing are grouped under **Save & share**. Advanced Search shows common fields first; **More filters & multiple values** reveals the rest and automatically opens when one is active. Tour editing shows Find houses → Add stops → Arrange route → Save tour.
+
+Discord house cards now put **Add to a Tour** first for active accessible houses. You can add another member’s shared house to an eligible tour you can edit; this does not let you edit their house. Editable tour details have a direct **Add House** shortcut. Tour returns are named **Back to Tours**, **Back to Tour** or **Main Menu**. Private ownership, visibility compatibility, moderation policies and existing permission checks continue to apply.
