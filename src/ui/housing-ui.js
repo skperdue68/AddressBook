@@ -221,7 +221,7 @@ export function bulkTourSelectionPayload({token,action,options,page=0,pages=1,se
 **${selectedCount} house${selectedCount===1?'':'s'} selected.**`)],components:[new ActionRowBuilder().addComponents(select),...buttonRows(nav)]};
 }
 
-export function bulkTourCreateModal(token){ return new ModalBuilder().setCustomId(`hu:modal:bulk:create:${token}`).setTitle('Create New Tour From Results').addComponents(textField('name','Tour name',{required:true,maxLength:200}),textField('description','Description (optional)',{paragraph:true,maxLength:2000})); }
+export function bulkTourCreateModal(token){ return new ModalBuilder().setCustomId(`hu:modal:bulk:create:${token}`).setTitle('Create New Tour From Results').addComponents(textField('name','Tour name',{required:true,maxLength:200}),textField('description','Description (optional)',{paragraph:true,maxLength:2000,placeholder:'Describe the theme and highlights visitors can expect on this tour.'})); }
 export function bulkTourVisibilityPayload(token,{allowPublic=true,allowGlobal=true}={}){ return {embeds:[embed('Create New Tour From Results — Visibility','Choose who should be able to find and reuse the saved tour. Eligible houses are determined automatically by visibility.')],components:buttonRows([
   {customId:`hu:bulk:visibility:global:${token}`,label:'Global Tour',style:'secondary',disabled:!allowGlobal},
   {customId:`hu:bulk:visibility:server:${token}`,label:'Server Tour',style:allowPublic?'primary':'secondary',disabled:!allowPublic},
@@ -591,8 +591,8 @@ export function registrationDestinationReviewPayload(draft){
 export function registrationMetadataModal(draftId,metadata={}){
   return new ModalBuilder().setCustomId(`hu:modal:register-metadata:${draftId}`).setTitle('House Details').addComponents(
     textField('nickname','Nickname (optional)',{value:metadata.nickname||'',maxLength:255}),
-    textField('description','Description or notes (optional)',{value:metadata.description||'',paragraph:true,maxLength:4000}),
-    textField('tags','Tags / themes, comma separated',{value:Array.isArray(metadata.tags)?metadata.tags.join(', '):(metadata.tags||'')})
+    textField('description','Description or notes (optional)',{value:metadata.description||'',paragraph:true,maxLength:4000,placeholder:'What makes this house special? Tell visitors what to look for.'}),
+    textField('tags','Tags / themes, comma separated',{placeholder:'Help others find it: garden, cozy, roleplay, puzzle',value:Array.isArray(metadata.tags)?metadata.tags.join(', '):(metadata.tags||''),placeholder:'Help others find it: garden, cozy, roleplay, puzzle'})
   );
 }
 
@@ -619,8 +619,8 @@ function houseFormFields(scope,r=null){
     textField('house','Official house name, partial name, or ID',{value:r?.house_name||r?.house_id||'',required:true,placeholder:'e.g. Still, Stillwaters Retreat, or 80'}),
     textField('owner','ESO owner',{value:r?.eso_owner||'',required:true,placeholder:'e.g. malderyn'}),
     textField('nickname','Nickname (optional)',{value:personal?r?.nickname:r?.display_name,maxLength:255}),
-    textField('description',personal?'Private notes (optional)':'Description (optional)',{value:personal?r?.notes:r?.description,paragraph:true,maxLength:4000}),
-    textField('tags','Tags / themes, comma separated',{value:(()=>{try{return JSON.parse(r?.tags||'[]').join(', ')}catch{return ''}})()})
+    textField('description',personal?'Private notes (optional)':'Description (optional)',{value:personal?r?.notes:r?.description,paragraph:true,maxLength:4000,placeholder:'What makes this house special? Add highlights or a note about why you saved it.'}),
+    textField('tags','Tags / themes, comma separated',{placeholder:'Help others find it: garden, cozy, roleplay, puzzle',value:(()=>{try{return JSON.parse(r?.tags||'[]').join(', ')}catch{return ''}})()})
   ];
 }
 export function registerHouseFormModal(scope,fields=null){
@@ -647,7 +647,7 @@ export function commentsPayload({label,owner,rows,scope,id,backId}){
   const e=embed(`💬 Comments — ${label}`,`Owner: @${String(owner||'').replace(/^@/,'')}\n\n${disclosure}\n\n${body}`.slice(0,4096));
   return {embeds:[e],components:buttonRows([{customId:`hu:comment:add:${scope}:${id}:${encodeURIComponent(backId)}`,label:'Add Comment',style:'primary'},{customId:backId,label:'Back',style:'secondary',emoji:'↩️'}])};
 }
-export function commentModal(scope,id,backId,label){ return new ModalBuilder().setCustomId(`hu:modal:comment:${scope}:${id}:${encodeURIComponent(backId)}`).setTitle(`Comment — ${safe(label,30)}`).addComponents(textField('comment','Comment',{required:true,paragraph:true,maxLength:1000})); }
+export function commentModal(scope,id,backId,label){ return new ModalBuilder().setCustomId(`hu:modal:comment:${scope}:${id}:${encodeURIComponent(backId)}`).setTitle(`Comment — ${safe(label,30)}`).addComponents(textField('comment','Comment',{required:true,paragraph:true,maxLength:1000,placeholder:'Share a favorite detail, a thank-you, or what you enjoyed about this house.'})); }
 
 export function tourDetailPayload(tour,stops,canEdit=false,navigation=null,featuredSource=null){
   const visibility=tour.scope==='global'?'Global Tour':tour.scope==='server'?'Server Tour':'Private Tour';
@@ -704,7 +704,7 @@ export function tourStartChoicePayload(tour,canRunSharedPublicTour,readiness=nul
   actions.push({customId:backId||`hu:tour:view:${tour.id}`,label:'Back',style:'secondary',emoji:'↩️'});
   return {embeds:[embed(`▶️ Tour Preflight — ${tour.name}`,description)],components:buttonRows(actions)};
 }
-export function tourCreateModal(){ return new ModalBuilder().setCustomId('hu:modal:tour:create').setTitle('Create Housing Tour').addComponents(textField('name','Tour name',{required:true,maxLength:200}),textField('description','Description (optional)',{paragraph:true,maxLength:2000})); }
+export function tourCreateModal(){ return new ModalBuilder().setCustomId('hu:modal:tour:create').setTitle('Create Housing Tour').addComponents(textField('name','Tour name',{required:true,maxLength:200}),textField('description','Description (optional)',{paragraph:true,maxLength:2000,placeholder:'Describe the theme and highlights visitors can expect on this tour.'})); }
 export function tourEventCreateModal(tour){ return new ModalBuilder().setCustomId(`hu:modal:tour:event:${tour.id}`).setTitle('Schedule Tour Event').addComponents(textField('title','Event title',{required:true,maxLength:EVENT_TITLE_MAX}),textField('date','Date (YYYY-MM-DD)',{required:true}),textField('time','Local time (e.g. 7:30 PM)',{required:true}),textField('description','Description (optional)',{paragraph:true,maxLength:EVENT_DESCRIPTION_MAX})); }
 export function tourEventEditModal(event, timezone = null, returnPage = 1){
   let date='',time='';

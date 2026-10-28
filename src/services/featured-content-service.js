@@ -1,3 +1,4 @@
+import {weightedOrder} from './featured-selection.js';
 import { one, withTransaction } from '../db/database.js';
 import { requireEsoServer } from '../utils/eso-server.js';
 
@@ -34,9 +35,9 @@ export class FeaturedContentService {
     return withTransaction(this.db, async conn => {
       const rows = await conn.query('SELECT * FROM featured_items WHERE guild_id=? AND target_kind=? ORDER BY position,id', [String(guildId), targetKind]);
       const current=rows.find(row=>Number(row.target_id)===Number(targetId));
-      const without = rows.filter(row => Number(row.target_id) !== Number(targetId));
-      if (without.length >= 5) throw new Error(`A guild may have at most five Featured ${targetKind}s.`);
-      const requested = position == null ? Number(current?.position)||without.length+1 : Math.max(1, Math.min(5, Number(position)));
+      const without = rows.slice(0,4).filter(row => Number(row.target_id) !== Number(targetId));
+      if (without.length >= 4) throw new Error(`A guild may have at most four Featured ${targetKind}s.`);
+      const requested = position == null ? Number(current?.position)||without.length+1 : Math.max(1, Math.min(4, Number(position)));
       const effectiveExpiry=expiresAt===undefined?current?.expires_at||null:expiresAt?asDate(this.db,expiresAt instanceof Date?expiresAt:new Date(expiresAt)):null;
       without.splice(Math.min(requested - 1, without.length), 0, { target_id: Number(targetId), target_name: target.name, expires_at: effectiveExpiry, selected_by: actorId, selected_by_global_name: actorGlobalName, selected_by_display_name: actorDisplayName, isNew: true });
       await conn.query('DELETE FROM featured_items WHERE guild_id=? AND target_kind=?', [String(guildId), targetKind]);
@@ -54,7 +55,7 @@ export class FeaturedContentService {
     const server = requireEsoServer(esoServer); const clauses = ['f.guild_id=?', '(f.expires_at IS NULL OR f.expires_at>?)']; const args = [String(guildId), asDate(this.db, new Date(this.clock()))];
     if (targetKind) { clauses.push('f.target_kind=?'); args.push(targetKind); }
     const rows = await conn.query(`SELECT f.*,h.house_id,h.eso_owner,h.display_name house_display_name,h.scope house_visibility FROM featured_items f LEFT JOIN saved_houses h ON f.target_kind='house' AND h.id=f.target_id LEFT JOIN tours t ON f.target_kind='tour' AND t.id=f.target_id WHERE ${clauses.join(' AND ')} AND ((f.target_kind='house' AND h.status='active' AND h.scope IN ('public','global') AND h.eso_server=? AND h.destination_id IS NOT NULL AND h.eso_owner IS NOT NULL AND trim(h.eso_owner)<>'' AND (h.scope='global' OR h.guild_id=f.guild_id)) OR (f.target_kind='tour' AND t.visibility IN ('public','global') AND t.eso_server=? AND (t.visibility='global' OR t.guild_id=f.guild_id))) ORDER BY f.target_kind,f.position`, [...args, server, server]);
-    return rows;
+    const counts={};return rows.filter(row=>(counts[row.target_kind]=(counts[row.target_kind]||0)+1)<=4);
   }
 
   async autoSelectEmpty({ guildId, esoServer, actorId = 'system:auto-featured', random = Math.random } = {}) {
@@ -73,7 +74,7 @@ export class FeaturedContentService {
       [candidates[index], candidates[next]] = [candidates[next], candidates[index]];
     }
     const selected = [];
-    for (const candidate of candidates.slice(0, 5)) {
+    for (const candidate of candidates.slice(0, 4)) {
       const target = await this.#target({ guildId, esoServer: server, targetKind: 'house', targetId: candidate.id }, conn);
       const result = await conn.query('INSERT INTO featured_items(guild_id,target_kind,target_id,target_name,position,selected_by) VALUES(?,?,?,?,?,?)', [String(guildId), 'house', Number(candidate.id), target.name, selected.length + 1, String(actorId)]);
       selected.push(await one(conn, 'SELECT * FROM featured_items WHERE id=?', [result.insertId]));
@@ -118,8 +119,16 @@ export class FeaturedContentService {
       const distinct=[...new Map(candidates.map(r=>[Number(r.destination_id),r])).values()];
       if(!distinct.length)return {rotated:false,items,nextRotationAt:timestamp==null?null:new Date(timestamp+week)};
       const previous=new Set(JSON.parse(cycle.previous_destination_ids||'[]').map(Number));
-      const shuffle=rows=>{for(let i=rows.length-1;i>0;i--){const j=Math.max(0,Math.min(i,Math.floor(this.random()*(i+1))));[rows[i],rows[j]]=[rows[j],rows[i]];}return rows;};
-      const chosen=[...shuffle(distinct.filter(r=>!previous.has(Number(r.destination_id)))),...shuffle(distinct.filter(r=>previous.has(Number(r.destination_id))))].slice(0,5);
+      const signals=await conn.query(`SELECT target_id,
+        SUM(CASE WHEN is_favorite=1 THEN 1 ELSE 0 END) favorites,
+        SUM(CASE WHEN visit_state='visited' THEN 1 ELSE 0 END) visitors,
+        SUM(CASE WHEN visit_state='want_to_visit' THEN 1 ELSE 0 END) interested
+        FROM user_house_states WHERE target_kind='destination' AND target_id IN
+          (SELECT s.destination_id FROM saved_houses s WHERE s.eso_server=? AND s.status='active' AND (s.scope='global' OR (s.scope='public' AND s.guild_id=?)))
+        GROUP BY target_id`,[server,guild]);
+      const engagement=new Map(signals.map(row=>[Number(row.target_id),row]));
+      const enriched=distinct.map(row=>({...row,...engagement.get(Number(row.destination_id))}));
+      const chosen=[...weightedOrder(enriched.filter(r=>!previous.has(Number(r.destination_id))),this.random),...weightedOrder(enriched.filter(r=>previous.has(Number(r.destination_id))),this.random)].slice(0,4);
       await conn.query("DELETE FROM featured_items WHERE guild_id=? AND target_kind='house'",[guild]);
       for(const [index,candidate] of chosen.entries()){
         const target=await this.#target({guildId:guild,esoServer:server,targetKind:'house',targetId:candidate.id},conn);

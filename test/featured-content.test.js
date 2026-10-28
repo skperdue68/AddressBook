@@ -18,7 +18,7 @@ async function fixture() {
   return { db, featured: new FeaturedContentService(db,{clock:()=>Date.parse('2026-09-21T00:00:00Z')}) };
 }
 
-test('moderators can feature up to five eligible houses and tours in order', async () => {
+test('moderators can feature up to four eligible houses and tours in order', async () => {
   const { db, featured } = await fixture();
   try {
     await featured.set({ guildId: 'g1', esoServer: 'pc_na', targetKind: 'house', targetId: 1, position: 1, actorId: 'mod', isModerator: true });
