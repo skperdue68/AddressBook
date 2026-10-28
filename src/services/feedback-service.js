@@ -1,3 +1,4 @@
+import {pageWindow} from '../utils/pagination.js';
 import {createHash} from 'node:crypto';
 import {one,withTransaction} from '../db/database.js';
 import {botOwnerIds} from '../config/bot-owners.js';
@@ -5,7 +6,6 @@ import {botOwnerIds} from '../config/bot-owners.js';
 export const feedbackCategories={general:'General feedback',bug:'Bug report',idea:'Idea'};
 export const feedbackStatuses={new:'New',reviewed:'Reviewed',resolved:'Resolved'};
 const required=(value,label,max)=>{const text=String(value??'').trim();if(!text||text.length>max)throw new Error(`${label} must contain 1–${max} characters.`);return text;};
-const pageNumber=value=>Number.isFinite(Number(value))?Math.min(100000,Math.max(1,Math.floor(Number(value)||1))):1;
 export class FeedbackService{
  constructor(db,env=process.env){this.db=db;this.env=env;}
  assertOwner(actor){if(!botOwnerIds(this.env).has(String(actor?.userId)))throw new Error('Feedback review is restricted to bot owners.');}
@@ -24,8 +24,9 @@ export class FeedbackService{
  mine(userId){return this.db.query('SELECT id,category,subject,message,status,created_at FROM app_feedback WHERE author_id=? ORDER BY created_at DESC,id DESC LIMIT 10',[String(userId)]);}
  async list(actor,{status='',page=1}={}){
   this.assertOwner(actor);if(status&&!Object.hasOwn(feedbackStatuses,status))throw new Error('Invalid feedback status.');
-  page=pageNumber(page);const where=status?'WHERE status=?':'',args=status?[status]:[];
+  const where=status?'WHERE status=?':'',args=status?[status]:[];
   const total=Number((await one(this.db,`SELECT count(*) n FROM app_feedback ${where}`,args)).n);
+  page=pageWindow(page,total).page;
   const rows=await this.db.query(`SELECT * FROM app_feedback ${where} ORDER BY created_at DESC,id DESC LIMIT 25 OFFSET ?`,[...args,(page-1)*25]);
   return {rows,total,page,hasNext:page*25<total};
  }

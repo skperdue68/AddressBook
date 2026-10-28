@@ -1,0 +1,19 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {readFile,mkdtemp,writeFile,rm,access} from 'node:fs/promises';import {tmpdir} from 'node:os';import {join} from 'node:path';import {pathToFileURL} from 'node:url';import {execFileSync} from 'node:child_process';import {renderWorkspace} from '../src/web/workspace-render.js';
+const browser=process.env.CHROME_PATH||'C:/Program Files/Google/Chrome/Application/chrome.exe';
+const context={guildId:'g',guildName:'Guild',esoServer:'pc_na',roles:[{kind:'member',label:'Member'}]};
+test('mobile navigation keeps permission-scoped destinations in one accessible disclosure',()=>{
+ const html=renderWorkspace({title:'Houses',body:'',context,active:'houses'});assert.match(html,/aria-controls="main-navigation"/);assert.match(html,/id="main-navigation"/);assert.ok(!html.includes('href="/admin"'));assert.ok(!html.includes('href="/app/catalog"'));
+ const owner=renderWorkspace({title:'Houses',body:'',context:{...context,isOwner:true},active:'houses'});assert.ok(owner.includes('href="/admin"'));assert.ok(owner.includes('href="/app/catalog"'));
+});
+test('browser mobile Menu exposes every link, supports Escape and has a no-JS fallback',async t=>{
+ try{await access(browser);}catch{t.skip('Chrome unavailable');return;}const dir=await mkdtemp(join(tmpdir(),'hearthbound-mobile-nav-'));try{
+ const source=await readFile(new URL('../src/web/assets/interface.js',import.meta.url),'utf8'),css=await readFile(new URL('../src/web/assets/workspace.css',import.meta.url),'utf8');
+ for(const [name,width,js]of [['mobile',500,true],['desktop',1200,true],['fallback',500,false]]){
+ const mobile=width<700,checks=`const check=(ok,message)=>{if(!ok)throw Error(message);};const button=document.querySelector('[data-mobile-nav-toggle]'),nav=document.getElementById('main-navigation');check(!!button&&!!nav,'navigation controls exist');
+ ${mobile&&js?`check(getComputedStyle(nav).display==='none','mobile menu starts collapsed');button.click();check(button.getAttribute('aria-expanded')==='true','button state expands');check([...nav.querySelectorAll('a')].every(link=>link.getClientRects().length>0),'every permitted destination is reachable');button.focus();button.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true,cancelable:true}));check(document.activeElement===nav.querySelector('a'),'arrow moves into links');nav.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));check(button.getAttribute('aria-expanded')==='false'&&document.activeElement===button,'Escape closes and returns focus');button.click();document.querySelector('main').click();check(button.getAttribute('aria-expanded')==='false','outside click closes menu');`:`check(getComputedStyle(button).display==='none','menu button hidden on desktop or without JS');check([...nav.querySelectorAll('a')].every(link=>link.getClientRects().length>0),'links stay available');`}
+ check(document.documentElement.scrollWidth<=innerWidth+2,'no horizontal overflow');document.getElementById('result').textContent='passed';`;
+ let html=renderWorkspace({title:'My Address Book',body:'<p>Saved houses</p>',context,active:'personal'});html=html.replace('</head>',`<style>${css}</style></head>`).replace('</body>',`<pre id="result">not run</pre>${js?`<script>${source}</script>`:''}<script>try{${checks}}catch(e){document.getElementById('result').textContent=e.message}</script></body>`);const file=join(dir,name+'.html');await writeFile(file,html);
+ const output=execFileSync(browser,['--headless','--no-sandbox','--disable-gpu',`--window-size=${width},900`,`--user-data-dir=${join(dir,name+'-profile')}`,'--dump-dom',pathToFileURL(file).href],{encoding:'utf8',timeout:30000,stdio:['ignore','pipe','ignore']});assert.equal(/<pre id="result">([^<]*)<\/pre>/.exec(output)?.[1],'passed',name);
+ }
+ }finally{await rm(dir,{recursive:true,force:true,maxRetries:5,retryDelay:200});}
+});

@@ -37,7 +37,7 @@ For example, a PC NA Global house, tour, comment thread, Share Pass, active run,
 
 Search Houses initially displays all accessible houses and then lets the member open Filters. Available filters include house or nickname, owner, tags or themes, zone, architectural style, ESO classification, size or type, visibility, Non-Player Homes, and houses not already used by an applicable Server or Global tour. Attribute values are paginated so Discord's 25-option component limit does not discard results.
 
-Filtered results can be saved by name and reopened from **My Address Book → Saved Searches**. Saved searches can be run, renamed, replaced with the current filters, or deleted. They store criteria rather than result IDs, so every run applies the current Discord server, ESO environment, and access permissions. Invalid or future-version filter data fails closed instead of becoming an unfiltered search.
+Filtered results can be saved by name and reopened from **My Address Book → Saved Searches**. On the web, opening results, visiting a house from them, renaming and deleting retain your original saved-search list page. If a deletion removes the last page, the return moves to the preceding page. Saved searches can be run, renamed, replaced with the current filters, or deleted. They store criteria rather than result IDs, so every run applies the current Discord server, ESO environment, and access permissions. Invalid or future-version filter data fails closed instead of becoming an unfiltered search.
 
 **Random House** selects from the complete accessible result set, including results beyond the current 25-item Discord page. **Another Surprise** avoids immediately repeating the same destination when another result is available.
 
@@ -65,6 +65,8 @@ HearthBound cannot bypass ESO visitor permissions.
 
 Comments attach to the environment-specific ESO destination, not to one visibility entry. Matching Global, Server, and Private entries for the same ESO owner and official house share their comment history inside that environment.
 
+In Discord, Comments opens a newest-first reader with two comments per page. The author and date appear above each comment. First/Previous/Next/Last and Jump to page make older discussions reachable; Add Comment returns to the newest page, and Back returns to the house or current tour stop. Direct Add Comment on a house or stop still returns to that original card. Every page and submission rechecks access, including Share Pass revocation and changes to a tour's current stop.
+
 Every accessible player or Non-Player house includes **Personal Actions**. A member can independently mark a destination as a Favorite and set one visit state: Want to Visit, Visited, or neither. These private preferences do not change house visibility or grant access. My Address Book provides paginated Favorites, Want to Visit, Visited, and Saved Searches lists, and inaccessible destinations are removed from personal list results at read time.
 
 
@@ -82,6 +84,8 @@ Browse Tours keeps the selected list active and provides Previous Tour and Next 
 
 Self Paced tours create a private active run for one member. Shared tours post the current stop in a channel, but only the initiating leader can navigate or end the run. Starting either mode immediately shows the complete current house card with copy-ready ESO links and Previous/Next controls. More Details shows full catalog metadata—including standard and ESO+ furnishing and collectible limits—and remains expanded while moving between stops. Comments and Show Tour List return to the same stop and expanded/compact state. When the current viewer may edit the saved house, Edit House returns to the same tour stop and detail state after saving. Share Pass tours create an independent ephemeral Self Paced run for each visitor.
 
+
+Discord tour building: choose **Add House**, then **Filter houses** to narrow by house/ESO owner, tags, visibility, zone, and style/classification. Destinations already on the route are omitted. Selecting a house adds it immediately and offers **Add Tour Notes** and **Add Another House**. Notes are optional and belong only to that tour stop. Saving notes returns to the same confirmation; adding another house retains your filters. The same notes shortcut is available after adding a house from its registration/detail card, including **Back to House**. **Edit Stop / Notes** handles later changes, and **Delete Tour** is the last editor action.
 
 ## Featured Housing and progress
 
@@ -158,6 +162,8 @@ Featured Housing is also available directly from Home. Opening a featured house 
 
 ## The HearthBound web portal
 
+On a phone, use **Menu** beside the HearthBound logo to open the full navigation. Links are grouped by discovery, your places, community, management (when authorized), and support. Escape closes the menu and returns focus to its button.
+
 Use **Open Web Portal** on the Discord main menu or in Support & Access, or visit your server's configured portal URL. Sign in with Discord and choose a server. The header shows the selected server and ESO environment. **Your Access** lists every applicable role: Member, Server Administrator with server name, Global Administrator with environment, and Bot Owner. Both `/hearth` and the `/housing` compatibility alias open the same Discord menu.
 
 The portal remembers sign-in for 30 days by default. Sign Out clears this browser's login; membership and permissions are still checked on protected requests. Administrators can configure `WEB_SESSION_DAYS`. A browser that clears cookies or uses private browsing may require another sign-in.
@@ -196,3 +202,13 @@ Choose the ESO environment first. Under Support & Access, the Discord server own
 After setup, administrators can configure Server roles and review Server access requests. Global access is a separate request for an ESO environment, reviewed by bot owners or configured approvers. It is never granted merely by installing the bot or being a Discord administrator.
 
 Tour builders can enter optional tour-specific notes directly on each draft stop, or when adding a house from its detail page. These notes guide visitors during that tour and never replace the house description. Save tour keeps stop order and notes together.
+
+House screenshots: open a house’s gallery on the web or select Screenshots in Discord. Add up to eight images with optional captions using the web upload form or `/hearth house:… screenshot:… caption:…` (also `/housing`). Only house editors can upload, choose the cover, or remove screenshots. Private images remain creator-only.
+
+House discovery uses descriptive cards with Favorite, visit status, View house and Add to tour actions. Basic Search also offers Compact list. Cards and pagination retain filters; tags open matching searches. My Address Book puts All saved, Favorites, Want to Visit and Visited first on web and Discord, followed by submitted records and organizing tools.
+
+Web lists with multiple pages offer numbered navigation and Jump to page. Stale page links return to an available page while retaining filters. If the last item on a page is deleted or no longer matches, earlier records remain reachable instead of showing a misleading empty list. Saved-place categories use the same paging controls.
+
+House and tour editors retain entered fields when a save fails. Tour recovery keeps stop order and tour-specific notes, and marks the recovered route as unsaved. If someone changed the tour since you opened it, Save remains blocked: use Open latest editor to compare with the current version in another tab and reapply your changes there. No automatic overwrite occurs.
+
+Recent Activity shows a full date and time for each action in your browser’s local time zone, including a zone label. Newest-first ordering is unchanged. If browser localization is unavailable, the complete timestamp remains labeled UTC.

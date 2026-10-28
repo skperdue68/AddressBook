@@ -7,7 +7,10 @@ export function safeHouseReturn(value){
   const url=new URL(value,'https://hearthbound.invalid');
   if(url.origin!=='https://hearthbound.invalid'||url.hash)return null;
   if(!['/app/houses','/app/search','/app/personal'].includes(url.pathname)&&!/^\/app\/personal\/(favorites|wantToVisit|visited|recent|pending|submitted)$/.test(url.pathname)&&!/^\/app\/searches\/\d+\/run$/.test(url.pathname))return null;
-  for(const key of url.searchParams.keys())if(!filters.has(key))return null;
+  for(const [key,value] of url.searchParams){
+   if(key==='listPage'&&/^\/app\/searches\/\d+\/run$/.test(url.pathname)&&/^\d+$/.test(value)&&Number.isSafeInteger(Number(value))&&Number(value)>0)continue;
+   if(!filters.has(key))return null;
+  }
   return url.pathname+url.search;
  }catch{return null;}
 }
@@ -27,6 +30,7 @@ export function safeActionReturn(value,depth=0){
   if(!app.test(url.pathname)&&!admin.test(url.pathname))return null;
   if(url.hash&&!/^#[a-zA-Z][a-zA-Z0-9_-]*$/.test(url.hash))return null;
   for(const [key,val] of url.searchParams){
+   if(key==='listPage'&&/^\/app\/searches\/\d+\/run$/.test(url.pathname)&&/^\d+$/.test(val)&&Number.isSafeInteger(Number(val))&&Number(val)>0)continue;
    if(key==='returnTo'){if(!safeHouseReturn(val))return null;}
    else if(key==='backTo'){if(!safeActionReturn(val,depth+1))return null;}
    else if(!filters.has(key)&&!['mine','saved','copied','posted','adminReady','metric','addedHouse','started','deleted','status','type','name'].includes(key))return null;

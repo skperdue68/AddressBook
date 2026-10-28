@@ -17,8 +17,8 @@ test('fresh SQLite schema creates v8 learning columns and v7 engagement tables',
   const db = openDatabase({ DB_TYPE: 'sqlite', DATABASE_PATH: path.join(dir, 'schema.sqlite') });
   try {
     await migrate(db);
-  assert.equal(SQLITE_SCHEMA_VERSION,14);
-  assert.equal(Number((await one(db, 'SELECT max(version) version FROM schema_migrations')).version),14);
+  assert.equal(SQLITE_SCHEMA_VERSION,15);
+  assert.equal(Number((await one(db, 'SELECT max(version) version FROM schema_migrations')).version),15);
     const guildColumns = new Set((await db.query('PRAGMA table_info(guild_settings)')).map(row => row.name));
     assert.ok(guildColumns.has('timezone'));
     for (const table of engagementTables) {
@@ -31,7 +31,7 @@ test('fresh SQLite schema creates v8 learning columns and v7 engagement tables',
 });
 
 test('MariaDB schema exposes the v8 learning definitions and v7 engagement definitions', () => {
-  assert.equal(SCHEMA_VERSION,14);
+  assert.equal(SCHEMA_VERSION,15);
   const schema = [...SCHEMA_V1, ...SCHEMA_V4, ...SCHEMA_V6, ...SCHEMA_V7, ...SCHEMA_V8].join('\n');
   for (const table of engagementTables) assert.match(schema, new RegExp(`CREATE TABLE IF NOT EXISTS ${table} \\(`, 'i'));
   assert.match(schema, /timezone VARCHAR\(64\) NULL/i);
