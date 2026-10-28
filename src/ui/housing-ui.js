@@ -69,15 +69,13 @@ export function onboardingPayload({page=0}={}){
   return {embeds:[e],components:[...buttonRows(navigation),...buttonRows([{...contextual,style:'primary'}])]};
 }
 export function myAddressBookPayload({houses=0,tours=0,pending=0,recent=0,favorites=0,wantToVisit=0,visited=0,savedSearches=0,continueItems=null,legacy=null,esoServer=null,backId='hu:home'}={}){
-  const e=embed('📖 My Address Book','Keep places that stand out to you: favorites, places to visit, and visited destinations. Houses you submit appear here too. Your saved lists are personal.')
+  const e=embed('📖 My Address Book','Keep places that stand out to you: favorites and houses you submit. Your saved lists are personal.')
     .addFields(
       {name:'🏠 My Houses',value:`**${Number(houses)}**`,inline:true},
       {name:'🗺️ My Tours',value:`**${Number(tours)}**`,inline:true},
       {name:'⏳ Pending',value:`**${Number(pending)}**`,inline:true},
       {name:'🕘 Recently Viewed',value:`**${Number(recent)}**`,inline:true},
       {name:'⭐ Favorites',value:`**${Number(favorites)}**`,inline:true},
-      {name:'📌 Want to Visit',value:`**${Number(wantToVisit)}**`,inline:true},
-      {name:'✅ Visited',value:`**${Number(visited)}**`,inline:true},
       {name:'🔎 Saved Searches',value:`**${Number(savedSearches)}**`,inline:true}
     );
   const continueActions=[];
@@ -89,8 +87,6 @@ export function myAddressBookPayload({houses=0,tours=0,pending=0,recent=0,favori
   return {embeds:[e],components:[...buttonRows(continueActions),...buttonRows([
     {customId:'hu:my:library',label:'All Saved Places',style:'primary',emoji:'📖'},
     {customId:'hu:my:favorites',label:'Favorites',style:'secondary',emoji:'⭐'},
-    {customId:'hu:my:want',label:'Want to Visit',style:'secondary',emoji:'📌'},
-    {customId:'hu:my:visited',label:'Visited',style:'secondary',emoji:'✅'},
     {customId:'hu:my:houses',label:'Submitted Houses',style:'secondary',emoji:'🏠'},
     {customId:'hu:my:tours',label:'My Tours',style:'secondary',emoji:'🗺️'},
     {customId:'hu:my:progress',label:'Tour Progress',style:'secondary',emoji:'🧭'},
@@ -274,7 +270,7 @@ function houseNavigationSpecs(navigation,showDetails=false){
 export function houseStateSpecs(r,sourceKind='saved'){
  const state=r.personal_state||{},favorite=Number(state.is_favorite)===1,visit=state.visit_state||'none';
  const context=r.personal_token||`${sourceKind}-${sourceKind==='official'?r.house_id:r.id}`;
- const specs=['favorite','want','visited'].map((action,index)=>({customId:`hu:mark:${action}:${context}`,label:[favorite?'Unfavorite':'Favorite',visit==='want_to_visit'?'Unmark Want to Visit':'Want to Visit',visit==='visited'?'Unmark Visited':'Visited'][index],style:(index===0?favorite:visit===(index===1?'want_to_visit':'visited'))?'success':'secondary'}));
+ const specs=[{customId:`hu:mark:favorite:${context}`,label:favorite?'Unfavorite':'Favorite',style:favorite?'success':'secondary'}];
  if(sourceKind!=='official')specs.push({customId:`hu:comment:quick:${context}`,label:'Add Comment',style:'primary'});
  return specs;
 }
@@ -282,25 +278,20 @@ export function houseStateSpecs(r,sourceKind='saved'){
 export function destinationMenuPayload(r,{canEdit=false,backId='hu:home',showDetails=false,navigation=null,surpriseToken=null}={}){
   const scope=r.scope==='personal'?'personal':r.scope==='global'?'global':'guild';
   const detailBack=encodeURIComponent(backId);
-  const actionBack=encodeURIComponent(backId);
   const commentsBackId=navigation&&navigation.stateId&&Number.isInteger(navigation.index)
     ?`hu:house-nav:${navigation.stateId}:${navigation.index}${showDetails?':show':''}`
     :showDetails?`hu:details:${scope}:${Number(r.id)}:show:${encodeURIComponent(backId)}`
       :`hu:context:view:${scope}:${Number(r.id)}:${encodeURIComponent(backId)}`;
   const primarySpecs=[
     ...registrationTourActions({savedHouseId:r.id,status:r.status}),
+    {customId:`hu:pass:house:share:${Number(r.id)}`,label:'Share House',style:'success'},
     {customId:`hu:details:${scope}:${Number(r.id)}:${showDetails?'hide':'show'}:${detailBack}`,label:showDetails?'Hide Details':'More Details',style:'primary',emoji:showDetails?'🔼':'🔽'},
     {customId:`hu:comments:${r.scope}:${Number(r.id)}:${encodeURIComponent(commentsBackId)}`,label:'Comments',style:'primary',emoji:'💬'},
     {customId:`hu:gallery:${Number(r.id)}:0`,label:'Screenshots',style:'secondary',emoji:'🖼️'},
-    {customId:`hu:pass:house:share:${Number(r.id)}`,label:'Share House',style:'success'},
     {customId:`hu:report:houseid:${Number(r.id)}`,label:'Report a Problem',style:'secondary'},
-    ...houseStateSpecs(r)
+    ...houseStateSpecs(r).filter(spec=>spec.customId.startsWith('hu:mark:favorite:'))
   ];
-  const editSpecs=canEdit?[
-    {customId:`hu:${scope}:edit:${Number(r.id)}:${actionBack}`,label:'Edit House',style:'secondary',emoji:'✏️'},
-    {customId:`hu:scope:change:${Number(r.id)}:${actionBack}`,label:'Change Visibility',style:'secondary',emoji:'🔄'},
-    {customId:`hu:${scope}:remove:${Number(r.id)}:${actionBack}`,label:'Delete House',style:'danger',emoji:'🗑️'}
-  ]:[];
+  const editSpecs=canEdit?[{customId:`hu:manage:${r.personal_token}`,label:'Manage House',style:'secondary'}]:[];
   const navSpecs=houseNavigationSpecs(navigation,showDetails);
   const backSpecs=[...(surpriseToken?[{customId:`hu:surprise:again:${surpriseToken}`,label:'Another Random House',style:'success',emoji:'🎲'}]:[]),{customId:backId,label:/^hu:(results:|advanced:)/.test(backId)?'Back to Results':backId==='hu:my'?'My Address Book':backId==='hu:home'?'Main Menu':'Back',style:'secondary',emoji:'↩️'}];
   return {embeds:[cleanDestinationEmbed(r,{showDetails})],components:buttonRows([...primarySpecs,...editSpecs,...navSpecs,...backSpecs])};
@@ -329,9 +320,6 @@ export function personalActionsPayload({token,target,state,backId='hu:home'}={})
   const returnId=token?`hu:personal:return:${context}`:backId;
   return {embeds:[embed('⭐ Personal Actions','Only you can see these preferences. They do not change the house visibility or grant access to it.')],components:buttonRows([
     {customId:`hu:personal:act:favorite:${context}`,label:favorite?'Remove Favorite':'Add Favorite',style:favorite?'secondary':'success'},
-    {customId:`hu:personal:act:want:${context}`,label:'Want to Visit',style:visit==='want_to_visit'?'success':'secondary'},
-    {customId:`hu:personal:act:visited:${context}`,label:'Mark Visited',style:visit==='visited'?'success':'secondary'},
-    {customId:`hu:personal:act:clear:${context}`,label:'Clear Visit Status',style:'secondary',disabled:visit==='none'},
     {customId:returnId,label:'Return to House',style:'primary'}
   ])};
 }

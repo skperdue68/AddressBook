@@ -45,7 +45,7 @@ import { esoServerLabel } from '../utils/eso-server.js';
 import { tourEmbed, tourButtons } from '../utils/render.js';
 import {
   pickerPageModal, houseStateSpecs, homePayload as renderHomePayload, myAddressBookPayload, myPendingPayload, registrationTypePayload, toursPayload, helpPayload,
-  pickerPayload, destinationMenuPayload, officialHousePayload, buttonRows,
+  pickerPayload, destinationMenuPayload as rawDestinationMenuPayload, officialHousePayload, buttonRows,
   advancedSearchPayload, advancedAttributePayload, advancedManagePayload, advancedRemovePayload, advancedTextModal, searchFiltersModal, houseEditModal, registerHouseFormModal, confirmPayload,
   registrationNotFoundPayload, destinationInputModal, registrationDestinationReviewPayload, registrationMetadataModal, registrationFinalReviewPayload,
   commentModal, tourDetailPayload, tourManagePayload, tourStartChoicePayload,
@@ -112,6 +112,15 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
   const advancedStates=new Map();
   const bulkTourStates=new Map();
   const personalActionStates=new Map();
+  const houseManagementStates=new Map();
+  function houseReturnOptions(backId){
+    const match=/^hu:house-return:([^:]+)$/.exec(String(backId||''));
+    return match?houseManagementStates.get(match[1])?.view:null;
+  }
+  function destinationMenuPayload(row,options={}){
+    const view=houseReturnOptions(options.backId);
+    return rawDestinationMenuPayload(row,view?{...options,...view}:options);
+  }
   const savedSearchStates=new Map();
   const quickCommentDrafts=new Map();
   const commentReaders=new Map();
@@ -284,6 +293,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
   }
   const navigableHousePicker=s=>s.kind==='visit'||s.kind.startsWith('personal-');
   function navigationFromBackId(backId){
+    backId=houseReturnOptions(backId)?.backId||backId;
     const m=/^hu:results:back:([^:]+):(\d+)$/.exec(String(backId||''));
     if(!m)return null;
     const stateId=m[1],index=Number(m[2]),s=states.get(stateId);
@@ -826,10 +836,12 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     const ctx=await scopeChangeContext(i,id,targetScope);
     const result=await saved.changeScope(id,targetScope,{actorId:i.user.id,targetGuildId:ctx.targetGuildId,targetEsoServer:guilds.getEsoServer(i.guildId),targetOwnerUserId:ctx.targetOwnerUserId,status:ctx.status});
     const row=legacySavedRow(result.house);
-    removeFromSearchState(backId,ctx.currentLegacy.scope,id);
+    const managedView=houseReturnOptions(backId);
+    if(managedView?.navigation){const list=states.get(managedView.navigation.stateId);if(list)list.rows[managedView.navigation.index]=row;}
+    else removeFromSearchState(backId,ctx.currentLegacy.scope,id);
     const note=result.removedStops?` Visibility changed and ${result.removedStops} incompatible tour stop${result.removedStops===1?' was':'s were'} removed.`:'';
     const pending=result.house.status==='pending'?' This house is now pending approval and will not appear in normal searches until approved.':'';
-    return i.update({...destinationMenuPayload(await withHouseCardContext(i,row),{canEdit:canEditSaved(i,row),backId:'hu:find'}),content:`House visibility changed to **${targetScope==='private'?'Private':targetScope==='public'?'Server':'Global'}**.${note}${pending}`});
+    return i.update({...destinationMenuPayload(await withHouseCardContext(i,row),{canEdit:canEditSaved(i,row),backId:managedView?backId:'hu:find'}),content:`House visibility changed to **${targetScope==='private'?'Private':targetScope==='public'?'Server':'Global'}**.${note}${pending}`});
   }
   async function handleTourRuntimeButton(i,id){
     const parts=id.split(':'),action=parts[1],sessionId=Number(parts[2]);
@@ -1099,8 +1111,8 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       const marked=await Promise.all(['favorites','wantToVisit','visited'].map(kind=>personalStates.list({...contextFor(i),kind})));
       const unique=new Map();for(const row of [...owned,...marked.flat()]){const key=houseTargetKey(houseTarget(row));if(!unique.has(key))unique.set(key,row);}
       const rows=[...unique.values()];
-      if(!rows.length)return i.update({...await dashboard(i),content:'Your address book is empty. Register a house or choose Favorite, Want to Visit, or Visited on a house card.'});
-      return i.update(createPicker(i,{kind:'visit',rows,extra:{title:'📖 All Saved Places',description:'Your houses and intentionally saved places.',actions:[{customId:'hu:my:favorites',label:'Favorites',style:'secondary'},{customId:'hu:my:want',label:'Want to Visit',style:'secondary'},{customId:'hu:my:visited',label:'Visited',style:'secondary'}]},backId:'hu:my'}));
+      if(!rows.length)return i.update({...await dashboard(i),content:'Your address book is empty. Register a house or choose Favorite on a house card.'});
+      return i.update(createPicker(i,{kind:'visit',rows,extra:{title:'📖 All Saved Places',description:'Your houses and intentionally saved places.',actions:[{customId:'hu:my:favorites',label:'Favorites',style:'secondary'}]},backId:'hu:my'}));
     }
     if(id==='hu:my:houses'){
       const rows=(await myAddressBook.houses(i.user.id,guilds.getEsoServer(i.guildId))).map(legacySavedRow);
@@ -1255,6 +1267,33 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       const deferred=typeof i.deferUpdate==='function';if(deferred)await i.deferUpdate();
       try{const result=await environments.confirmChange({guildId:i.guildId,toEsoServer,actorId:i.user.id,expectedFingerprint,names:{guildName:i.guild?.name,actorGlobalName:i.user.globalName||i.user.username,actorDisplayName:i.member?.displayName}});await guilds.ensureSettings(i.guildId);const payload={...adminPayload(guilds.getSettings(i.guildId)),content:`ESO environment changed to **${esoServerLabel(result.toEsoServer)}**. ${result.counts.removedStops} incompatible tour stop${result.counts.removedStops===1?' was':'s were'} removed.`};return deferred?i.editReply(payload):i.update(payload);}
       catch(error){const payload={content:error.message,embeds:[],components:buttonRows([{customId:'hu:environment:change:start',label:'Review Again',style:'primary'},{customId:'hu:admin',label:'Back',style:'secondary'}])};return deferred?i.editReply(payload):i.update(payload);}
+    }
+    if(id.startsWith('hu:manage:')||id.startsWith('hu:house-return:')){
+      try{
+        const sid=id.split(':')[2],context=personalActionStates.get(sid);
+        if(!context||context.userId!==i.user.id||context.guildId!==i.guildId||context.esoServer!==guilds.getEsoServer(i.guildId)||Date.now()-context.created>30*60*1000)throw new Error('That house menu expired. Open the house again.');
+        const access=await loadSavedReference(i,context.sourceId),row=access.record&&legacySavedRow(access.record);
+        if(context.sourceKind!=='saved'||!row||(!access.canView&&!canEditSaved(i,row)))throw new Error('That house is no longer available.');
+        if(id.startsWith('hu:house-return:')){
+          const state=houseManagementStates.get(sid);if(!state)throw new Error('That house menu expired. Open the house again.');
+          return i.update(destinationMenuPayload(await withHouseCardContext(i,row),{canEdit:canEditSaved(i,row),...state.view}));
+        }
+        if(!canEditSaved(i,row))throw new Error('You do not have edit access to that house.');
+        const controls=(i.message?.components||[]).flatMap(r=>(r.toJSON?.()||r).components);
+        const detail=controls.find(b=>String(b.custom_id||b.customId||'').startsWith('hu:details:'));
+        if(!detail)throw new Error('Open the house again to manage it.');
+        const parts=(detail.custom_id||detail.customId).split(':'),backId=decodeURIComponent(parts.slice(5).join(':'));
+        const random=controls.find(b=>String(b.custom_id||b.customId||'').startsWith('hu:surprise:again:'));
+        const view={backId,showDetails:parts[4]==='hide',navigation:navigationFromBackId(backId),surpriseToken:random?(random.custom_id||random.customId).split(':')[3]:null};
+        houseManagementStates.set(sid,{view});
+        const returnId=`hu:house-return:${sid}`,actionBack=encodeURIComponent(returnId),scope=row.scope==='personal'?'personal':row.scope==='global'?'global':'guild';
+        return i.update({embeds:rawDestinationMenuPayload(await withHouseCardContext(i,row),{showDetails:view.showDetails}).embeds,components:buttonRows([
+          {customId:`hu:${scope}:edit:${row.id}:${actionBack}`,label:'Edit House',style:'secondary'},
+          {customId:`hu:scope:change:${row.id}:${actionBack}`,label:'Change Visibility',style:'secondary'},
+          {customId:`hu:${scope}:remove:${row.id}:${actionBack}`,label:'Delete House',style:'danger'},
+          {customId:returnId,label:'Back to house',style:'secondary'}
+        ])});
+      }catch(error){return i.reply({content:error.message,flags:MessageFlags.Ephemeral});}
     }
     if(id.startsWith('hu:scope:change:')){
       const p=id.split(':'),rid=Number(p[3]),backId=decodeURIComponent(p.slice(4).join(':')||'hu:find'),r=(await loadSavedReference(i,rid)).record;
@@ -1540,15 +1579,15 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
 
     if(id.startsWith('hu:personal:edit:')){ const p=id.split(':'),rid=Number(p[3]),backId=decodeURIComponent(p.slice(4).join(':')||''),raw=(await loadSavedReference(i,rid)).record,r=raw?.scope==='private'&&raw.owner_user_id===i.user.id?personalRow(raw):null; if(!r)return i.reply({content:'Private house not found.',flags:MessageFlags.Ephemeral}); return i.showModal(houseEditModal('personal',r,backId)); }
     if(id.startsWith('hu:personal:remove:')){ const p=id.split(':'),rid=Number(p[3]),backId=decodeURIComponent(p.slice(4).join(':')||''),raw=(await loadSavedReference(i,rid)).record,r=raw?.scope==='private'&&raw.owner_user_id===i.user.id?personalRow(raw):null; if(!r)return i.update({content:'Private house not found.',embeds:[],components:[]}); const ctx=encodeURIComponent(backId); return i.update(confirmPayload({title:'Remove Private House?',description:`Permanently delete **${destinationLabel(r)}** from your Private houses? Its comments and tour references will also be deleted.`,confirmId:`hu:personal:removeconfirm:${rid}:${ctx}`,cancelId:`hu:context:view:personal:${rid}:${ctx}`})); }
-    if(id.startsWith('hu:personal:removeconfirm:')){ const p=id.split(':'),rid=Number(p[3]),backId=decodeURIComponent(p.slice(4).join(':')||''),raw=(await loadSavedReference(i,rid)).record,r=raw?.scope==='private'&&raw.owner_user_id===i.user.id?personalRow(raw):null; if(!r)return i.update({content:'Private house not found.',embeds:[],components:[]}); await saved.delete(rid,i.user.id); const ctx=removeFromSearchState(backId,'personal',rid); if(ctx){ if(ctx.total>0)return housePickerDetail(i,ctx.stateId,ctx.index); const m=/^hu:advanced:open:([^:]+)$/.exec(ctx.state.backId||''); if(m&&advancedState(i,m[1]))return i.update({...renderAdvanced(i,m[1]),content:'Private house deleted. No houses remain in that result list.'}); return i.update({...homePayload({isAdmin:isAdmin(i),esoServer:guilds.getEsoServer(i.guildId)}),content:'Private house deleted. No houses remain in that result list.'}); } return i.update(homePayload({isAdmin:isAdmin(i),esoServer:guilds.getEsoServer(i.guildId)})); }
+    if(id.startsWith('hu:personal:removeconfirm:')){ const p=id.split(':'),rid=Number(p[3]),backId=decodeURIComponent(p.slice(4).join(':')||''),raw=(await loadSavedReference(i,rid)).record,r=raw?.scope==='private'&&raw.owner_user_id===i.user.id?personalRow(raw):null; if(!r)return i.update({content:'Private house not found.',embeds:[],components:[]}); await saved.delete(rid,i.user.id); const ctx=removeFromSearchState(backId,'personal',rid); if(houseReturnOptions(backId)&&ctx)return i.update({...renderPicker(ctx.stateId),content:'House deleted.'}); if(ctx){ if(ctx.total>0)return housePickerDetail(i,ctx.stateId,ctx.index); const m=/^hu:advanced:open:([^:]+)$/.exec(ctx.state.backId||''); if(m&&advancedState(i,m[1]))return i.update({...renderAdvanced(i,m[1]),content:'Private house deleted. No houses remain in that result list.'}); return i.update({...homePayload({isAdmin:isAdmin(i),esoServer:guilds.getEsoServer(i.guildId)}),content:'Private house deleted. No houses remain in that result list.'}); } return i.update(homePayload({isAdmin:isAdmin(i),esoServer:guilds.getEsoServer(i.guildId)})); }
 
     if(id.startsWith('hu:guild:edit:')){ const p=id.split(':'),rid=Number(p[3]),backId=decodeURIComponent(p.slice(4).join(':')||''); const r=await regs.get(rid); if(!r||r.guild_id!==i.guildId||!canManageReg(i,r))return i.reply({content:'You do not manage that public house.',flags:MessageFlags.Ephemeral}); return i.showModal(houseEditModal('guild',r,backId)); }
     if(id.startsWith('hu:guild:remove:')){ const p=id.split(':'),rid=Number(p[3]),backId=decodeURIComponent(p.slice(4).join(':')||''); const r=await regs.get(rid); if(!r||r.guild_id!==i.guildId||!canManageReg(i,r))return i.update({content:'You do not manage that Server house.',embeds:[],components:[]}); const ctx=encodeURIComponent(backId); return i.update(confirmPayload({title:'Remove Server House?',description:`Permanently delete **${destinationLabel(r)}** from this server’s Server houses? Its comments and tour references will also be deleted.`,confirmId:`hu:guild:removeconfirm:${rid}:${ctx}`,cancelId:`hu:context:view:guild:${rid}:${ctx}`})); }
     if(id.startsWith('hu:global:edit:')){ const p=id.split(':'),rid=Number(p[3]),backId=decodeURIComponent(p.slice(4).join(':')||''); const r=(await loadSavedReference(i,rid)).record; if(!r||r.scope!=='global'||!canEditSaved(i,{...r,scope:'global'}))return i.reply({content:'You do not manage that Global house.',flags:MessageFlags.Ephemeral}); return i.showModal(houseEditModal('global',{...r,nickname:r.display_name,notes:r.description},backId)); }
     if(id.startsWith('hu:global:remove:')){ const p=id.split(':'),rid=Number(p[3]),backId=decodeURIComponent(p.slice(4).join(':')||''); const r=(await loadSavedReference(i,rid)).record; if(!r||r.scope!=='global'||!canEditSaved(i,{...r,scope:'global'}))return i.update({content:'You do not manage that Global house.',embeds:[],components:[]}); const ctx=encodeURIComponent(backId); return i.update(confirmPayload({title:'Delete Global House?',description:`Permanently delete **${destinationLabel(r)}** from the ${esoServerLabel(r.eso_server)} Global directory? Its comments and tour references will also be removed.`,confirmId:`hu:global:removeconfirm:${rid}:${ctx}`,cancelId:`hu:context:view:global:${rid}:${ctx}`})); }
-    if(id.startsWith('hu:global:removeconfirm:')){ const p=id.split(':'),rid=Number(p[3]),backId=decodeURIComponent(p.slice(4).join(':')||''); const r=(await loadSavedReference(i,rid)).record; if(!r||r.scope!=='global'||!canEditSaved(i,{...r,scope:'global'}))return i.update({content:'You do not manage that Global house.',embeds:[],components:[]}); await saved.delete(rid,i.user.id); const ctx=removeFromSearchState(backId,'global',rid); if(ctx?.total>0)return housePickerDetail(i,ctx.stateId,ctx.index); return i.update({...homePayload({isAdmin:isAdmin(i),esoServer:guilds.getEsoServer(i.guildId)}),content:'Global house deleted.'}); }
+    if(id.startsWith('hu:global:removeconfirm:')){ const p=id.split(':'),rid=Number(p[3]),backId=decodeURIComponent(p.slice(4).join(':')||''); const r=(await loadSavedReference(i,rid)).record; if(!r||r.scope!=='global'||!canEditSaved(i,{...r,scope:'global'}))return i.update({content:'You do not manage that Global house.',embeds:[],components:[]}); await saved.delete(rid,i.user.id); const ctx=removeFromSearchState(backId,'global',rid); if(houseReturnOptions(backId)&&ctx)return i.update({...renderPicker(ctx.stateId),content:'House deleted.'}); if(ctx?.total>0)return housePickerDetail(i,ctx.stateId,ctx.index); return i.update({...homePayload({isAdmin:isAdmin(i),esoServer:guilds.getEsoServer(i.guildId)}),content:'Global house deleted.'}); }
 
-    if(id.startsWith('hu:guild:removeconfirm:')){ const p=id.split(':'),rid=Number(p[3]),backId=decodeURIComponent(p.slice(4).join(':')||''); const r=await regs.get(rid); if(!r||r.guild_id!==i.guildId||!canManageReg(i,r))return i.update({content:'You do not manage that Server house.',embeds:[],components:[]}); await regs.archive(rid,i.user.id); const ctx=removeFromSearchState(backId,'server',rid); if(ctx){ if(ctx.total>0)return housePickerDetail(i,ctx.stateId,ctx.index); const m=/^hu:advanced:open:([^:]+)$/.exec(ctx.state.backId||''); if(m&&advancedState(i,m[1]))return i.update({...renderAdvanced(i,m[1]),content:'Server house deleted. No houses remain in that result list.'}); return i.update({...homePayload({isAdmin:isAdmin(i),esoServer:guilds.getEsoServer(i.guildId)}),content:'Server house deleted. No houses remain in that result list.'}); } return i.update(homePayload({isAdmin:isAdmin(i),esoServer:guilds.getEsoServer(i.guildId)})); }
+    if(id.startsWith('hu:guild:removeconfirm:')){ const p=id.split(':'),rid=Number(p[3]),backId=decodeURIComponent(p.slice(4).join(':')||''); const r=await regs.get(rid); if(!r||r.guild_id!==i.guildId||!canManageReg(i,r))return i.update({content:'You do not manage that Server house.',embeds:[],components:[]}); await regs.archive(rid,i.user.id); const ctx=removeFromSearchState(backId,'server',rid); if(houseReturnOptions(backId)&&ctx)return i.update({...renderPicker(ctx.stateId),content:'House deleted.'}); if(ctx){ if(ctx.total>0)return housePickerDetail(i,ctx.stateId,ctx.index); const m=/^hu:advanced:open:([^:]+)$/.exec(ctx.state.backId||''); if(m&&advancedState(i,m[1]))return i.update({...renderAdvanced(i,m[1]),content:'Server house deleted. No houses remain in that result list.'}); return i.update({...homePayload({isAdmin:isAdmin(i),esoServer:guilds.getEsoServer(i.guildId)}),content:'Server house deleted. No houses remain in that result list.'}); } return i.update(homePayload({isAdmin:isAdmin(i),esoServer:guilds.getEsoServer(i.guildId)})); }
     if(id.startsWith('hu:pending:approve:')||id.startsWith('hu:pending:deny:')){
       if(!guilds.canReviewPending(i))return i.reply({content:'You do not have Housing administration access to review pending houses.',flags:MessageFlags.Ephemeral});
       const parts=id.split(':'),action=parts[2],rid=Number(parts[3]),record=await regs.get(rid);
@@ -1879,7 +1918,13 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     if(id.startsWith('hu:modal:quickcomment:')){
       try{const context=quickCommentContext(i,id.split(':')[3]),source=await personalActionSource(i,context),target=houseTarget(source.row);if(houseTargetKey(target)!==houseTargetKey(context.target))throw new Error('That house destination changed. Open the house again.');
         await comments.add({esoServer:context.esoServer,savedHouseId:source.row.id,destinationId:source.row.destination_id,commenterUserId:i.user.id,text:i.fields.getTextInputValue('comment')});context.used=true;
-        const payload={...context.snapshot,content:'Comment added.'};return context.shared?i.reply({...payload,components:[],flags:MessageFlags.Ephemeral}):modalResponse(i,payload);
+        const payload={...context.snapshot,content:'Comment added.'};
+        const isHouseCard=context.snapshot.components.flatMap(row=>row.components||[]).some(control=>String(control.custom_id||'').startsWith('hu:details:'));
+        if(isHouseCard){
+          const count=await comments.count('global',source.row.id,context.esoServer);
+          payload.embeds=payload.embeds.map(embed=>({...embed,fields:embed.fields?.map(field=>field.name==='💬 Comments'?{...field,value:`${count} comment${count===1?'':'s'}`}:field)}));
+        }
+        return context.shared?i.reply({...payload,components:[],flags:MessageFlags.Ephemeral}):modalResponse(i,payload);
       }catch(error){return i.reply({content:error.message,flags:MessageFlags.Ephemeral});}
     }
     if(id.startsWith('hu:modal:pickerpage:')){

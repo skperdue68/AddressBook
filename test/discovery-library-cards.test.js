@@ -5,8 +5,8 @@ import {myAddressBookPayload} from '../src/ui/housing-ui.js';
 
 test('discovery cards show useful facts and reversible marks, preserving filtered return context',()=>{
  const html=discoveryCards([{id:4,destination_id:10,status:'active',scope:'public',display_name:'Garden <script>',house_name:'Villa',eso_owner:'Builder',zone:'Auridon',style:'Altmer',classification:'Notable',description:'A place to relax',tags:'["garden"]',cover_image_id:8,personal_state:{is_favorite:1,visit_state:'want_to_visit'}}],{csrf:'s',returnTo:'/app/houses?q=garden&view=cards'});
- for(const text of ['Garden &lt;script&gt;','Villa','Auridon','Altmer','Notable','A place to relax','garden','Unfavorite','want_to_visit','/app/houses/4/images/8','Add to tour'])assert.ok(html.includes(text),text);
- assert.ok(html.includes('data-personal-action="visit"'));assert.ok(html.includes('name="returnTo" value="/app/houses?q=garden&amp;view=cards"'));assert.ok(!html.includes('<script>'));
+ for(const text of ['Garden &lt;script&gt;','Villa','Auridon','Altmer','Notable','A place to relax','garden','Unfavorite','/app/houses/4/images/8','Add to tour'])assert.ok(html.includes(text),text);
+ assert.ok(!html.includes('data-personal-action="visit"'));assert.ok(html.includes('name="returnTo" value="/app/houses?q=garden&amp;view=cards"'));assert.ok(!html.includes('<script>'));
  const pending=discoveryCards([{id:5,status:'pending',scope:'private',display_name:'Pending home'}],{csrf:'s'});assert.ok(!pending.includes('data-personal-action'));assert.ok(!pending.includes('Add to tour'));assert.ok(!pending.includes('<img'));
 });
 test('decoration adds only the current member’s marks for visible houses',async()=>{
@@ -17,7 +17,7 @@ test('decoration adds only the current member’s marks for visible houses',asyn
 });
 test('saved-place navigation puts favorites and visit plans before management tools on web and Discord',()=>{
  const html=personalNavigation('/app/personal/favorites');assert.ok(html.includes('aria-current="page"'));assert.ok(html.indexOf('Favorites')<html.indexOf('Submitted'));assert.ok(html.includes('Organize'));
- const rows=myAddressBookPayload({}).components.map(row=>row.toJSON().components);assert.deepEqual(rows[0].map(button=>button.custom_id),['hu:my:library','hu:my:favorites','hu:my:want','hu:my:visited']);
+ const rows=myAddressBookPayload({}).components.map(row=>row.toJSON().components);assert.deepEqual(rows.flat().filter(button=>['hu:my:library','hu:my:favorites','hu:my:want','hu:my:visited'].includes(button.custom_id)).map(button=>button.custom_id),['hu:my:library','hu:my:favorites']);
 });
 import {createWebAdminServer} from '../src/web/server.js';import {WebAdminService} from '../src/services/web-admin-service.js';import {createSession,readSession} from '../src/web/session.js';
 

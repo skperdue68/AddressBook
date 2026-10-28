@@ -76,3 +76,11 @@ test('Private house and tour reassignment is rejected even by their bot owner cr
   for(const [kind,record] of [['house',house],['tour',tour]]){await assert.rejects(()=>service.preview(admin,kind,record.id,candidate),/not available/);await assert.rejects(()=>service.confirm(admin,kind,record.id,candidate,'forged'),/not available/);}
  }finally{await closeDatabase(db);}
 });
+test('reassignment offers escaped selectable server members and scopes the search to the record server',async()=>{
+ const {db,svc,c}=await fixture();try{
+ const admin=await svc.fresh({...c,userId:'1'}),house=await svc.registerHouse(admin,{houseId:1,esoOwner:'Builder',visibility:'public'});let searched;
+ svc.discord={searchMembers:async(context,args)=>{searched=args;return [{id:candidate,displayName:'<b>Member</b>',username:'test'}];}};
+ const page=await contentReassignmentRoute({workspace:svc,context:admin,session:{csrf:'x'},url:new URL(`http://local/app/houses/${house.id}/reassign?memberQuery=Mem`),render:(title,body)=>({title,body})});
+ assert.deepEqual(searched,{guildId:'g',query:'Mem'});assert.match(page.body,/Choose a server member/);assert.match(page.body,/&lt;b&gt;Member&lt;\/b&gt;/);assert.match(page.body,new RegExp(`option value="${candidate}"`));assert.doesNotMatch(page.body,/<b>Member<\/b>/);
+ }finally{await closeDatabase(db);}
+});

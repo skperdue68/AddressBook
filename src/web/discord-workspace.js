@@ -22,6 +22,15 @@ export class DiscordWorkspace {
    }
   }catch{return {complete:false,members:[],notice:'Role-holder names require Discord Server Members Intent to be enabled for HearthBound. Individual grants and configured roles remain listed.'};}
  }
+ async searchMembers(c,{guildId=c.guildId,query=''}={}){
+  if(!c.isServerAdmin&&!c.isGlobalAdmin&&!c.isOwner)throw new Error('Administrative access is required.');
+  if(guildId!==c.guildId&&!c.isGlobalAdmin&&!c.isOwner)throw new Error('Select your administrated server.');
+  const guild=this.client.guilds.cache.get(guildId);if(!guild)throw new Error('This Discord server is unavailable.');
+  await guild.members.fetch({user:c.userId,force:true});
+  query=String(query).trim().slice(0,80);
+  const members=query?await guild.members.search({query,limit:25,cache:false}):await guild.members.list({limit:25,cache:false});
+  return [...members.values()].map(m=>({id:String(m.id),displayName:m.displayName||m.user?.globalName||m.user?.username||String(m.id),username:m.user?.username||''})).sort((a,b)=>a.displayName.localeCompare(b.displayName));
+ }
  async destinations(c,parentId=null){
   const actors=await this.actors(c),channels=await actors.guild.channels.fetch();
   const parents=[...channels.values()].filter(h=>h&&types.has(h.type)&&this.visible(h,c,actors)).map(h=>({id:h.id,name:h.name})).sort((a,b)=>a.name.localeCompare(b.name));

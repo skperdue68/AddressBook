@@ -32,8 +32,9 @@ function destinationSelect(customId,placeholder,items){
   const select=new StringSelectMenuBuilder().setCustomId(customId).setPlaceholder(placeholder).setMinValues(1).setMaxValues(1).addOptions(items.map(c=>({label:String(c.name||c.id).slice(0,100),value:String(c.id),description:String(c.parent?.name||'No category').slice(0,100)})));
   return [new ActionRowBuilder().addComponents(select)];
 }
-export function tourShareChannelPayload(tourId,{channels=[],page=0,kind='tour'}={}){
+export function tourShareChannelPayload(tourId,{channels=[],page=0,kind='tour',remembered=null}={}){
   const view=destinationPage(channels,page),actions=[];
+  if(remembered)actions.push({customId:`hu:pass:${kind}:confirm:${tourId}:${remembered.id}`,label:`Last shared: ${remembered.name}`.slice(0,80),style:'success'});
   if(view.page>0)actions.push({customId:`hu:pass:${kind}:share:${tourId}:${view.page-1}`,label:'Previous Channels',style:'secondary'});
   if(view.page<view.pages-1)actions.push({customId:`hu:pass:${kind}:share:${tourId}:${view.page+1}`,label:'Next Channels',style:'secondary'});
   actions.push({customId:`hu:pass:${kind}:link:${tourId}`,label:'Use Channel / Thread Link',style:'primary'},{customId:kind==='tour'?'hu:tours':'hu:home',label:'Cancel',style:'secondary'});

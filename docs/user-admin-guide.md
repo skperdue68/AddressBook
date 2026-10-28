@@ -53,7 +53,7 @@ Use **Add to tour** to choose an eligible existing route and add optional tour-s
 
 Authorized editors use **Manage house** for metadata, visibility and deletion. Visibility changes show their effect on incompatible tour stops before confirmation. Delete is a separate red action with an impact preview. It removes this registration, not the official catalog definition or other registrations of the same ESO destination.
 
-Eligible administrators can copy a shared registration between servers or reassign its Discord submitter to a member of the relevant server. If the original submitter is not in the destination server, the person copying becomes the submitter. The ESO account owner remains a separate field. These administrative tools do not reassign another creator's Private content.
+Eligible administrators can copy a shared registration between servers or reassign its Discord submitter to a member of the relevant server. Search members by name and choose from the results; a member ID or mention is also accepted. If the original submitter is not in the destination server, the person copying becomes the submitter. The ESO account owner remains a separate field. These administrative tools do not reassign another creator's Private content.
 
 If an edit fails, the web form retains entered fields and explains the problem. Check the selected server, environment and current access before retrying.
 
@@ -63,9 +63,9 @@ If an edit fails, the web form retains entered fields and explains the problem. 
 
 ### Use My Address Book
 
-**All saved** combines your submitted homes with places you intentionally saved. Favorites, Want to Visit and Visited provide focused collections. Submitted records, recent views, pending submissions, saved searches and tour progress have their own destinations.
+**All saved** combines your submitted homes with places you intentionally saved. Favorites provide a focused collection. Submitted records, recent views, pending submissions, saved searches and tour progress have their own destinations.
 
-Favorite and visit state are independent. Use Unfavorite to remove a favorite. Change the visit selector to Visited after a visit, or choose Not marked to clear it. On the web, visit changes save automatically and report success or failure. Discord house and tour-stop cards expose reversible marks and Add Comment directly.
+Use Favorite to save a house and Unfavorite to remove it. Visit-status controls have been retired from both interfaces. On Discord house cards, open Comments to read or add a comment; the count refreshes when you return. Editors use Manage House for editing, visibility and deletion.
 
 ### Search and keep filters
 
@@ -75,13 +75,13 @@ Numbered pages and Jump to page preserve filters. A stale page link returns to a
 
 ### Leave a comment
 
-Share a detail you enjoyed, an observation or a thank-you. The author and date appear above each comment. Discord's newest-first reader has two comments per page, navigation and a direct page jump. Add Comment from a house or tour-stop card returns to that same card; adding from the reader returns to its newest page.
+Share a detail you enjoyed, an observation or a thank-you. The author and date appear above each comment. Discord's newest-first reader has two comments per page, navigation and a direct page jump. Comments opens the reader from a house card. Add Comment from a tour-stop card returns to that stop; adding from the reader returns to its newest page.
 
 Comments belong to an ESO destination in one environment. Matching registrations of that owner and official house share their comment history. Current house or Share Pass access is checked before reading or submitting.
 
 ### Use the house gallery
 
-A registration can hold **up to eight still PNG, JPEG or WebP screenshots**, up to **5 MB each**. Editors upload an image with an optional caption, choose a cover, edit captions or remove images. With no image, the house stays readable as a text card; no fake screenshot is substituted.
+A registration can hold **up to eight still PNG, JPEG or WebP screenshots**, up to **5 MB each**. Editors upload an image with an optional caption, choose a cover, move screenshots earlier or later, edit captions or remove images. With no image, the house stays readable as a text card; no fake screenshot is substituted.
 
 On the web, find **House screenshots** on the house page. Drag a file onto the upload area or choose one, review the preview and upload. Progress and errors appear in the form. Click an image to enlarge it; use Previous or Next, arrow keys, or Escape to close.
 
@@ -131,7 +131,7 @@ A Shared session posts the current stop in a channel. Only its initiating leader
 
 ### Share a house or tour
 
-Use **Share house** or **Share tour** to create or post a Share Pass. Choose an accessible channel and, if offered, an optional thread, then confirm the destination. A pass is limited to its configured environment and can be revoked. Copy and editing actions appear only where the applicable access rules permit them.
+Use **Share house** or **Share tour** to create or post a Share Pass. Choose an accessible channel and, if offered, an optional thread, then confirm the destination. Your last successful channel or thread in that server is offered again when permissions still allow it. A pass is limited to its configured environment and can be revoked. Copy and editing actions appear only where the applicable access rules permit them.
 
 A Private Tour Pass gives each visitor an independent private run. Revocation closes pass-derived access and blocks stale viewing, navigation and comment submissions. A pass never grants general access to the creator's other Private records.
 
@@ -139,9 +139,9 @@ A Private Tour Pass gives each visitor an independent private run. Revocation cl
 
 **Random House** gives an accessible registered destination with its official name, ESO owner, zone, classification, available tags and description, visit commands and recent comment context. Choose **More details** for the complete record. In Discord, another pick avoids the previous destination when alternatives exist; web picks may repeat.
 
-**Featured Housing** displays richer house cards and curated tours. House selections rotate weekly. Favorites and recorded visit interest modestly influence selection while variety and randomness remain; popularity does not determine every result. Previous-cycle destinations are avoided when enough alternatives exist. Each featured category is capped at four entries.
+**Featured Housing** displays richer house cards and curated tours. House selections rotate weekly. Favorites and previously recorded visit interest modestly influence selection while variety and randomness remain; popularity does not determine every result. Previous-cycle destinations are avoided when enough alternatives exist. Each featured category is capped at four entries.
 
-HearthBound records app actions, not actual movement inside ESO. Marking Visited is a member's saved state, not a measured in-game visit.
+HearthBound records app actions, not actual movement inside ESO. Past personal visit-state records are retained, but their controls are no longer displayed.
 
 <!-- page -->
 

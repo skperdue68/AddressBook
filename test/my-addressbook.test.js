@@ -22,11 +22,10 @@ test('My Address Book renders personal counts and dashboard actions',()=>{
   assert.deepEqual(json.fields.map(field=>[field.name,field.value]),[
     ['🏠 My Houses','**18**'],['🗺️ My Tours','**4**'],
     ['⏳ Pending','**2**'],['🕘 Recently Viewed','**3**'],
-    ['⭐ Favorites','**0**'],['📌 Want to Visit','**0**'],
-    ['✅ Visited','**0**'],['🔎 Saved Searches','**0**']
+    ['⭐ Favorites','**0**'],['🔎 Saved Searches','**0**']
   ]);
   assert.deepEqual(labels(payload),[
-    'All Saved Places','Favorites','Want to Visit','Visited','Submitted Houses',
+    'All Saved Places','Favorites','Submitted Houses',
     'My Tours','Tour Progress','Recently Viewed','Saved Searches','Pending','Main Menu'
   ]);
 });
