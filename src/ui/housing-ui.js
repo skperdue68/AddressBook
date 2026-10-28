@@ -1,3 +1,4 @@
+import {unifiedCard} from './message-layout.js';
 import {portalPublicUrl} from '../web/portal-url.js';
 import {registrationTourActions} from './registration-tour-ui.js';
 import {
@@ -297,7 +298,8 @@ export function destinationMenuPayload(r,{canEdit=false,backId='hu:home',showDet
   const houseEmbed=cleanDestinationEmbed(r,{showDetails});
   const embeds=r.discordCover?[new EmbedBuilder().setColor(houseEmbed.data.color??0x5865f2).setImage('attachment://house-cover.webp'),houseEmbed]:[houseEmbed];
   if(r.coverNeedsPermission)houseEmbed.setFooter({text:'Screenshots are available. HearthBound needs Attach Files permission to show them in Discord.'});
-  return {attachments:[],files:r.discordCover?[r.discordCover]:[],embeds,components:buttonRows([...primarySpecs,...editSpecs,...navSpecs,...backSpecs])};
+  const payload={attachments:[],files:r.discordCover?[r.discordCover]:[],embeds,components:buttonRows([...primarySpecs,...editSpecs,...navSpecs,...backSpecs])};
+  return r.discordCover?unifiedCard(payload):payload;
 }
 
 export function officialHousePayload(house,backId='hu:find',showDetails=false,navigation=null,surpriseToken=null){

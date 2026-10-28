@@ -1,3 +1,4 @@
+import {unifiedCard} from './message-layout.js';
 import {ActionRowBuilder,ButtonBuilder,ButtonStyle,EmbedBuilder,MessageFlags,ModalBuilder,TextInputBuilder,TextInputStyle} from 'discord.js';
 import {one} from '../db/database.js';
 import {portalPublicUrl} from '../web/portal-url.js';
@@ -28,7 +29,8 @@ export async function discordHouseGallery(workspace,i,{houseId,index=0,attachmen
   const manage=[];if(image&&house.canEdit){manage.push(new ButtonBuilder().setCustomId(`hu:gallery:edit-caption:${houseId}:${image.id}:${index}`).setLabel('Edit caption').setStyle(ButtonStyle.Secondary));if(index)manage.push(new ButtonBuilder().setCustomId(`hu:gallery:cover:${houseId}:${image.id}`).setLabel('Use as cover').setStyle(ButtonStyle.Secondary));manage.push(new ButtonBuilder().setCustomId(`hu:gallery:remove:${houseId}:${image.id}`).setLabel('Remove screenshot').setStyle(ButtonStyle.Danger));}
   const portal=portalPublicUrl();if(portal)buttons.push(new ButtonBuilder().setLabel(house.canEdit?'Manage screenshots on web':'View house on web').setStyle(ButtonStyle.Link).setURL(new URL(`/app/houses/${houseId}#screenshots`,portal).toString()));
   const files=image?[{attachment:await workspace.images.read(c,houseId,image.id),name:'house.webp'}]:[];const embeds=image?[new EmbedBuilder().setColor(0xe5bc71).setImage('attachment://house.webp'),embed]:[embed];
-  return i.editReply({attachments:[],allowedMentions:{parse:[]},embeds,files,components:[...(buttons.length?[new ActionRowBuilder().addComponents(buttons)]:[]),...(manage.length?[new ActionRowBuilder().addComponents(manage)]:[])]});
+  const payload={attachments:[],allowedMentions:{parse:[]},embeds,files,components:[...(buttons.length?[new ActionRowBuilder().addComponents(buttons)]:[]),...(manage.length?[new ActionRowBuilder().addComponents(manage)]:[])]};
+  return i.editReply(image?unifiedCard(payload):payload);
  }catch(error){return i.editReply({content:error.message,attachments:[],embeds:[],components:[],allowedMentions:{parse:[]}});}
 }
 

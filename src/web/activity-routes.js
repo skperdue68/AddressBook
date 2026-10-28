@@ -1,11 +1,7 @@
 import {activityLabels} from '../services/usage-activity-service.js';
 import {escape} from './render.js';
 import {linkButton} from './workspace-render.js';
-function activityTime(value){
- const raw=String(value||''),date=value instanceof Date?value:new Date(/(?:Z|[+-]\d\d:?\d\d)$/.test(raw)?raw:raw.replace(' ','T')+'Z');
- if(!Number.isFinite(date.getTime()))return '<span class="note">Time unavailable</span>';
- const iso=date.toISOString();return `<time class="activity-timestamp" data-local-datetime datetime="${iso}" title="${iso}">${iso.slice(0,19).replace('T',' ')} UTC</time>`;
-}
+import {activityTime} from './activity-time.js';
 
 export async function activityRoute({workspace:w,context:c,query={},render}){
  const filters={server:query.server||'',kind:query.kind||'',member:query.member||''};
