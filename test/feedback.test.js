@@ -22,7 +22,7 @@ test('feedback persists across migration, remains private and restricts reviews 
   await assert.rejects(()=>service.review(owner,{id:item.id,revision:1,status:'resolved',notes:''}),/changed/i);
   await migrate(db);assert.equal((await service.list(owner,{status:'reviewed'})).total,1);
   env.BOT_OWNER_IDS='2';await assert.rejects(()=>service.list(owner),/owner/i);
-  assert.equal(Number((await one(db,'SELECT max(version) v FROM schema_migrations')).v),14);
+  assert.equal(Number((await one(db,'SELECT max(version) v FROM schema_migrations')).v),15);
  }finally{await closeDatabase(db);}
 });
 
@@ -42,7 +42,7 @@ test('feedback survives backend transfers and schema13 sources remain compatible
   await transferUnifiedData(db,target);
   assert.equal((await one(target,'SELECT * FROM app_feedback')).message,'Persistent feedback');
   assert.equal((await one(target,'SELECT created_at FROM app_feedback')).created_at,(await one(db,'SELECT created_at FROM app_feedback')).created_at);
-  await db.query('DROP TABLE app_feedback');await db.query('DELETE FROM schema_migrations WHERE version=14');
+  await db.query('DROP TABLE app_feedback');await db.query('DELETE FROM schema_migrations WHERE version>=14');
   await transferUnifiedData(db,target);assert.equal(Number((await one(target,'SELECT count(*) n FROM app_feedback')).n),0);
   await migrate(db);await migrate(db);assert.equal(Number((await one(db,'SELECT count(*) n FROM schema_migrations WHERE version=14')).n),1);
  }finally{await closeDatabase(db);await closeDatabase(target);}

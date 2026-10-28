@@ -12,7 +12,7 @@ test('latest schema retains Discord identity caches and readable companion field
   const db=openDatabase({DB_TYPE:'sqlite',DATABASE_PATH:path.join(dir,'identities.sqlite')});
   try{
     await migrate(db);
-    assert.equal(Number((await one(db,'SELECT MAX(version) version FROM schema_migrations')).version),14);
+    assert.equal(Number((await one(db,'SELECT MAX(version) version FROM schema_migrations')).version),15);
     for(const table of ['discord_guilds','discord_users','discord_guild_members','discord_channels','discord_roles']){
       assert.equal(Number((await one(db,"SELECT COUNT(*) count FROM sqlite_master WHERE type='table' AND name=?",[table])).count),1,table);
     }
@@ -69,7 +69,7 @@ test('v10 upgrades existing SQLite sessions without inventing Private sharing au
     await db.query("INSERT INTO tour_sessions(tour_id,guild_id,channel_id,mode,started_by) VALUES(1,'g','c','shared','owner')");
     await migrate(db);await migrate(db);
     assert.equal((await one(db,'SELECT launch_visibility FROM tour_sessions')).launch_visibility,null);
-    assert.equal(Number((await one(db,'SELECT max(version) v FROM schema_migrations')).v),14);
+    assert.equal(Number((await one(db,'SELECT max(version) v FROM schema_migrations')).v),15);
   }finally{await closeDatabase(db);fs.rmSync(dir,{recursive:true,force:true});}
 });
 

@@ -1,3 +1,6 @@
+import {adminOverview} from './admin-overview.js';
+import {pagination} from './pagination.js';
+import {houseGalleryRoute} from './house-gallery.js';
 import {readFile} from 'node:fs/promises';
 import {renderWorkspace,csrfField} from './workspace-render.js';
 import {ESO_SERVERS} from '../utils/eso-server.js';
@@ -71,7 +74,7 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
 
   async function route(request, response) {
     const url = new URL(request.url, 'http://localhost');
-    if(['/assets/workspace.css','/assets/public-pages.css','/assets/hearthbound-preview.png','/assets/hearthbound-banner.webp','/assets/hearthbound-landscape.webp','/assets/tour-editor.js','/assets/hearthbound-logo.png','/assets/account-menu.css','/assets/account-menu.js','/assets/web-actions.js','/assets/interface.js','/assets/catalog-editor.js'].includes(url.pathname)){
+    if(['/assets/workspace.css','/assets/public-pages.css','/assets/hearthbound-preview.png','/assets/hearthbound-banner.webp','/assets/hearthbound-landscape.webp','/assets/tour-editor.js','/assets/hearthbound-logo.png','/assets/account-menu.css','/assets/account-menu.js','/assets/web-actions.js','/assets/interface.js','/assets/house-gallery.js','/assets/catalog-editor.js'].includes(url.pathname)){
       if(request.method!=='GET')return send(response,405,'Method not allowed',{allow:'GET'});
       const asset=url.pathname.split('/').pop();return send(response,200,await readFile(new URL(`./assets/${asset}`,import.meta.url)),{'content-type':asset.endsWith('.png')?'image/png':asset.endsWith('.webp')?'image/webp':asset.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8','x-content-type-options':'nosniff'});
     }
@@ -130,31 +133,32 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
       if(request.method!=='GET')return send(response,405,'Method not allowed',{allow:'GET, POST'});
       return send(response,200,renderWorkspace({title:'Choose this server’s ESO environment',user:session,context:context.memberContext,body:`<p>This is the same initial setup offered in Discord. Choose carefully; later changes require administration and an impact confirmation.</p><form action="/app/setup" method="post">${csrfField(session.csrf)}<label>ESO environment<select name="esoServer">${ESO_SERVERS.map(s=>`<option value="${s.value}">${s.label}</option>`).join('')}</select></label><button class="primary">Complete initial setup</button></form>`}));
     }
+    if(workspace&&context.memberContext){const gallery=await houseGalleryRoute({request,response,url,workspace,context:context.memberContext,session,send,redirect,readBody});if(gallery!==null)return gallery;}
     if(workspace&&(url.pathname==='/'||url.pathname==='/app'||url.pathname.startsWith('/app/'))){return handleWorkspaceRoute({request,response,url,session,context:context.memberContext,workspace,serverContexts:context.availableContexts||[],memberLookup,claimFirstAdmin,readBody,send,redirect});}
     const common = { guildId: guild.id, esoServer };
     const reportMutation = /^\/admin\/reports\/(\d+)\/(review|resolve|dismiss)$/.exec(url.pathname);
     if (reportMutation) {
-      if (request.method !== 'POST') return send(response, 405, page('Method not allowed', '<p>Report moderation actions require a POST form.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer }, { moderation: true }), { allow: 'POST' });
+      if (request.method !== 'POST') return send(response, 405, page('Method not allowed', '<p>Report moderation actions require a POST form.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }), { allow: 'POST' });
       let form;
-      try { form = await readBody(request); } catch { return send(response, 400, page('Invalid request', '<p>The report moderation form could not be read.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer }, { moderation: true })); }
+      try { form = await readBody(request); } catch { return send(response, 400, page('Invalid request', '<p>The report moderation form could not be read.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true })); }
       const action = reportMutation[2];
-      if (!csrfMatches(session.csrf, form.get('csrf')) || form.get('confirm') !== action) return send(response, 400, page('Invalid confirmation', '<p>This report moderation form is invalid or expired. Return to Problem Reports and try again.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer }, { moderation: true }));
+      if (!csrfMatches(session.csrf, form.get('csrf')) || form.get('confirm') !== action) return send(response, 400, page('Invalid confirmation', '<p>This report moderation form is invalid or expired. Return to Problem Reports and try again.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }));
       const returnPage = pendingPage(form.get('page'));
       const returnPath = `/admin/reports${returnPage > 1 ? `?page=${returnPage}` : ''}`;
       try {
         await service.moderateReport({ id: reportMutation[1], action, ...common, actor: { id: session.id, globalName: session.global_name || session.username, displayName: session.display_name || session.username } });
         return redirect(response, `${returnPath}${returnPage > 1 ? '&' : '?'}status=${action === 'review' ? 'reviewing' : action === 'dismiss' ? 'dismissed' : 'resolved'}`);
       } catch {
-        return send(response, 409, page('Report action not completed', `<p>That housing report is no longer available for this action.</p><p><a href="${returnPath}">Return to Problem Reports</a></p>`, session, { guildId: guild.id, guildName: guild.name, esoServer }, { moderation: true }));
+        return send(response, 409, page('Report action not completed', `<p>That housing report is no longer available for this action.</p><p><a href="${returnPath}">Return to Problem Reports</a></p>`, session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }));
       }
     }
     const mutation = /^\/admin\/pending\/(\d+)\/(approve|deny)$/.exec(url.pathname);
     if (mutation) {
-      if (request.method !== 'POST') return send(response, 405, page('Method not allowed', '<p>Moderation actions require a POST form.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer }, { moderation: true }), { allow: 'POST' });
+      if (request.method !== 'POST') return send(response, 405, page('Method not allowed', '<p>Moderation actions require a POST form.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }), { allow: 'POST' });
       let form;
-      try { form = await readBody(request); } catch { return send(response, 400, page('Invalid request', '<p>The moderation form could not be read.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer }, { moderation: true })); }
+      try { form = await readBody(request); } catch { return send(response, 400, page('Invalid request', '<p>The moderation form could not be read.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true })); }
       const action = mutation[2];
-      if (!csrfMatches(session.csrf, form.get('csrf')) || form.get('confirm') !== action) return send(response, 400, page('Invalid confirmation', '<p>This moderation form is invalid or expired. Return to Pending Review and try again.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer }, { moderation: true }));
+      if (!csrfMatches(session.csrf, form.get('csrf')) || form.get('confirm') !== action) return send(response, 400, page('Invalid confirmation', '<p>This moderation form is invalid or expired. Return to Pending Review and try again.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }));
       const returnPage = pendingPage(form.get('page'));
       const returnPath = `/admin/pending${returnPage > 1 ? `?page=${returnPage}` : ''}`;
       try {
@@ -162,48 +166,43 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
         return redirect(response, `${returnPath}${returnPage > 1 ? '&' : '?'}status=${action === 'approve' ? 'approved' : 'denied'}`);
       } catch (error) {
         const message = /already reviewed|not available/i.test(String(error?.message || '')) ? 'That pending house was already reviewed or is not available in this queue.' : 'The moderation action could not be completed.';
-        return send(response, 409, page('Review not completed', `<p>${escape(message)}</p><p><a href="${returnPath}">Return to Pending Review</a></p>`, session, { guildId: guild.id, guildName: guild.name, esoServer }, { moderation: true }));
+        return send(response, 409, page('Review not completed', `<p>${escape(message)}</p><p><a href="${returnPath}">Return to Pending Review</a></p>`, session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }));
       }
     }
     const verification = /^\/admin\/maintenance\/verify\/(\d+)$/.exec(url.pathname);
     if (verification) {
-      if (request.method !== 'POST') return send(response, 405, page('Method not allowed', '<p>Maintenance actions require a POST form.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer }, { moderation: true }), { allow: 'POST' });
+      if (request.method !== 'POST') return send(response, 405, page('Method not allowed', '<p>Maintenance actions require a POST form.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }), { allow: 'POST' });
       let form;
-      try { form = await readBody(request); } catch { return send(response, 400, page('Invalid request', '<p>The maintenance form could not be read.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer }, { moderation: true })); }
-      if (!csrfMatches(session.csrf, form.get('csrf')) || form.get('confirm') !== 'verify') return send(response, 400, page('Invalid confirmation', '<p>This maintenance form is invalid or expired. Return to Maintenance and try again.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer }, { moderation: true }));
+      try { form = await readBody(request); } catch { return send(response, 400, page('Invalid request', '<p>The maintenance form could not be read.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true })); }
+      if (!csrfMatches(session.csrf, form.get('csrf')) || form.get('confirm') !== 'verify') return send(response, 400, page('Invalid confirmation', '<p>This maintenance form is invalid or expired. Return to Maintenance and try again.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }));
       try {
         await service.verifyHouse({ houseId: verification[1], ...common, actor: { id: session.id, globalName: session.global_name || session.username, displayName: session.display_name || session.username } });
         return redirect(response, '/admin/maintenance?status=verified');
       } catch (error) {
         const message = /not available/i.test(String(error?.message || '')) ? 'That house is not available in this guild and environment.' : 'The maintenance action could not be completed.';
-        return send(response, 409, page('Verification not completed', `<p>${escape(message)}</p><p><a href="/admin/maintenance">Return to Maintenance</a></p>`, session, { guildId: guild.id, guildName: guild.name, esoServer }, { moderation: true }));
+        return send(response, 409, page('Verification not completed', `<p>${escape(message)}</p><p><a href="/admin/maintenance">Return to Maintenance</a></p>`, session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }));
       }
     }
     const duplicateMerge = /^\/admin\/maintenance\/merge\/(\d+)\/(\d+)$/.exec(url.pathname);
     if (duplicateMerge) {
-      if (request.method !== 'POST') return send(response, 405, page('Method not allowed', '<p>Duplicate merges require a POST form.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer }, { moderation: true }), { allow: 'POST' });
+      if (request.method !== 'POST') return send(response, 405, page('Method not allowed', '<p>Duplicate merges require a POST form.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }), { allow: 'POST' });
       let form;
-      try { form = await readBody(request); } catch { return send(response, 400, page('Invalid request', '<p>The duplicate merge form could not be read.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer }, { moderation: true })); }
-      if (!csrfMatches(session.csrf, form.get('csrf')) || form.get('confirm') !== 'merge') return send(response, 400, page('Invalid confirmation', '<p>This duplicate merge form is invalid or expired. Return to Maintenance and try again.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer }, { moderation: true }));
+      try { form = await readBody(request); } catch { return send(response, 400, page('Invalid request', '<p>The duplicate merge form could not be read.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true })); }
+      if (!csrfMatches(session.csrf, form.get('csrf')) || form.get('confirm') !== 'merge') return send(response, 400, page('Invalid confirmation', '<p>This duplicate merge form is invalid or expired. Return to Maintenance and try again.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }));
       try {
         await service.mergeDuplicate({ keepId: duplicateMerge[1], removeId: duplicateMerge[2], ...common, actor: { id: session.id, globalName: session.global_name || session.username, displayName: session.display_name || session.username } });
         return redirect(response, '/admin/maintenance?status=merged');
       } catch (error) {
         const message = /not available|active|duplicate/i.test(String(error?.message || '')) ? 'Those entries are no longer eligible exact-context duplicates.' : 'The duplicate merge could not be completed.';
-        return send(response, 409, page('Merge not completed', `<p>${escape(message)}</p><p><a href="/admin/maintenance">Return to Maintenance</a></p>`, session, { guildId: guild.id, guildName: guild.name, esoServer }, { moderation: true }));
+        return send(response, 409, page('Merge not completed', `<p>${escape(message)}</p><p><a href="/admin/maintenance">Return to Maintenance</a></p>`, session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }));
       }
     }
     if (url.pathname === '/admin') {
-      const overview = await service.overview(common);
-      const integrity = overview.integrity || {};
-      const freshness = overview.freshness || {};
-      const duplicates = overview.duplicates || {};
-      const reminders = overview.reminderHealth || {};
-      const body = `<p>Guild: <strong>${escape(guild.name || guild.id)}</strong></p><p>ESO environment: <strong>${escape(overview.esoServer || esoServer || 'Not configured')}</strong></p><ul><li>Backend: ${escape(overview.backend)} (${escape(overview.connection)})</li><li>Pending submissions: ${Number(overview.pendingSubmissions || 0)}</li><li>Global Moderator requests: ${Number(overview.globalModeratorRequests || 0)}</li><li>Open reports: ${Number(overview.openReports || 0)}</li></ul><h2>Data integrity</h2><table><thead><tr><th>Metric</th><th>Count</th></tr></thead><tbody><tr><td>Orphan tour stops</td><td>${Number(integrity.orphanStops || 0)}</td></tr><tr><td>Duplicate destinations in tours</td><td>${Number(integrity.duplicateDestinations || 0)}</td></tr><tr><td>Environment-mismatched houses</td><td>${Number(integrity.mismatchedHouses || 0)}</td></tr><tr><td>Stale progress records</td><td>${Number(integrity.staleProgress || 0)}</td></tr><tr><td>Stale houses</td><td>${Number(freshness.staleHouses || 0)}</td></tr><tr><td>Duplicate groups</td><td>${Number(duplicates.duplicateGroups || 0)}</td></tr><tr><td>Failed reminders</td><td>${Number(reminders.failedDeliveries || 0)}</td></tr><tr><td>Stale reminder claims</td><td>${Number(reminders.staleClaims || 0)}</td></tr></tbody></table><p><a href="/admin/maintenance">Open Maintenance</a> · <a href="/admin/audit">Open Audit Log</a></p>`;
-      return send(response, 200, page('Administration Overview', body, session, { guildId: guild.id, guildName: guild.name, esoServer }));
+      const overview=await service.overview(common);
+      return send(response,200,page('Administration Overview',adminOverview(overview,{isOwner:session.accessContext?.isOwner===true}),session,{guildId:guild.id,guildName:guild.name,esoServer,path:url.pathname}));
     }
     if (url.pathname === '/admin/audit.csv') {
-      if (request.method !== 'GET') return send(response, 405, page('Method not allowed', '<p>Audit downloads require GET.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer }), { allow: 'GET' });
+      if (request.method !== 'GET') return send(response, 405, page('Method not allowed', '<p>Audit downloads require GET.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }), { allow: 'GET' });
       const csv = await service.exportAudit({ ...common, action: String(url.searchParams.get('action') || '').trim() || null, entityType: String(url.searchParams.get('entityType') || '').trim() || null, target: String(url.searchParams.get('target') || '').trim() || null });
       response.writeHead(200, { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="hearthbound-audit-${String(guild.id).replace(/[^a-zA-Z0-9_-]/g, '')}.csv"` });
       return response.end(csv);
@@ -219,11 +218,12 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
       const totalPages = Math.max(1, Math.ceil(Number(audit.total || 0) / Math.max(1, Number(audit.pageSize || 25))));
       const filterQuery = new URLSearchParams(); if (actionFilter) filterQuery.set('action', actionFilter); if (entityTypeFilter) filterQuery.set('entityType', entityTypeFilter); if (targetFilter) filterQuery.set('target', targetFilter);
       const pageLink = pageNumber => { const query = new URLSearchParams(filterQuery); query.set('page', String(pageNumber)); return `/admin/audit?${query.toString()}`; };
-      const navigation = `<p><strong>Page ${currentPage} of ${totalPages}</strong> · ${Number(audit.total || 0)} entries</p><p>${currentPage > 1 ? `<a href="${escape(pageLink(currentPage - 1))}">⬅️ Previous</a>` : ''}${audit.hasNext ? `${currentPage > 1 ? ' · ' : ''}<a href="${escape(pageLink(currentPage + 1))}">➡️ Next</a>` : ''}</p>`;
-      const filters = `<form method="get" action="/admin/audit"><label>Action <input name="action" value="${escape(actionFilter)}" placeholder="house_updated"></label> <label>Target <input name="target" value="${escape(targetFilter)}" placeholder="house name or ID"></label> <label>Entity type <input name="entityType" value="${escape(entityTypeFilter)}" placeholder="saved_house"></label> <button type="submit">Filter</button> <a href="/admin/audit">Clear</a></form>`;
+      if(currentPage>totalPages)return redirect(response,pageLink(totalPages));
+      const navigation=pagination({page:currentPage,total:audit.total,pageSize:audit.pageSize||25,path:'/admin/audit',params:Object.fromEntries(filterQuery)});
+      const filters = `<form class="filters" method="get" action="/admin/audit"><label>Action <input name="action" value="${escape(actionFilter)}" placeholder="house_updated"></label> <label>Target <input name="target" value="${escape(targetFilter)}" placeholder="house name or ID"></label> <label>Entity type <input name="entityType" value="${escape(entityTypeFilter)}" placeholder="saved_house"></label> <button type="submit">Filter</button> <a href="/admin/audit">Clear</a></form>`;
       const exportLink = `/admin/audit.csv${filterQuery.size ? `?${filterQuery.toString()}` : ''}`;
-      const body = `${filters}<p><a href="${escape(exportLink)}">Download matching audit entries (CSV)</a></p>${audit.rows.length ? `<table><thead><tr><th>Action</th><th>Target</th><th>Actor</th><th>When</th></tr></thead><tbody>${audit.rows.map(row => `<tr><td>${escape(row.action)}</td><td>${escape(row.entity_name || row.entity_id)}</td><td>${escape(row.actor_display_name || row.actor_global_name || row.actor_id)}</td><td>${escape(row.created_at)}</td></tr>`).join('')}</tbody></table>` : '<p>No audit entries are available.</p>'}${navigation}`;
-      return send(response, 200, page('Audit Log', body, session, { guildId: guild.id, guildName: guild.name, esoServer }));
+      const body = `${filters}<p><a class="button secondary" href="${escape(exportLink)}">Download matching audit entries (CSV)</a></p>${audit.rows.length ? `<table><thead><tr><th>Action</th><th>Target</th><th>Actor</th><th>When</th></tr></thead><tbody>${audit.rows.map(row => `<tr><td>${escape(row.action)}</td><td>${escape(row.entity_name || row.entity_id)}</td><td>${escape(row.actor_display_name || row.actor_global_name || row.actor_id)}</td><td>${escape(row.created_at)}</td></tr>`).join('')}</tbody></table>` : '<p>No audit entries are available.</p>'}${navigation}`;
+      return send(response, 200, page('Audit Log', body, session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }));
     }
     if (url.pathname === '/admin/maintenance') {
       const result = await service.listMaintenance(common);
@@ -238,10 +238,10 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
       const duplicateRows = duplicates.length ? `<table><thead><tr><th>Destination</th><th>Visibility</th><th>Owner</th><th>Duplicate entries</th><th>Action</th></tr></thead><tbody>${duplicates.map(group => {
         const ids = String(group.saved_house_ids || '').split(',').map(value => Number(value)).filter(Number.isInteger);
         const keep = ids[0]; const forms = ids.slice(1).map(remove => `<form method="post" action="/admin/maintenance/merge/${keep}/${remove}" onsubmit="return confirm('Keep entry ${keep} and archive duplicate ${remove}?')"><input type="hidden" name="csrf" value="${escape(session.csrf)}"><input type="hidden" name="confirm" value="merge"><button class="deny" type="submit">Keep ${keep}, archive ${remove}</button></form>`).join('');
-        return `<tr><td>${escape(group.destination_id)}</td><td>${group.scope === 'global' ? 'Global' : group.scope === 'public' ? 'Server' : 'Private'}</td><td>${escape(group.owner_user_id || '—')}</td><td>${escape(group.saved_house_ids || '')}</td><td>${forms}</td></tr>`;
+        return `<tr><td>${escape(group.destination_id)}</td><td>${group.scope === 'global' ? 'Global' : group.scope === 'public' ? 'Server' : 'Private'}</td><td>${escape(group.owner_user_id || '—')}</td><td>${escape(group.saved_house_ids || '')}</td><td><div class="actions table-actions table-actions--wrap">${forms}</div></td></tr>`;
       }).join('')}</tbody></table>` : '<p>No duplicate groups are available.</p>';
-      const body = `${notice}<h2>Stale houses</h2><p>${stale.length}</p>${rows}<h2>Duplicate groups</h2><p>${duplicates.length}</p>${duplicateRows}`;
-      return send(response, 200, page('Maintenance', body, session, { guildId: guild.id, guildName: guild.name, esoServer }, { moderation: true }));
+      const body = `${notice}<h2 id="stale">Stale houses</h2><p>${stale.length}</p>${rows}<h2 id="duplicates">Duplicate groups</h2><p>${duplicates.length}</p>${duplicateRows}`;
+      return send(response, 200, page('Maintenance', body, session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }));
     }
     if (url.pathname === '/admin/reports') {
       const requestedPage = pendingPage(url.searchParams.get('page'));
@@ -256,10 +256,11 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
       const table = rows.length ? `<table><thead><tr><th>Target</th><th>Problem</th><th>Reporter</th><th>Status</th><th>Submitted</th><th>Details</th><th>Actions</th></tr></thead><tbody>${rows.map(row => {
         const reporter = row.reporter_display_name || row.reporter_global_name || row.reporter_id || 'Unknown';
         const actions = `${row.status === 'open' ? actionForm(row, 'review', 'Mark reviewing') : ''}${actionForm(row, 'resolve', 'Resolve', 'approve')}${actionForm(row, 'dismiss', 'Dismiss', 'deny')}`;
-        return `<tr><td>${escape(row.targetSummary || `Report #${row.id}`)}</td><td>${escape(row.problemLabel || row.problem_type || '')}</td><td>${escape(reporter)}</td><td>${escape(row.status || '')}</td><td>${escape(row.created_at || '')}</td><td class="user-text">${escape(row.explanation || 'Private details redacted')}</td><td>${actions}</td></tr>`;
+        return `<tr><td>${escape(row.targetSummary || `Report #${row.id}`)}</td><td>${escape(row.problemLabel || row.problem_type || '')}</td><td>${escape(reporter)}</td><td>${escape(row.status || '')}</td><td>${escape(row.created_at || '')}</td><td class="user-text">${escape(row.explanation || 'Private details redacted')}</td><td><div class="actions table-actions">${actions}</div></td></tr>`;
       }).join('')}</tbody></table>` : '<p>No open housing problem reports are available for this server and ESO environment.</p>';
-      const navigation = `<p><strong>Page ${currentPage} of ${totalPages}</strong> · ${Number(result.total || 0)} reports</p><p>${currentPage > 1 ? `<a href="/admin/reports?page=${currentPage - 1}">⬅️ Previous</a>` : ''}${result.hasNext ? `${currentPage > 1 ? ' · ' : ''}<a href="/admin/reports?page=${currentPage + 1}">➡️ Next</a>` : ''}</p>`;
-      return send(response, 200, page('Problem Reports', notice + table + navigation, session, { guildId: guild.id, guildName: guild.name, esoServer }, { moderation: true }));
+      if(currentPage>totalPages)return redirect(response,`/admin/reports?page=${totalPages}${notices[status]?'&status='+status:''}`);
+      const navigation=pagination({page:currentPage,total:result.total,pageSize:result.pageSize||25,path:'/admin/reports'});
+      return send(response, 200, page('Problem Reports', notice + table + navigation, session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }));
     }
     if (url.pathname === '/admin/pending') {
       const currentPage = pendingPage(url.searchParams.get('page'));
@@ -272,25 +273,25 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
         const visibility = row.scope === 'global' ? 'Global' : 'Server';
         const submitter = row.created_by_display_name || row.created_by_global_name || row.created_by || 'Unknown';
         const form = action => `<form method="post" action="/admin/pending/${id}/${action}" onsubmit="return confirm('Confirm ${action === 'approve' ? 'approval' : 'rejection'} of this house?')"><input type="hidden" name="csrf" value="${escape(session.csrf)}"><input type="hidden" name="confirm" value="${action}"><input type="hidden" name="page" value="${currentPage}"><button class="${action === 'approve' ? 'approve' : 'deny'}" type="submit">${action === 'approve' ? 'Approve' : 'Reject'}</button></form>`;
-        return `<tr><td>${escape(label)}</td><td>${escape(row.eso_owner || '')}</td><td>${visibility}</td><td>${escape(submitter)}</td><td>${escape(row.created_at || '')}</td><td>${form('approve')}${form('deny')}</td></tr>`;
+        return `<tr><td>${escape(label)}</td><td>${escape(row.eso_owner || '')}</td><td>${visibility}</td><td>${escape(submitter)}</td><td>${escape(row.created_at || '')}</td><td><div class="actions table-actions">${form('approve')}${form('deny')}</div></td></tr>`;
       }).join('')}</tbody></table>` : `${notice}<p>No pending submissions.</p>`;
       const navigation = `<p>Page ${currentPage}</p><p>${currentPage > 1 ? `<a href="/admin/pending?page=${currentPage - 1}">⬅️ Previous</a>` : ''}${requested.length > 25 ? `${currentPage > 1 ? ' · ' : ''}<a href="/admin/pending?page=${currentPage + 1}">➡️ Next</a>` : ''}</p>`;
-      return send(response, 200, page('Pending Review', body + navigation, session, { guildId: guild.id, guildName: guild.name, esoServer }, { moderation: true }));
+      return send(response, 200, page('Pending Review', body + navigation, session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }));
     }
     if (url.pathname === '/admin/backup') {
       const body = `<p>Use the portable JSON export to inspect or retain this guild's data. It is not a complete database backup and cannot be restored through this page.</p><p><a href="/admin/export">Download portable JSON export</a></p><h2>Current scope</h2><ul><li><strong>Guild:</strong> ${escape(guild.name || guild.id)}</li><li><strong>ESO environment:</strong> ${escape(esoServer || 'Not configured')}</li><li><strong>Included:</strong> Server and compatible Global records, with their comments and tour stops. Private houses and tours are excluded.</li><li><strong>Excluded:</strong> All Private records, plus unrelated guilds and environments.</li></ul><h2>Backend backup guidance</h2><ul><li><strong>SQLite:</strong> stop HearthBound before copying the configured database file.</li><li><strong>MariaDB:</strong> use <code>mariadb-dump</code> with the database credentials outside HearthBound; do not expose credentials through this web console.</li></ul><p>A full database backup includes Private data regardless of visibility. Keep at least one independent backup before migrations, upgrades, or environment reassignment.</p>`;
-      return send(response, 200, page('Backup & Export', body, session, { guildId: guild.id, guildName: guild.name, esoServer }));
+      return send(response, 200, page('Backup & Export', body, session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }));
     }
     if (url.pathname === '/admin/export') {
       if (url.searchParams.get('view') === '1') {
         const body = `<p>Download a JSON snapshot for the current Discord guild and exact ESO environment. It is not a complete database backup.</p><ul><li><strong>Guild:</strong> ${escape(guild.name || guild.id)}</li><li><strong>ESO environment:</strong> ${escape(esoServer || 'Not configured')}</li><li><strong>Included:</strong> Server and compatible Global records, with their comments and stops. Private houses and tours are excluded.</li><li><strong>Excluded:</strong> All Private records, plus unrelated guilds and environments.</li></ul><p>Private entries remain searchable only by their owner in normal member workflows. The export preserves stable numeric HearthBound and Discord IDs plus readable companion names.</p><p><a href="/admin/export">Download JSON export</a></p>`;
-        return send(response, 200, page('Export Data', body, session, { guildId: guild.id, guildName: guild.name, esoServer }));
+        return send(response, 200, page('Export Data', body, session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }));
       }
       const json = await service.exportGuild(common);
       response.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'content-disposition': `attachment; filename="hearthbound-${guild.id}-${esoServer}.json"` });
       return response.end(json);
     }
-    return send(response, 404, page('Not found', '<p>That administration page does not exist.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer }));
+    return send(response, 404, page('Not found', '<p>That administration page does not exist.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }));
   }
   return http.createServer((request, response) => { route(request, response).catch(error => send(response, 500, page('Administration error', `<p>${escape(error.message)}</p>`))); });
 }

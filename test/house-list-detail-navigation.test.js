@@ -32,7 +32,7 @@ test('browse house details survive comments and Previous/Next navigation', async
     await handlers.select(interaction(picker,['0']));
     await button(control('More Details').custom_id);
     await button(control('Comments').custom_id);
-    await button(control('Back').custom_id);
+    await button(control('Back to house').custom_id);
     assert.ok(control('Hide Details'));
     assert.ok(control('Next House'));
     await button(control('Next House').custom_id);

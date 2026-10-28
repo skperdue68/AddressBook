@@ -1,11 +1,16 @@
 import {activityLabels} from '../services/usage-activity-service.js';
 import {escape} from './render.js';
 import {linkButton} from './workspace-render.js';
-function relativeTime(value){const seconds=Math.max(0,Math.floor((Date.now()-Date.parse(value))/1000));if(seconds<60)return 'Just now';if(seconds<3600)return `${Math.floor(seconds/60)} minutes ago`;if(seconds<86400)return `${Math.floor(seconds/3600)} hours ago`;return `${Math.floor(seconds/86400)} days ago`;}
+function activityTime(value){
+ const raw=String(value||''),date=value instanceof Date?value:new Date(/(?:Z|[+-]\d\d:?\d\d)$/.test(raw)?raw:raw.replace(' ','T')+'Z');
+ if(!Number.isFinite(date.getTime()))return '<span class="note">Time unavailable</span>';
+ const iso=date.toISOString();return `<time class="activity-timestamp" data-local-datetime datetime="${iso}" title="${iso}">${iso.slice(0,19).replace('T',' ')} UTC</time>`;
+}
+
 export async function activityRoute({workspace:w,context:c,query={},render}){
  const filters={server:query.server||'',kind:query.kind||'',member:query.member||''};
  const [feed,totals,servers,people]=await Promise.all([w.usage.listActivity(c,{...filters,cursor:query.cursor}),w.usage.usageTotals(),w.usage.activityServers(),w.usage.activityMembers({server:filters.server,kind:filters.kind})]);
- return render('Recent Activity',`<p>Across HearthBound · Newest first · Discord and web</p><div class="cards">
+ return render('Recent Activity',`<p>Across HearthBound · Newest first · Discord and web</p><p class="note" data-local-time-zone>Times shown in UTC until your browser applies your local time zone.</p><div class="cards">
  <div class="card">Recorded actions<strong class="number"><a href="/app/activity#activity-results">${totals.actions}</a></strong></div>
  <div class="card">People using HearthBound<strong class="number"><a href="/app/activity#filter-member">${totals.members}</a></strong><small class="muted">Distinct Discord accounts recorded over 90 days · Discord + web</small></div>
  <div class="card">Originating servers<strong class="number"><a href="/app/activity#filter-server">${totals.servers}</a></strong></div><div class="card">History window<strong class="number">90 days</strong></div></div>
@@ -14,6 +19,6 @@ export async function activityRoute({workspace:w,context:c,query={},render}){
  <label>Activity<select name="kind"><option value="">All usage</option>${Object.entries(activityLabels).map(([key,label])=>`<option value="${key}" ${filters.kind===key?'selected':''}>${escape(label)}</option>`).join('')}</select></label>
  <label>Person<input id="filter-member" name="member" list="activity-members" value="${escape(filters.member)}" placeholder="Choose a person or paste Discord ID" autocomplete="off"><datalist id="activity-members">${people.members.map(m=>`<option value="${escape(m.id)}">${escape(m.name)} · ${escape(m.id)}</option>`).join('')}</datalist></label><div class="actions"><button>Filter activity</button>${linkButton('Clear filters','/app/activity')}</div></form>
  ${people.hasMore?'<p class="note">Showing the first 1,000 people for these filters. Narrow the server or activity, or paste a Discord ID.</p>':''}
- <div class="panel" id="activity-results">${feed.items.length?feed.items.map(a=>`<div class="activity"><div><strong>${escape(a.actorName)}</strong> ${escape(a.action)}${a.targetUrl?` · <a href="${escape(a.targetUrl)}">${escape(a.targetTitle)}</a>`:''}<p class="note">${escape(a.serverName)} · ${escape(a.source)}${a.esoServer?` · ${escape(a.esoServer)}`:''}</p></div><time datetime="${escape(a.occurredAt)}" title="${escape(a.occurredAt)}">${escape(relativeTime(a.occurredAt))}</time></div>`).join(''):'<p>No matching activity yet. Try another person or filter.</p>'}</div>
+ <div class="panel" id="activity-results">${feed.items.length?feed.items.map(a=>`<div class="activity"><div><strong>${escape(a.actorName)}</strong> ${escape(a.action)}${a.targetUrl?` · <a href="${escape(a.targetUrl)}">${escape(a.targetTitle)}</a>`:''}<p class="note">${escape(a.serverName)} · ${escape(a.source)}${a.esoServer?` · ${escape(a.esoServer)}`:''}</p></div>${activityTime(a.occurredAt)}</div>`).join(''):'<p>No matching activity yet. Try another person or filter.</p>'}</div>
  ${feed.nextCursor?linkButton('Older activity',`/app/activity?${new URLSearchParams({...filters,cursor:feed.nextCursor})}`):''}<p class="note">Private actions use generic descriptions. Search text and Private destinations are never recorded here. Content links require your current access.</p>`,'activity');
 }

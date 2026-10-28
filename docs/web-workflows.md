@@ -42,7 +42,7 @@ Leader-controlled Discord session controls remain in Discord. Scheduled events r
 
 ## Deployment
 
-This update uses existing schema 12 tables; it does not require a new database migration or moving data between machines. Back up the production database as usual, pull the merged branch into the existing Linux checkout, run `npm ci`, and restart `hearthbound.service`. Preserve `.env`, database configuration and `WEB_SESSION_SECRET`. Normal startup applies any already-required versioned migrations to the configured production database. Never replace the production database with the Windows test database.
+The current gallery release applies schema **15** automatically on startup in the configured MariaDB or SQLite database. Follow [the 1.0.70 upgrade guide](upgrade-v1.0.70.md) for persistent image storage, upload proxy limits and command deployment. Back up the production database and image directory, stop the service, pull merged code, run `npm ci`, and restart `hearthbound.service` after configuration. Preserve `.env`, database settings and `WEB_SESSION_SECRET`. Never replace the Linux production database with the Windows test database.
 
 ## Live tour house filters and paragraph formatting
 
@@ -54,7 +54,7 @@ The web preserves single line breaks and blank lines when displaying description
 
 Bot owners can search House Catalog, edit existing definitions, preview changed fields and explicitly confirm. Official IDs stay fixed and linked registrations/tours are retained. Classification profiles supply database-backed capacity defaults; Apply selected classification defaults changes the house draft and individual values can override it. Shared styles, zones, types and other values use editable autocomplete suggestions. Newly saved values become reusable. The profile manager previews affected houses while preserving explicit exceptions; the value manager previews renames and only removes unused values.
 
-This catalog release upgrades to schema 13 automatically on startup. Follow [the catalog upgrade guide](upgrade-v1.0.63.md); preserve the Linux production database and take a verified backup first. Discord offers owner-only core catalog editing; full metadata management is on the web.
+Catalog normalization was introduced in schema 13; the current gallery release uses schema 15. [The catalog upgrade guide](upgrade-v1.0.63.md) explains that earlier migration; preserve the Linux production database and take a verified backup first. Discord offers owner-only core catalog editing; full metadata management is on the web.
 
 
 ## Public welcome page and link previews

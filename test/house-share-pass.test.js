@@ -101,7 +101,7 @@ test('House Share Pass comments open and return to the private pass',async()=>{
     const comments=await interact(`hu:pass:house:comments:${token}`);
     assert.match(JSON.stringify(comments?.embeds),/Comments/);
     const buttons=comments.components.flatMap(row=>row.toJSON().components);
-    assert.ok(buttons.some(button=>button.custom_id===`hu:pass:house:comment:add:${token}`));
+    assert.ok(buttons.some(button=>button.label==='Add Comment'&&button.custom_id.startsWith('hu:discussion:add:')));
     assert.ok(buttons.some(button=>button.custom_id===`hu:pass:house:view:${token}`));
   }finally{await closeDatabase(db);}
 });

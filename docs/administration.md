@@ -4,6 +4,12 @@
 
 HearthBound provides Discord housing discovery and tours plus a Discord-authenticated member portal. The web portal serves ordinary members and administrators; administration is a protected area inside that workspace. `/hearth` is the primary Discord command and `/housing` is an equivalent compatibility alias.
 
+## Finding administration tools
+
+Open **Administration** from the signed-in portal navigation. The section tabs highlight your current location: Overview, Pending review, Problem reports, Maintenance, Audit log, Backup & export, then Access & settings. These tools require the existing HearthBound staff permissions for the selected server and ESO environment.
+
+The overview's count cards open their corresponding queues. Pending review offers Approve and Reject together; problem reports offer Mark reviewing, Resolve and Dismiss together. Wide records scroll within their table on smaller screens. Audit logs and problem reports offer numbered pages and a Jump to page field; audit filters remain applied while paging. Pending review uses Previous/Next because its queue does not expose a total count.
+
 ## Access and privacy
 
 The portal header identifies the selected Discord server and exact ESO environment. **Your Access** lists every applicable role rather than only the highest role. Current Discord membership, configured Server roles, individual grants, environment-specific Global grants, and configured bot owners determine access. Native Discord Administrator permission alone does not grant HearthBound administration.
@@ -152,3 +158,11 @@ Access & Settings shows the selected server’s configured administrator, truste
 The full role-holder roster is fetched with the Discord List Guild Members REST endpoint and requires **Server Members Intent** enabled for the bot in the Discord Developer Portal. No privileged Gateway intent is added automatically. If Discord cannot provide a complete roster, the page explicitly shows the configured roles and individual grants instead of pretending the cache is complete. See [Discord’s official privileged-intent documentation](https://github.com/discord/discord-api-docs/blob/main/developers/events/gateway.mdx).
 
 The feedback inbox has a visible status selector that saves in place. Internal notes are separate, owner-only edits. Saving either refreshes the item’s revision; stale edits are rejected without silently overwriting another reviewer. The inbox retains its status filter, page and scroll position. Send feedback belongs in Support and the account menu, outside the review inbox.
+
+## House image storage
+
+See [the 1.0.70 upgrade guide](upgrade-v1.0.70.md) for the automatic schema migration, persistent `HOUSE_IMAGE_DIR`, Nginx upload limit and Discord command refresh. Back up the image directory alongside the database. Gallery management follows house-edit permissions; administrator access never exposes another creator’s Private house images.
+
+## Updating the downloadable guide
+
+The concise [user and administrator guide](user-admin-guide.md) is the source for the portal Word download. With Python and the authoring-only `python-docx` package available, run `python scripts/build-user-guide.py` from a checkout. Render and inspect every Word page before committing `HearthBound_User_Admin_Guide.docx`. This authoring tool is not required by the bot or production startup. Detailed member and operations references remain separate.

@@ -2,7 +2,7 @@
 
 Formerly **AddressBook**; the repository is now [HearthBound](https://github.com/skperdue68/HearthBound). `/housing` remains a compatibility alias.
 
-**Version 1.0.63** · A menu-driven Discord bot for Elder Scrolls Online housing.
+**Version 1.0.70** · A menu-driven Discord bot for Elder Scrolls Online housing.
 
 Discover houses, save addresses, leave comments, and organize guided tours. Members access everything through one command:
 
@@ -18,7 +18,8 @@ Discover houses, save addresses, leave comments, and organize guided tours. Memb
 - **My Address Book:** Save houses, Favorites, visit status, and reusable searches.
 - **Housing tours:** Create Global, Server, or Private routes; run them self-paced or lead a shared tour.
 - **Share Passes:** Share revocable access to a house or tour. Choose a channel, optionally select an existing active thread, then confirm before posting.
-- **Featured Housing:** Featured Houses rotate every seven days; manually curate houses between refreshes and keep Featured Tours selected.
+- **House galleries:** Upload up to eight screenshots from the web or Discord, choose a cover, and share the details of each build. [Upgrade and storage setup](docs/upgrade-v1.0.70.md).
+- **Featured Housing:** Four Featured Houses rotate every seven days with a capped engagement boost; manually curate houses between refreshes and keep Featured Tours selected.
 - **Member web portal:** Sign in with Discord to register houses, manage your collection and edit tours with drag/drop and keyboard ordering. Your Access shows each effective role and its server/environment.
 - **Community insights:** Explore registration/member/ESO-owner/tour statistics and newest-first global Discord/web activity, with member and originating server names. Private activity is generic.
 - **Official house catalog:** Only configured bot owners can add newly released houses through Discord or the web, without a code release.
@@ -94,6 +95,8 @@ Each Discord server selects an ESO environment: PC NA/EU, Xbox NA/EU, PlayStatio
 HearthBound cannot bypass ESO visitor permissions. Environment changes require confirmation and revoke affected passes. See the [member guide](docs/member-guide.md) for detailed access rules.
 
 ## Documentation
+
+Start with the concise [user and administrator guide](docs/user-admin-guide.md), also available as the portal’s Word download.
 
 - [Member guide](docs/member-guide.md): search, houses, tours, Featured Housing, Share Passes, and privacy.
 - [Administration and operations](docs/administration.md): permissions, web console, databases, exports, and legacy recovery.

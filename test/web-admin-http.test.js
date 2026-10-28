@@ -429,9 +429,9 @@ test('administration overview renders integrity, freshness, and duplicate health
     assert.equal(response.status, 200);
     assert.match(html, /Data integrity/i);
     assert.match(html, /Orphan tour stops<\/td><td>1/i);
-    assert.match(html, /Stale houses<\/td><td>4/i);
-    assert.match(html, /Duplicate groups<\/td><td>2/i);
-    assert.match(html, /Failed reminders<\/td><td>1/i);
+    assert.match(html, /href="\/admin\/maintenance#stale"[^>]*><span>Stale houses<\/span><strong class="number">4/i);
+    assert.match(html, /href="\/admin\/maintenance#duplicates"[^>]*><span>Duplicate groups<\/span><strong class="number">2/i);
+    assert.doesNotMatch(html, /Failed reminders/i);
   } finally { await new Promise(resolve => server.close(resolve)); }
 });
 
@@ -524,4 +524,20 @@ test('problem report actions require POST, CSRF, confirmation, and hide service 
     assert.match(staleHtml, /no longer available/i);
     assert.doesNotMatch(staleHtml, /SQL password|secret/);
   } finally { await new Promise(resolve => server.close(resolve)); }
+});
+
+test('administration known-total lists provide page jumps and clamp stale page links', async () => {
+  const {server,base}=await running({service:{
+    authorizeGuild:()=>({allowed:true}),
+    listAudit:async o=>({rows:[],page:o.page,pageSize:25,total:60,hasNext:o.page<3}),
+    listReports:async o=>({rows:[],page:o.page,pageSize:25,total:27,hasNext:o.page<2})
+  }});
+  try{
+    const {cookie}=await loggedIn(base),headers={cookie};
+    const audit=await fetch(`${base}/admin/audit?action=house&target=Garden&entityType=saved_house`,{headers});const html=await audit.text();
+    assert.match(html,/Jump to page/);assert.match(html,/name="target" value="Garden"/);assert.match(html,/name="entityType" value="saved_house"/);assert.match(html,/aria-label="Page 1"/);
+    const last=await fetch(`${base}/admin/audit?page=99&action=house&target=Garden&entityType=saved_house`,{headers,redirect:'manual'});assert.equal(last.status,302);const target=new URL(last.headers.get('location'),base);assert.equal(target.searchParams.get('page'),'3');assert.equal(target.searchParams.get('target'),'Garden');assert.equal(target.searchParams.get('action'),'house');assert.equal(target.searchParams.get('entityType'),'saved_house');
+    const reports=await fetch(`${base}/admin/reports`,{headers});assert.match(await reports.text(),/Jump to page/);
+    const clamped=await fetch(`${base}/admin/reports?page=99&status=resolved`,{headers,redirect:'manual'});assert.equal(clamped.status,302);assert.equal(clamped.headers.get('location'),'/admin/reports?page=2&status=resolved');
+  }finally{await new Promise(resolve=>server.close(resolve));}
 });
