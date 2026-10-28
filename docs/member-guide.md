@@ -37,7 +37,7 @@ For example, a PC NA Global house, tour, comment thread, Share Pass, active run,
 
 Search Houses initially displays all accessible houses and then lets the member open Filters. Available filters include house or nickname, owner, tags or themes, zone, architectural style, ESO classification, size or type, visibility, Non-Player Homes, and houses not already used by an applicable Server or Global tour. Attribute values are paginated so Discord's 25-option component limit does not discard results.
 
-Filtered results can be saved by name and reopened from **My Address Book → Saved Searches**. Saved searches can be run, renamed, replaced with the current filters, or deleted. They store criteria rather than result IDs, so every run applies the current Discord server, ESO environment, and access permissions. Invalid or future-version filter data fails closed instead of becoming an unfiltered search.
+Filtered results can be saved by name and reopened from **My Address Book → Saved Searches**. On the web, opening results, visiting a house from them, renaming and deleting retain your original saved-search list page. If a deletion removes the last page, the return moves to the preceding page. Saved searches can be run, renamed, replaced with the current filters, or deleted. They store criteria rather than result IDs, so every run applies the current Discord server, ESO environment, and access permissions. Invalid or future-version filter data fails closed instead of becoming an unfiltered search.
 
 **Random House** selects from the complete accessible result set, including results beyond the current 25-item Discord page. **Another Surprise** avoids immediately repeating the same destination when another result is available.
 
