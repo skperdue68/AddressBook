@@ -96,6 +96,8 @@ HearthBound cannot bypass ESO visitor permissions. Environment changes require c
 
 ## Documentation
 
+Start with the concise [user and administrator guide](docs/user-admin-guide.md), also available as the portal’s Word download.
+
 - [Member guide](docs/member-guide.md): search, houses, tours, Featured Housing, Share Passes, and privacy.
 - [Administration and operations](docs/administration.md): permissions, web console, databases, exports, and legacy recovery.
 - [Production upgrade instructions](docs/upgrade-v1.0.62.md): Linux deployment, schema 12, verification, and recovery.
