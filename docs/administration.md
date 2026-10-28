@@ -162,3 +162,7 @@ The feedback inbox has a visible status selector that saves in place. Internal n
 ## House image storage
 
 See [the 1.0.70 upgrade guide](upgrade-v1.0.70.md) for the automatic schema migration, persistent `HOUSE_IMAGE_DIR`, Nginx upload limit and Discord command refresh. Back up the image directory alongside the database. Gallery management follows house-edit permissions; administrator access never exposes another creator’s Private house images.
+
+## Updating the downloadable guide
+
+The concise [user and administrator guide](user-admin-guide.md) is the source for the portal Word download. With Python and the authoring-only `python-docx` package available, run `python scripts/build-user-guide.py` from a checkout. Render and inspect every Word page before committing `HearthBound_User_Admin_Guide.docx`. This authoring tool is not required by the bot or production startup. Detailed member and operations references remain separate.

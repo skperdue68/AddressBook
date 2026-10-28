@@ -136,3 +136,14 @@ Saved-search return improvements are [PR #36](https://github.com/skperdue68/Hear
 - HTTP checks cover invalid house input, retained formatting/filters, failed new-tour atomicity and corrected resubmission, stale versions, inaccessible Private houses, access revoked during failure, and preserving versus explicitly clearing existing notes. Chrome checked desktop/mobile recovery, focused summaries and successful correction/resubmission. Independent review found no actionable issues.
 
 Round 10 verification: 743/743 full-suite tests passed. A focused 16-test editor/house/tour rerun passed. Chrome confirmed desktop/mobile bounds, retained multiline fields, error focus and correction/resubmission. No schema, dependency, environment or permission changes.
+
+
+Editor error recovery is [PR #37](https://github.com/skperdue68/HearthBound/pull/37).
+
+## Round 11: current downloadable guide
+
+- Consolidated the Word guide's repeated historical update sections into eight task-oriented pages covering registration, galleries, personal collections, comments, tours, access, administration, catalog/community information and Debian operations.
+- Added a readable Markdown source and optional Python authoring script so future Word updates can stay consistent. The production bot does not need Python or python-docx.
+- Corrected the web workflow deployment summary from schema 12 to the current schema 15 gallery release, linked persistent storage/backup instructions, and stopped the service before dependency replacement in the upgrade example.
+- Independently reviewed workflow and permission claims. Review caught that repeat avoidance is Discord-specific; the guide now explicitly says web Random House picks may repeat.
+- Verified the generated Word package, rendered all eight pages and inspected layout, tables, page breaks and command blocks. Authenticated download tests passed, including exact updated file bytes and revoked-membership rejection. No runtime/schema/dependency changes in this documentation round.

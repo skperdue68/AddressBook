@@ -14,6 +14,8 @@ Merge the preceding UI polish PR before this gallery PR. From the installed proj
 
 ```bash
 cd ~/AddressBook
+git status --short
+sudo systemctl stop hearthbound
 git pull --ff-only
 npm ci
 ```
