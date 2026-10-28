@@ -61,7 +61,7 @@ test('web tools hide unauthorized administration and mutations recheck ownership
 });
 
 test('web player shows the current house and rejects stale repeated next without Discord coupling',async()=>{
- const {db,svc,c}=await fixture();const h=await svc.registerHouse(c,{houseId:1,esoOwner:'@A'}),h2=await svc.registerHouse(c,{houseId:2,esoOwner:'@B'}),t=await svc.saveTourDraft(c,{details:{name:'Route',visibility:'private'},stopIds:[h.id,h2.id]});
+ const {db,svc,c}=await fixture();const h=await svc.registerHouse(c,{houseId:1,esoOwner:'@A',visibility:'private'}),h2=await svc.registerHouse(c,{houseId:2,esoOwner:'@B',visibility:'private'}),t=await svc.saveTourDraft(c,{details:{name:'Route',visibility:'private'},stopIds:[h.id,h2.id]});
  const server=createWebAdminServer({service:new WebAdminService(db),workspace:svc,config:{sessionSecret:'s'},resolveGuildMembership:async()=>({id:'g',name:'Guild',roleIds:[],esoServer:'pc_na'})});await new Promise(r=>server.listen(0,'127.0.0.1',r));
  const token=createSession({id:'u',username:'Member',guilds:[{id:'g',name:'Guild'}]},Date.now(),'s'),cookie=`addressbook_session=${token}`,csrf=readSession(token,Date.now(),'s').csrf,base=`http://127.0.0.1:${server.address().port}`,path=`/app/tours/${t.id}/play`;
  const post=data=>fetch(base+path,{method:'POST',headers:{cookie},body:new URLSearchParams({csrf,contextGuildId:'g',contextEsoServer:'pc_na',...data}),redirect:'manual'});
@@ -76,7 +76,7 @@ test('web player shows the current house and rejects stale repeated next without
 
 test('web links grant only revocable viewing, private copies remain independent, and passes stay scoped',async()=>{
  const {db,svc,c}=await fixture();try{
-  const h=await svc.registerHouse(c,{houseId:1,esoOwner:'@A'}),t=await svc.saveTourDraft(c,{details:{name:'Private route',visibility:'private'},stopIds:[h.id]}),viewer=await svc.authorizeContext({...c,userId:'viewer'});
+  const h=await svc.registerHouse(c,{houseId:1,esoOwner:'@A',visibility:'private'}),t=await svc.saveTourDraft(c,{details:{name:'Private route',visibility:'private'},stopIds:[h.id]}),viewer=await svc.authorizeContext({...c,userId:'viewer'});
   const house=await svc.actions.createPass(c,'house',h.id),tour=await svc.actions.createPass(c,'tour',t.id);
   assert.ok((await svc.actions.resolvePass(viewer,'house',house.token)).access.passOnly);
   const copied=await svc.actions.copyPass(viewer,'house',house.token,{visibility:'private'});assert.equal(copied.house.owner_user_id,'viewer');

@@ -193,6 +193,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     return true;
   }
   const visibleTours=(i,{forManagement=false}={})=>tours.list({creatorId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId),includeOtherServers:forManagement&&isGlobalTourAdmin(i)});
+  const registrationPayload=(i,options={})=>registrationTypePayload({...options,defaultVisibility:i.guildId&&guilds.canRegister(i).allowed?'public':'private'});
   const personalRow=r=>({...r,scope:'personal',display_name:r.nickname||r.house_name,description:r.notes});
   const guildRow=r=>({...r,scope:'server'});
   const withCount=async r=>({...r,comment_count:await comments.count(r.scope,r.id,r.eso_server)});
@@ -868,7 +869,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       const target=id.split(':')[3],page=Number(id.split(':')[4]),backId=page>=1&&page<=7?`hu:onboarding:${page}`:'hu:home';
       await onboarding.complete(i.user.id,onboardingNames(i));
       if(target==='search')return startAdvanced(i,'all',null,{backId});
-      if(target==='register')return i.update(registrationTypePayload({backId}));
+      if(target==='register')return i.update(registrationPayload(i,{backId}));
       if(target==='addressbook')return i.update(await dashboard(i,{backId}));
       if(target==='tours'){const rows=await visibleTours(i);return i.update(toursPayload(rows.length,{backId}));}
       if(target==='help')return i.update(helpPayload({backId}));
@@ -1172,7 +1173,8 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       try{return await applyScopeChange(i,rid,targetScope,backId);}catch(e){return i.reply({content:e.message,flags:MessageFlags.Ephemeral});}
     }
     if(id==='hu:find')return startAdvanced(i,'all');
-    if(id==='hu:register')return i.update(registrationTypePayload());
+    if(id==='hu:register')return i.update(registrationPayload(i));
+    if(id.startsWith('hu:register:continue:')){const type=id.split(':')[3];if(!registrationScopeFromType(type))return;return i.showModal(destinationInputModal(type));}
     if(id.startsWith('hu:pass:house:comments:')){
       const passToken=id.split(':').slice(4).join(':');
       try{
@@ -1340,7 +1342,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       const topic=id.split(':')[3];
       await onboarding.complete(i.user.id,onboardingNames(i));
       if(topic==='search')return startAdvanced(i,'all');
-      if(topic==='houses')return i.update(registrationTypePayload());
+      if(topic==='houses')return i.update(registrationPayload(i));
       if(topic==='tours'||topic==='sharing'){const rows=await visibleTours(i);return i.update(toursPayload(rows.length));}
       if(topic==='administration')return isAdmin(i)?i.update(adminPayload(guilds.getSettings(i.guildId))):i.reply({content:'Housing Administration is available to configured Housing Moderators.',flags:MessageFlags.Ephemeral});
     }

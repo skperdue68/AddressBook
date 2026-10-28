@@ -8,7 +8,7 @@ test('catalog add is owner-only, validated, audited and preserved across restart
 test('catalog edits are owner-only, stale-safe and survive reseeding without changing linked IDs',async()=>{const {db,svc,c}=await fixture();try{
  const service=new HouseCatalogService(db,{BOT_OWNER_IDS:'1'}),actor={id:'1'};
  await assert.rejects(()=>service.previewEdit({id:'u'},1,{name:'No'}),/owner/i);
- const h=await svc.registerHouse(c,{houseId:1,esoOwner:'@Keep'}),t=await svc.saveTourDraft(c,{details:{name:'Keep route',visibility:'private'},stopIds:[h.id]});
+ const h=await svc.registerHouse(c,{visibility:'private',houseId:1,esoOwner:'@Keep'}),t=await svc.saveTourDraft(c,{details:{name:'Keep route',visibility:'private'},stopIds:[h.id]});
  const preview=await service.previewEdit(actor,1,{name:'Corrected House',classification:'Classic Home',style:'New Style',use_classification_defaults:'1'});assert.equal(preview.house.furnishing_limit,250);
  await assert.rejects(()=>service.update(actor,1,{house_id:2,name:'Wrong'},{version:preview.version}),/ID/);
  await service.update(actor,1,preview.house,{version:preview.version});

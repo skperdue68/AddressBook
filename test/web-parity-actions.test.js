@@ -5,9 +5,9 @@ import {closeDatabase,one} from '../src/db/database.js';
 
 test('tour house candidates include more than 25 records with filter metadata and retain privacy boundaries',async()=>{
  const {db,svc,c}=await fixture();try{
-  for(let n=0;n<30;n++)await svc.registerHouse(c,{houseId:1,esoOwner:`@Member${n}`,displayName:`House ${n}`,tags:['halloween','games']});
+  for(let n=0;n<30;n++)await svc.registerHouse(c,{visibility:'private',houseId:1,esoOwner:`@Member${n}`,displayName:`House ${n}`,tags:['halloween','games']});
   const owner=await svc.authorizeContext({...c,userId:'1'});
-  await svc.registerHouse(owner,{houseId:2,esoOwner:'@Secret',displayName:'Other private'});
+  await svc.registerHouse(owner,{visibility:'private',houseId:2,esoOwner:'@Secret',displayName:'Other private'});
   await svc.registerHouse(owner,{houseId:2,esoOwner:'@Shared',visibility:'global'});
   await db.query("INSERT INTO guild_settings(guild_id,eso_server,staff_role_ids) VALUES('other','pc_na','[]')");
   const other=await svc.authorizeContext({...owner,guildId:'other'});await svc.registerHouse(other,{houseId:1,esoOwner:'@Foreign',visibility:'public'});
@@ -24,7 +24,7 @@ test('add-to-tour choices include eligible administrator-managed tours while pro
   assert.deepEqual((await svc.houseTourChoices(admin,house.id)).map(t=>t.id),[shared.id]);
   await svc.addHouseToTour(admin,house.id,shared.id);
   assert.deepEqual(await svc.houseTourChoices(admin,house.id),[]);
-  const ownPrivate=await svc.registerHouse(c,{houseId:2,esoOwner:'@Private'});
+  const ownPrivate=await svc.registerHouse(c,{visibility:'private',houseId:2,esoOwner:'@Private'});
   assert.deepEqual((await svc.houseTourChoices(c,ownPrivate.id)).map(t=>t.name),['Hidden private route']);
   await assert.rejects(()=>svc.houseTourChoices(admin,ownPrivate.id),/not available/);
  }finally{await closeDatabase(db);}
@@ -64,7 +64,7 @@ test('web deletion protects other creators Private records and requires a curren
 
 test('web player advances one intended stop, supports back and completion without a Discord session',async()=>{
  const {db,svc,c}=await fixture();try{
-  const a=await svc.registerHouse(c,{houseId:1,esoOwner:'@A'}),b=await svc.registerHouse(c,{houseId:2,esoOwner:'@B'});
+  const a=await svc.registerHouse(c,{visibility:'private',houseId:1,esoOwner:'@A'}),b=await svc.registerHouse(c,{visibility:'private',houseId:2,esoOwner:'@B'});
   const t=await svc.saveTourDraft(c,{details:{name:'Walk',visibility:'private'},stopIds:[a.id,b.id]});
   await svc.startTour(c,t.id);let view=await svc.actions.player(c,t.id);assert.equal(view.current.saved_house_id,a.id);
   await svc.actions.playAction(c,t.id,'next',view.progress.current_stop_id);
@@ -81,7 +81,7 @@ test('web player advances one intended stop, supports back and completion withou
 
 test('personal states, comments and saved searches reuse ownership boundaries',async()=>{
  const {db,svc,c}=await fixture();try{
-  const h=await svc.registerHouse(c,{houseId:1,esoOwner:'@Owner'});
+  const h=await svc.registerHouse(c,{visibility:'private',houseId:1,esoOwner:'@Owner'});
   await svc.actions.houseAction(c,h.id,'favorite',{value:'1'});
   await svc.actions.houseAction(c,h.id,'visit',{value:'want_to_visit'});
   assert.equal((await svc.actions.personal(c,'favorites')).length,1);
@@ -101,7 +101,7 @@ test('web deletion follows Server and Global scope independently and never grant
   await db.query("INSERT INTO guild_settings(guild_id,eso_server,staff_role_ids) VALUES('g2','pc_na','[\"staff\"]')");
   await db.query("INSERT INTO global_moderators(discord_user_id,eso_server,approved_by) VALUES('ga','pc_na','1')");
   const owner=await svc.authorizeContext({...c,userId:'1'}),staff=await svc.authorizeContext({...c,userId:'staff',memberRoleIds:['staff']}),global=await svc.authorizeContext({...c,userId:'ga'}),foreign=await svc.authorizeContext({...c,guildId:'g2',userId:'1'});
-  const publicHouse=await svc.registerHouse(owner,{houseId:1,esoOwner:'@Public',visibility:'public'}),globalHouse=await svc.registerHouse(owner,{houseId:1,esoOwner:'@Global',visibility:'global'}),privateHouse=await svc.registerHouse(owner,{houseId:2,esoOwner:'@Private'}),foreignHouse=await svc.registerHouse(foreign,{houseId:2,esoOwner:'@Foreign',visibility:'public'});
+  const publicHouse=await svc.registerHouse(owner,{houseId:1,esoOwner:'@Public',visibility:'public'}),globalHouse=await svc.registerHouse(owner,{houseId:1,esoOwner:'@Global',visibility:'global'}),privateHouse=await svc.registerHouse(owner,{visibility:'private',houseId:2,esoOwner:'@Private'}),foreignHouse=await svc.registerHouse(foreign,{houseId:2,esoOwner:'@Foreign',visibility:'public'});
   const publicTour=await svc.saveTourDraft(owner,{details:{name:'Server',visibility:'public'},stopIds:[publicHouse.id]}),globalTour=await svc.saveTourDraft(owner,{details:{name:'Global',visibility:'global'},stopIds:[globalHouse.id]}),privateTour=await svc.saveTourDraft(owner,{details:{name:'Private',visibility:'private'},stopIds:[privateHouse.id]}),foreignTour=await svc.saveTourDraft(foreign,{details:{name:'Foreign',visibility:'public'},stopIds:[foreignHouse.id]});
   assert.ok(await svc.actions.deletePreview(staff,'house',publicHouse.id));
   await assert.rejects(()=>svc.actions.deletePreview(global,'house',publicHouse.id),/not available/);
