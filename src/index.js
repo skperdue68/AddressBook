@@ -49,12 +49,12 @@ client.once(Events.ClientReady,async c=>{
       const user=await response.json(),guilds=[];
       for(const guild of c.guilds.cache.values()){
         try{
-          const member=await guild.members.fetch({user:user.id,force:true}),settings=await webAdmin.guilds.ensureSettings(guild.id);
-          guilds.push({id:guild.id,name:guild.name,roleIds:[...member.roles.cache.keys()],esoServer:settings.eso_server});
+          await guild.members.fetch({user:user.id,force:true});
+          guilds.push({id:guild.id});
         }catch{/* user is not a member of this bot guild */}
       }
-      return {...user,guilds};
-    },resolveGuildMembership:({userId,guildId})=>resolveCurrentGuildMembership({client:c,guilds:webAdmin.guilds,userId,guildId})
+      return {id:user.id,username:user.username,global_name:user.global_name,avatar:user.avatar,guilds};
+    },resolveGuildMembership:({userId,guildId,strict=false})=>resolveCurrentGuildMembership({client:c,guilds:webAdmin.guilds,userId,guildId,strict})
     });
     await new Promise((resolve,reject)=>{webServer.once('error',reject);webServer.listen(webConfig.port,webConfig.host,resolve);});
     console.log(`HearthBound web administration listening on ${webConfig.host}:${webConfig.port}`);

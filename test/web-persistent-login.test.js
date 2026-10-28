@@ -21,3 +21,21 @@ test('OAuth and server selection use persistent cookies matching signed lifetime
  clock+=8*day;assert.match((await fetch(app.base+'/admin',{headers:{cookie:selectedCookie},redirect:'manual'})).headers.get('location'),/^\/auth\/discord/);
  }finally{await new Promise(r=>app.server.close(r));}
 });
+
+test('100 guild sessions fit a browser cookie and retain role snapshots',()=>{
+ const guilds=Array.from({length:100},(_,i)=>({id:String(100000000000000000n+BigInt(i)),name:`Community ${i}`,roleIds:['123456789012345678','987654321098765432'],esoServer:'pc_na'}));
+ const cookie=createSession({id:'123456789012345678',username:'Alex',guilds},1000,'secret');
+ assert.ok(Buffer.byteLength(`addressbook_session=${cookie}; HttpOnly; SameSite=Lax; Secure; Path=/; Max-Age=2592000; Expires=Wed, 02 Dec 2026 00:00:00 GMT`)<4096);
+ assert.deepEqual(readSession(cookie,1001,'secret').guilds,guilds);
+ assert.equal(readSession(cookie,1001,'rotated'),null);
+ assert.equal(readSession(cookie,1000+30*day,'secret'),null);
+});
+
+test('legacy signed JSON sessions remain readable and malformed compressed sessions fail closed',async()=>{
+ const {createHmac}=await import('node:crypto');const {deflateRawSync}=await import('node:zlib');
+ const signed=payload=>`${payload}.${createHmac('sha256','secret').update(payload).digest('base64url')}`;
+ const legacy=Buffer.from(JSON.stringify({id:'old',iat:1000,exp:2000,csrf:'saved'})).toString('base64url');
+ assert.equal(readSession(signed(legacy),1500,'secret').id,'old');
+ assert.equal(readSession(signed('z'+deflateRawSync(Buffer.from(JSON.stringify({id:'large',exp:2000,padding:'x'.repeat(300000)}))).toString('base64url')),1500,'secret'),null);
+ assert.equal(readSession(signed('zmalformed'),1500,'secret'),null);
+});

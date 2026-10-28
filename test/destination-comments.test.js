@@ -35,9 +35,9 @@ test('comments are shared across saved entries and survive deletion of one entry
   const db=await fixture();
   try{
     const houses=new SavedHouseService(db),comments=new CommentService(db);
-    const global=await houses.createGlobal({esoServer:'pc_na',originGuildId:'g1',houseId:62,esoOwner:'@HouseOwner',displayName:'Global Villa',createdBy:'u1'});
-    const server=await houses.createPublic({esoServer:'pc_na',guildId:'g1',houseId:62,esoOwner:'HOUSEOWNER',displayName:'Server Villa',createdBy:'u2'});
     const personal=await houses.createPrivate({esoServer:'pc_na',originGuildId:'g1',userId:'u3',houseId:62,esoOwner:'houseowner',displayName:'Private Villa',createdBy:'u3'});
+    const server=await houses.createPublic({esoServer:'pc_na',guildId:'g1',houseId:62,esoOwner:'HOUSEOWNER',displayName:'Server Villa',createdBy:'u2'});
+    const global=await houses.createGlobal({esoServer:'pc_na',originGuildId:'g1',houseId:62,esoOwner:'@HouseOwner',displayName:'Global Villa',createdBy:'u1'});
     await comments.add({esoServer:'pc_na',savedHouseId:global.id,commenterUserId:'u4',text:'global view'});
     await comments.add({esoServer:'pc_na',savedHouseId:server.id,commenterUserId:'u5',text:'server view'});
     await comments.add({esoServer:'pc_na',savedHouseId:personal.id,commenterUserId:'u6',text:'private view'});

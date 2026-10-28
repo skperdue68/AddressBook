@@ -21,8 +21,8 @@ test('public root serves branded metadata and assets without login or membership
     assert.match(html,/property="og:title" content="HearthBound/);
     assert.match(html,/property="og:url" content="https:\/\/hearthbound.example\/"/);
     assert.match(html,/property="og:image" content="https:\/\/hearthbound.example\/assets\/hearthbound-banner.webp"/);
-    assert.match(html,/<img class="welcome-banner"[^>]*src="\/assets\/hearthbound-banner.webp"/);assert.match(html,/class="public-page welcome-page"/);assert.match(html,/name="twitter:card"/);assert.match(html,/Sign in with Discord/);assert.match(html,/Invite to your server/);
-    assert.match(html,/permissions=274877991936/);assert.doesNotMatch(html,/Evaine|First &lt;Guild&gt;|attacker.example/);
+    assert.match(html,/<img class="welcome-banner"[^>]*src="\/assets\/hearthbound-banner.webp"/);assert.match(html,/class="public-page welcome-page"/);assert.match(html,/name="twitter:card"/);if(headers.cookie){assert.match(html,/Account menu for Evaine/);assert.match(html,/Continue to HearthBound/);assert.doesNotMatch(html,/>Sign in with Discord/);}else assert.match(html,/Sign in with Discord/);assert.match(html,/Invite to your server/);
+    assert.match(html,/permissions=274877991936/);assert.doesNotMatch(html,/First &lt;Guild&gt;|attacker.example/);
   }
   assert.deepEqual(calls,[]);
   for(const path of ['/assets/hearthbound-logo.png','/assets/hearthbound-preview.png','/assets/hearthbound-banner.webp','/assets/hearthbound-landscape.webp','/assets/public-pages.css'])assert.equal((await fetch(base+path,{redirect:'manual'})).status,200);
@@ -42,4 +42,16 @@ test('server picker is branded, escapes labels, restricts choices and persists s
   const selection=await fetch(base+'/admin?guildId=two',{headers:{cookie},redirect:'manual'});
   assert.equal(selection.status,302);assert.match(selection.headers.get('set-cookie'),/Max-Age=/);
   const selected=await fetch(base+'/admin',{headers:{cookie:selection.headers.get('set-cookie')},redirect:'manual'});assert.equal(selected.status,200);
+});
+
+
+test('public root treats expired and tampered cookies as anonymous',async t=>{
+ const {base,calls}=await running(t);
+ const expired=createSession({id:'user',username:'Evaine'},Date.now()-31*86400000,'test-secret');
+ const valid=createSession({id:'user',username:'Evaine'},Date.now(),'test-secret');
+ for(const value of [expired,valid+'x']){
+  const response=await fetch(base+'/',{headers:{cookie:'addressbook_session='+value}}),html=await response.text();
+  assert.equal(response.status,200);assert.match(html,/>Sign in with Discord/);assert.doesNotMatch(html,/Account menu for Evaine|Continue to HearthBound/);
+ }
+ assert.deepEqual(calls,[]);
 });

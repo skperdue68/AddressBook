@@ -25,3 +25,15 @@ test('production web membership bypasses cached roles and rejects departed staff
  const member=await resolveCurrentGuildMembership({client,guilds,userId:'u',guildId:'g1'});assert.deepEqual(member.roleIds,[]);
  state='departed';assert.equal(await resolveCurrentGuildMembership({client,guilds,userId:'u',guildId:'g1'}),null);
 });
+
+
+test('strict membership lookup distinguishes absent members from service failures',async()=>{
+ const {resolveCurrentGuildMembership}=await import('../src/web/guild-membership.js');
+ let failure=null;
+ const guild={id:'g',name:'Guild',members:{fetch:async()=>{if(failure)throw failure;return {id:'u',displayName:'Guild Nick',user:{username:'name',globalName:'Person'},roles:{cache:new Map()}};}}};
+ const args={client:{guilds:{cache:new Map([['g',guild]])}},guilds:{ensureSettings:async()=>({eso_server:'pc_na'})},guildId:'g',userId:'u',strict:true};
+ assert.equal((await resolveCurrentGuildMembership(args)).member.displayName,'Guild Nick');
+ failure=Object.assign(new Error('Unknown Member'),{code:10007});assert.equal(await resolveCurrentGuildMembership(args),null);
+ failure=new Error('Service unavailable');await assert.rejects(resolveCurrentGuildMembership(args),/could not be verified/);
+ await assert.rejects(resolveCurrentGuildMembership({...args,guildId:'missing'}),/could not be verified/);
+});

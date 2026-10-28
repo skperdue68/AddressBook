@@ -138,3 +138,8 @@ See the [HearthBound web workflow guide](web-workflows.md) for personal collecti
 ## Application feedback (bot owners)
 
 Use **Feedback inbox** in the web sidebar to review member bug reports, ideas and general feedback across HearthBound. Review status and internal notes persist in the configured database. Only bot owners can view or review this inbox; Server/Global administrator roles do not grant access. Members can submit under Help and see their own recent feedback/status. Details: [web workflows](web-workflows.md#feedback) and [schema14 upgrade](upgrade-v1.0.64.md).
+
+
+## Copy a house to the correct server
+
+Use **Copy to another server** on the web house detail page to create a Server registration in another authorized community within the same ESO environment. Source and destination administrative access and current membership are rechecked on confirmation. Bot owners and Global administrators can use this within their authorized environment; Server administrators must administer both servers. Other users’ Private houses remain inaccessible. The source registration/tour stops remain, duplicate target registrations are retained, and copies are audited. Use the separate **Review deleting original** action only if removal from the wrong server is needed and existing deletion permissions allow it. [Workflow details](web-workflows.md#copy-a-house-between-servers).

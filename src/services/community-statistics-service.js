@@ -1,4 +1,5 @@
 import {one} from '../db/database.js';
+import {normalizeAccount} from '../utils/eso.js';
 export class CommunityStatisticsService{
  constructor(db){this.db=db;}
  async snapshot(c){
@@ -6,6 +7,19 @@ export class CommunityStatisticsService{
   const tourRows=await this.db.query(`SELECT t.id,count(ts.id) stops FROM tours t LEFT JOIN tour_stops ts ON ts.tour_id=t.id WHERE t.eso_server=? AND (t.visibility='global' OR (t.visibility='public' AND t.guild_id=?)) GROUP BY t.id`,[c.esoServer,c.guildId]);
   const types=await one(this.db,"SELECT count(DISTINCT house_id) c FROM saved_houses WHERE eso_server=? AND status='active' AND (scope='global' OR (scope='public' AND guild_id=?))",[c.esoServer,c.guildId]);
   return {...Object.fromEntries(Object.entries(counts).map(([k,v])=>[k,Number(v||0)])),tours:tourRows.length,averageStops:tourRows.length?Math.round(tourRows.reduce((n,r)=>n+Number(r.stops),0)/tourRows.length*10)/10:0,houseTypes:Number(types.c)};
+ }
+ async serverRankings(c){
+  const rows=await this.db.query(`SELECT s.house_id,s.eso_owner,s.normalized_owner,h.name,h.zone FROM saved_houses s JOIN houses h ON h.house_id=s.house_id WHERE s.eso_server=? AND s.guild_id=? AND s.scope='public' AND s.status='active' ORDER BY s.id`,[c.esoServer,c.guildId]);
+  const houses=new Map(),owners=new Map();
+  for(const row of rows){
+   const id=Number(row.house_id),house=houses.get(id)||{house_id:id,name:row.name,zone:row.zone,registrations:0};
+   house.registrations++;houses.set(id,house);
+   const key=normalizeAccount(row.normalized_owner||row.eso_owner);
+   if(!key)continue;
+   const owner=owners.get(key)||{normalized_owner:key,eso_owner:row.eso_owner,registrations:0,types:new Set()};
+   owner.registrations++;owner.types.add(id);owners.set(key,owner);
+  }
+  return {houses:[...houses.values()].sort((a,b)=>b.registrations-a.registrations||a.name.localeCompare(b.name)),owners:[...owners.values()].map(({types,...owner})=>({...owner,houseTypes:types.size})).sort((a,b)=>b.registrations-a.registrations||a.normalized_owner.localeCompare(b.normalized_owner))};
  }
  async popularity(c,{metric='members'}={}){
   const rows=await this.db.query(`SELECT h.house_id,h.name,h.zone,count(*) registrations,count(DISTINCT s.created_by) members,count(DISTINCT s.normalized_owner) owners FROM saved_houses s JOIN houses h ON h.house_id=s.house_id WHERE s.eso_server=? AND s.status='active' AND (s.scope='global' OR (s.scope='public' AND s.guild_id=?)) GROUP BY h.house_id,h.name,h.zone`,[c.esoServer,c.guildId]);

@@ -52,13 +52,13 @@ export class SavedHouseService{
     ]);
     return this.get(result.insertId,conn);
   }
-  async #ensureNoDuplicate({esoServer,scope,guildId=null,ownerUserId=null,houseId,esoOwner,excludeId=null},conn=this.db){
+  async #ensureNoDuplicate({esoServer,scope,guildId=null,ownerUserId=null,houseId,esoOwner,excludeId=null,lock=false},conn=this.db){
     const server=requireEsoServer(esoServer);
     const norm=normalizeAccount(esoOwner);
     const clauses=['eso_server=?','scope=?','normalized_owner=?','house_id=?','status<>\'archived\'']; const args=[server,scope,norm,Number(houseId)];
     if(scope==='private'){clauses.push('owner_user_id=?');args.push(ownerUserId);} else if(scope==='public'){clauses.push('guild_id=?');args.push(guildId);}
     if(excludeId){clauses.push('id<>?');args.push(Number(excludeId));}
-    const dupe=await one(conn,`SELECT id FROM saved_houses WHERE ${clauses.join(' AND ')} LIMIT 1`,args);
+    const dupe=await one(conn,`SELECT id FROM saved_houses WHERE ${clauses.join(' AND ')} LIMIT 1${lock?' FOR UPDATE':''}`,args);
     if(dupe) throw new Error(`That owner + house already exists in this ${scope} scope as house #${dupe.id}.`);
   }
   async #create({esoServer,scope,guildId=null,originGuildId=null,ownerUserId=null,houseId,esoOwner,displayName=null,description=null,tags=[],createdBy,status='active'}){
@@ -66,8 +66,17 @@ export class SavedHouseService{
     const owner=normalizeEsoOwner(esoOwner);
     const cleanName=boundedOptional(displayName,HOUSE_NICKNAME_MAX,'House nickname'),cleanDescription=boundedOptional(description,HOUSE_DESCRIPTION_MAX,'House description');
     return withTransaction(this.db,async conn=>{
-      await this.#ensureNoDuplicate({esoServer:server,scope,guildId,ownerUserId,houseId,esoOwner:owner},conn);
-      const destination=await this.destinations.resolve({esoServer:server,esoOwner:owner,houseId},conn);
+      const resolved=await this.destinations.resolve({esoServer:server,esoOwner:owner,houseId},conn);
+      // Serialize registrations for one physical destination and read current
+      // committed rows even under MariaDB repeatable-read isolation.
+      const destination=resolved?await one(conn,'SELECT * FROM housing_destinations WHERE id=? FOR UPDATE',[resolved.id]):await one(conn,'SELECT * FROM housing_destinations WHERE eso_server=? AND normalized_owner=? AND house_id=? FOR UPDATE',[server,normalizeAccount(owner),Number(houseId)]);
+      if(!destination)throw new Error('The ESO destination is no longer available. Try registering again.');
+      const clauses=["scope='global'"],args=[destination.id],contextGuildId=guildId||originGuildId;
+      if(scope!=='global'&&contextGuildId){clauses.push("(scope='public' AND guild_id=?)");args.push(String(contextGuildId));}
+      if(scope==='private'){clauses.push("(scope='private' AND owner_user_id=?)");args.push(String(ownerUserId));}
+      const existing=await one(conn,`SELECT id,scope FROM saved_houses WHERE destination_id=? AND status='active' AND (${clauses.join(' OR ')}) ORDER BY CASE scope WHEN 'global' THEN 0 WHEN 'public' THEN 1 ELSE 2 END,id LIMIT 1 FOR UPDATE`,args);
+      if(existing){const label={private:'Private collection',public:'Server Directory',global:'Global Directory'}[existing.scope];const error=new Error(`This ESO owner and house is already available in your ${label} as house #${existing.id}. Open the existing registration instead.`);error.code='VISIBLE_REGISTRATION_EXISTS';error.existingHouseId=Number(existing.id);throw error;}
+      await this.#ensureNoDuplicate({esoServer:server,scope,guildId,ownerUserId,houseId,esoOwner:owner,lock:true},conn);
       const result=await conn.query(`INSERT INTO saved_houses(eso_server,scope,guild_id,origin_guild_id,owner_user_id,house_id,eso_owner,normalized_owner,destination_id,display_name,description,tags,status,created_by,updated_by)
         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,[server,scope,guildId,originGuildId,ownerUserId,Number(houseId),owner,normalizeAccount(owner),destination.id,cleanName,cleanDescription,JSON.stringify(parseTags(tags)),status,createdBy,createdBy]);
       return this.get(result.insertId,conn);

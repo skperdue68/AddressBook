@@ -8,14 +8,15 @@ if(editor){
  const filterPanel=editor.querySelector('[data-candidate-filters]'),rows=[...editor.querySelectorAll('[data-candidate-label]')],controls=[...editor.querySelectorAll('[data-candidate-filter]')],visibility=editor.querySelector('[name="visibility"]');
  const normalize=value=>String(value||'').normalize('NFKC').trim().toLocaleLowerCase('en');
  const value=id=>normalize(document.getElementById(id)?.value);
- const applyFilters=()=>{let eligibleCount=0,shown=0;const query=value('candidate-filter').replace(/^@/,''),tags=value('candidate-tags').split(',').map(t=>t.trim()).filter(Boolean),scope=value('candidate-scope'),tourScope=visibility?.value||'private';
+ const applyFilters=()=>{let eligibleCount=0,shown=0;const terms=value('candidate-filter').split(/\s+/).map(term=>term.replace(/^@+/, '')).filter(Boolean),tags=value('candidate-tags').split(',').map(t=>t.trim()).filter(Boolean),scope=value('candidate-scope'),tourScope=visibility?.value||'private';
   for(const row of rows){const d=row.dataset,eligible=(tourScope!=='global'||d.scope==='global')&&(tourScope==='private'||d.scope!=='private')&&(d.scope!=='private'||d.ownerUser===editor.dataset.tourCreator)&&(d.scope!=='public'||d.guild===editor.dataset.sourceGuild);if(eligible)eligibleCount++;
-   const houseTags=JSON.parse(d.tags||'[]').map(normalize),matches=eligible&&(!query||normalize(d.search).includes(query))&&(!scope||d.scope===scope)&&tags.every(tag=>houseTags.some(t=>t.includes(tag)))&&['zone','style','house_type','classification'].every(key=>!value('candidate-'+key)||normalize(d[key])===value('candidate-'+key));row.hidden=!matches;if(matches)shown++;
+   const houseTags=JSON.parse(d.tags||'[]').map(normalize),matches=eligible&&terms.every(term=>normalize(d.search).includes(term))&&(!scope||d.scope===scope)&&tags.every(tag=>houseTags.some(t=>t.includes(tag)))&&['zone','style','house_type','classification'].every(key=>!value('candidate-'+key)||normalize(d[key])===value('candidate-'+key));row.hidden=!matches;if(matches)shown++;
   }
   const count=document.getElementById('candidate-count');if(count)count.textContent=`${shown} of ${eligibleCount} eligible houses shown · ${rows.length} accessible houses loaded`;const empty=document.getElementById('candidate-empty');if(empty)empty.hidden=shown!==0;
  };
  controls.forEach(control=>{control.addEventListener('input',applyFilters);control.addEventListener('change',applyFilters);});visibility?.addEventListener('change',applyFilters);
  filterPanel?.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('input,select')){e.preventDefault();applyFilters();}});
+ document.getElementById('candidate-apply')?.addEventListener('click',applyFilters);
  document.getElementById('candidate-clear')?.addEventListener('click',()=>{controls.forEach(control=>control.value='');applyFilters();document.getElementById('candidate-filter')?.focus();});applyFilters();
  editor.addEventListener('input',e=>{if(!e.target.closest('[data-candidate-filters]'))dirty=true;});editor.addEventListener('submit',()=>dirty=false);window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});sync();dirty=false;status.textContent=`${container.children.length} stops · Ready to edit`;
 }
