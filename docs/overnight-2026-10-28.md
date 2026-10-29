@@ -1,11 +1,21 @@
 # HearthBound overnight review — October 28, 2026
 
-## Current integration status
+## Current integration status and handoff
 
-PRs #28–#38 were merged into their predecessor feature branches rather than master. Master currently contains #27. A recovery PR targeting master brings the complete reviewed work and local activity timestamps together. The merged guide branch tree was verified identical to the tested guide baseline, and master's tree was verified identical to the #27 baseline; no additional edits are being discarded. Future PRs will target master directly to avoid this integration trap. Do not use the original stacked-branch instructions below as a merge procedure.
+The overnight batch is finished. The user has returned and is actively reviewing the site and bot. The current requested round is published; no additional autonomous feature rounds will start under the overnight goal.
 
+The original PRs #28–#38 targeted their predecessor feature branches. Their merge status alone did not mean their work was on master. [Recovery PR #39](https://github.com/skperdue68/HearthBound/pull/39) brought the verified reviewed trees and local activity timestamps onto master and is now merged. All later PRs target master directly. PRs #40–#42 are also merged.
 
-Work is proposed in reviewable PRs. Nothing is merged or deployed by the agent.
+Still open for joint review:
+
+| PR | Change | Status |
+|---|---|---|
+| [#43](https://github.com/skperdue68/HearthBound/pull/43) | Visible Edit house shortcut near the top of the web house page | Open, targets master |
+| [#44](https://github.com/skperdue68/HearthBound/pull/44) | Shared-width Discord screenshot/information card and Overview local activity timestamps | Open, targets master; includes #43 until it is merged |
+
+Merge #43 before #44 for focused review. Nothing is deployed automatically. Historical notes below describe each round when it was implemented; later review decisions supersede earlier visit-status controls and stacked-branch instructions.
+
+The agent published PRs but did not merge them or deploy production application code. During joint review, the user separately requested and enabled SSH access for a single-house production import. That import and the repair of the existing slash-command upload options are recorded in the follow-up section below. No production application source files were directly edited.
 
 ## Ready first: discovery and tour polish (PR #27)
 
@@ -163,3 +173,31 @@ The refreshed Word guide is [PR #38](https://github.com/skperdue68/HearthBound/p
 - Tests verify winter CST and summer CDT. Real Chrome verified Chicago desktop/mobile plus Sydney's next-day conversion. Existing activity filters and Private-target protections remain in place; independent review found no actionable issues.
 
 Activity timestamp verification: 745/745 full-suite tests passed, six focused activity checks passed and three real Chrome time-zone/layout scenarios passed. No schema or environment changes.
+
+## Follow-ups completed during joint review
+
+| PR | Result | Verification |
+|---|---|---|
+| [#39](https://github.com/skperdue68/HearthBound/pull/39) | Recovered gallery/UI/guide work onto master; complete local timestamps on the full activity page | 745-test suite, focused timestamp tests, Chrome in Chicago/Sydney |
+| [#40](https://github.com/skperdue68/HearthBound/pull/40) | Centered statistics count buttons and aligned ranking rows; house thumbnails; gallery ordering; remembered sharing destinations; clearer submitter/reassignment controls; removed visit-status controls; tag badges without underlines | 760-test suite; desktop/mobile Chrome; updated eight-page Word guide rendered and inspected |
+| [#41](https://github.com/skperdue68/HearthBound/pull/41) | Automatic cover image on Discord house cards, stale attachment cleanup, Attach Files in invite | 765-test suite and independent review |
+| [#42](https://github.com/skperdue68/HearthBound/pull/42) | Screenshot above house details and gallery captions; clearer upload instructions | 15 focused tests and independent review |
+| [#43](https://github.com/skperdue68/HearthBound/pull/43) | Edit house beside Favorite/Share for authorized editors, including pending houses | 15 focused tests, HTTP/browser checks |
+| [#44](https://github.com/skperdue68/HearthBound/pull/44) | One shared Discord card for image/text, nested-control navigation and safe comment refresh; timestamps on Overview activity | 772/772 full-suite tests; independent review; Discord.js serialization; Chrome desktop/mobile Chicago/Sydney |
+
+Current personal UI uses reversible Favorites. Want to Visit and Visited controls were removed at the user's request; stored historical records were retained. Earlier log sections mentioning those controls are historical, not current instructions.
+
+The single-house import created Elden Cottage, registration #158, for Alphabet Mafia with Server visibility in PC NA. The user supplied and verified `/script JumpToSpecificHouse("@Twelfth-Monkey",13)`. Eight screenshots, captions, source attribution, tags and a summarized description were saved through the existing house/image services. The live page and all eight image endpoints returned HTTP 200; one matching Server registration and its import audit were verified. Database/bot credentials were not copied into the repository or review artifacts. Temporary import staging was removed.
+
+The running application already supported screenshot command options, but Discord's registered global `/hearth` and `/housing` commands had none. Only the options on those two existing commands were updated to house/screenshot/caption; IDs were retained and the registrations were independently re-read. No Discord chat messages were sent during diagnosis.
+
+## Completion audit
+
+- **Gallery first:** PR #28 was created before the following improvement rounds; its gallery foundation, schema/storage instructions and Private-image checks are present in the recovered master history.
+- **Research:** Comparable housing, route-planning, saving, upload and navigation references and their concrete design lessons are linked in the research/round sections above.
+- **Reviewable delivery:** PRs #28–#38 record eleven focused rounds; #39 corrected their integration path. Requested review follow-ups are #40–#44. The latest open changes target master directly.
+- **Verification and scopes:** The latest full suite passed all 772 tests. It includes Private ownership, Server/Global edit scope, revoked access, shared passes, image permissions and environment isolation. Independent review found no actionable issue in the latest layout/timestamp round. Native Discord client rendering remains a user review step; no unsolicited live Discord messages were sent to claim visual verification.
+- **Artifacts:** This log, gallery deployment guide, current readable guide, Word guide and reproducible authoring script are committed. The Word guide rendered as eight pages; changed pages were inspected. Browser artifacts verified the current Overview timestamps and mobile bounds.
+- **Handoff:** The user's return is evidenced by the ongoing hands-on review, deployment reports and screenshots. The current round is finished and published in #44. Further work will follow that joint review, rather than automatically opening another overnight round.
+
+An earlier discovery-card experiment remains in the local stash and is not shipped. Its visit-control proposal was superseded by the user's removal request; it will not be applied automatically. It is not an unfinished requirement of the delivered batch.

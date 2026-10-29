@@ -13,3 +13,9 @@ test('browser displays full local dates and times with correct daylight saving z
  const document={querySelectorAll:selector=>selector==='[data-local-datetime]'?times:[],querySelector:selector=>selector==='[data-local-time-zone]'?note:null};vm.runInNewContext(script,{document,Intl:{DateTimeFormat:LocalFormatter},Date});
  assert.match(times[0].textContent,/Jan 15, 2026/);assert.match(times[0].textContent,/12:04:05 PM CST/);assert.match(times[1].textContent,/Jul 15, 2026/);assert.match(times[1].textContent,/1:04:05 PM CDT/);assert.match(note.textContent,/America\/Chicago/);
 });
+import {homeRoute} from '../src/web/home-route.js';
+test('Overview recent activity includes a full localizable date and time for each newest-first action',async()=>{
+ const items=[{actorName:'Newest',action:'registered a house',serverName:'Guild',source:'web',occurredAt:'2026-10-28T18:04:05.000Z'},{actorName:'Older',action:'started a tour',serverName:'Guild',source:'discord',occurredAt:'2026-10-27T12:00:00.000Z'}];
+ const html=await homeRoute({workspace:{statistics:{snapshot:async()=>({})},usage:{listActivity:async()=>({items})}},context:{guildName:'Guild'},render:(_title,body)=>body});
+ assert.equal((html.match(/data-local-datetime/g)||[]).length,2);assert.match(html,/datetime="2026-10-28T18:04:05.000Z"/);assert.match(html,/2026-10-28 18:04:05 UTC/);assert.ok(html.indexOf('Newest')<html.indexOf('Older'));assert.match(html,/data-local-time-zone/);
+});

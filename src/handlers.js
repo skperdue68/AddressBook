@@ -24,6 +24,7 @@ export function createHandlers(db){
     async ready(client){ return identities.syncClient(client); },
     async autocomplete(i){await identities.syncInteraction(i);try{if(i.options.getFocused(true).name==='house'){const c=await galleryContext(workspace,i),result=await workspace.listHouses(c,{q:i.options.getFocused()});return i.respond(result.rows.slice(0,25).map(h=>({name:`${h.display_name||h.house_name} · ${h.eso_owner}`.slice(0,100),value:String(h.id)})));}}catch{}return i.respond([]);},
     async chat(i){
+      i=attachmentSafeInteraction(i);
       await identities.syncInteraction(i);
       if(!['hearth','housing'].includes(i.commandName))return;
       const galleryHouse=i.options?.getString?.('house'),attachment=i.options?.getAttachment?.('screenshot');

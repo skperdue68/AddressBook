@@ -1,3 +1,4 @@
+import {messageControls,mapMessageControls,refreshComponentCommentCount,messageFlagBits} from './message-layout.js';
 import {HouseImageService} from '../services/house-image-service.js';
 import {commentReaderPayload,commentPageSize,commentPageModal} from './comment-reader.js';
 import {eligibleTourHouses,filterTourHouses,tourHouseFiltersModal,tourStopNotesModal,tourHouseAddedPayload} from './tour-house-builder.js';
@@ -419,7 +420,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
   async function openQuickComment(i,context,{shared=false}={}){
     const source=await personalActionSource(i,context),target=houseTarget(source.row);
     if(context.target&&houseTargetKey(context.target)!==houseTargetKey(target))throw new Error('That house destination changed. Open the house again.');
-    const stateToken=token(),snapshot={attachments:[...(i.message?.attachments?.values?.()||[])].map(file=>({id:String(file.id)})),embeds:(i.message?.embeds||[]).map(value=>value.toJSON?.()||value),components:(i.message?.components||[]).map(value=>value.toJSON?.()||value)};
+    const stateToken=token(),snapshot={...(messageFlagBits(i.message?.flags)&MessageFlags.IsComponentsV2?{flags:MessageFlags.IsComponentsV2}:{}),attachments:[...(i.message?.attachments?.values?.()||[])].map(file=>({id:String(file.id)})),embeds:(i.message?.embeds||[]).map(value=>value.toJSON?.()||value),components:(i.message?.components||[]).map(value=>value.toJSON?.()||value)};
     quickCommentDrafts.set(stateToken,{...context,userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId),target,created:Date.now(),snapshot,shared});
     return i.showModal(commentModal('global',source.row.id,'hu:home',destinationLabel(source.row)).setCustomId(`hu:modal:quickcomment:${stateToken}`));
   }
@@ -1062,7 +1063,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
         else if(action==='want'||action==='visited'){const desired=action==='want'?'want_to_visit':'visited';await personalStates.setVisitState({userId:i.user.id,target,visitState:current?.visit_state===desired?'none':desired,...names,visibleTarget:source.row});}
         else return i.reply({content:'That house action is unavailable.',flags:MessageFlags.Ephemeral});
         const row={...source.row,personal_token:stateToken,personal_state:await personalStates.get(i.user.id,target)},specs=houseStateSpecs(row,context.sourceKind);
-        if(i.message?.components){const replacements=new Map(specs.map(spec=>[spec.customId,spec]));const components=i.message.components.map(raw=>{const row=raw.toJSON?.()||raw;return {...row,components:row.components.map(component=>{const spec=replacements.get(component.custom_id);return spec?{...component,label:spec.label,style:spec.style==='success'?3:spec.style==='primary'?1:2}:component;})};});return i.update({components});}
+        if(i.message?.components){const replacements=new Map(specs.map(spec=>[spec.customId,spec]));const components=mapMessageControls(i.message.components,component=>{const spec=replacements.get(component.custom_id);return spec?{...component,label:spec.label,style:spec.style==='success'?3:spec.style==='primary'?1:2}:component;});return i.update({components});}
         return i.update(context.sourceKind==='official'?officialHousePayload(row):destinationMenuPayload(row,{canEdit:canEditSaved(i,row)}));
       }catch(error){return i.reply({content:error.message,flags:MessageFlags.Ephemeral});}
     }
@@ -1287,7 +1288,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
           return i.update(destinationMenuPayload(await withHouseCardContext(i,row),{canEdit:canEditSaved(i,row),...state.view}));
         }
         if(!canEditSaved(i,row))throw new Error('You do not have edit access to that house.');
-        const controls=(i.message?.components||[]).flatMap(r=>(r.toJSON?.()||r).components);
+        const controls=messageControls(i.message?.components);
         const detail=controls.find(b=>String(b.custom_id||b.customId||'').startsWith('hu:details:'));
         if(!detail)throw new Error('Open the house again to manage it.');
         const parts=(detail.custom_id||detail.customId).split(':'),backId=decodeURIComponent(parts.slice(5).join(':'));
@@ -1927,10 +1928,11 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       try{const context=quickCommentContext(i,id.split(':')[3]),source=await personalActionSource(i,context),target=houseTarget(source.row);if(houseTargetKey(target)!==houseTargetKey(context.target))throw new Error('That house destination changed. Open the house again.');
         await comments.add({esoServer:context.esoServer,savedHouseId:source.row.id,destinationId:source.row.destination_id,commenterUserId:i.user.id,text:i.fields.getTextInputValue('comment')});context.used=true;
         const payload={...context.snapshot,content:'Comment added.'};
-        const isHouseCard=context.snapshot.components.flatMap(row=>row.components||[]).some(control=>String(control.custom_id||'').startsWith('hu:details:'));
+        const isHouseCard=messageControls(context.snapshot.components).some(control=>String(control.custom_id||'').startsWith('hu:details:'));
         if(isHouseCard){
           const count=await comments.count('global',source.row.id,context.esoServer);
           payload.embeds=payload.embeds.map(embed=>({...embed,fields:embed.fields?.map(field=>field.name==='💬 Comments'?{...field,value:`${count} comment${count===1?'':'s'}`}:field)}));
+          payload.components=refreshComponentCommentCount(payload.components,count);
         }
         return context.shared?i.reply({...payload,components:[],flags:MessageFlags.Ephemeral}):modalResponse(i,payload);
       }catch(error){return i.reply({content:error.message,flags:MessageFlags.Ephemeral});}
