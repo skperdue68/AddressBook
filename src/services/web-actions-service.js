@@ -1,3 +1,4 @@
+import {requestableAccessKinds} from './access-request-options.js';
 import {createHash} from 'node:crypto';
 import {one,withTransaction} from '../db/database.js';
 import {UserHouseStateService} from './user-house-state-service.js';
@@ -119,6 +120,7 @@ export class WebActionsService {
  }
  async requestAccess(context,kind,reason,names={}){
   const c=await this.context(context),text=String(reason||'').trim();if(!text||text.length>1000)throw new Error('Enter a reason between 1 and 1000 characters.');
+  if(!(await requestableAccessKinds(this.w.policy,c)).includes(kind))throw new Error('That elevated access request is not available.');
   const args={guildId:c.guildId,userId:c.userId,reason:text,names:{...names,guildName:c.guildName}};
   if(kind==='server'){if(c.isServerAdmin)throw new Error('You already have Server administrator access.');return this.w.policy.server.request(args);}
   if(kind==='global')return this.w.policy.global.requestAccess({...args,esoServer:c.esoServer});

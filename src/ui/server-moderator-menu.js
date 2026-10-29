@@ -13,7 +13,7 @@ export async function handleServerModeratorAction(i,{serverModerators,guilds,act
   const roleIds=[...(member?.roles?.cache?.keys?.()||[])],reviewer={userId:i.user.id,roleIds};
   if(id==='hu:servermod:claim')await guilds.claimFirstAdmin(i);
   const access=await guilds.ensureModeratorAccess({...i,member});
-  if(id==='hu:servermod:request')return i.showModal(serverRequestModal());
+  if(id==='hu:servermod:request'){const status=await serverModerators.status({guildId:i.guildId,userId:i.user.id});if(access.isModerator||status.request?.status==='pending')throw new Error('That elevated access request is not available.');return i.showModal(serverRequestModal());}
   if(id==='hu:modal:servermod:request'){
    if(access.isModerator)throw new Error('You already have Server Moderator access.');
    await serverModerators.request({guildId:i.guildId,userId:i.user.id,reason:i.fields.getTextInputValue('reason'),names:{globalName:i.user.globalName||i.user.username,displayName:i.member?.displayName,guildName:i.guild?.name}});

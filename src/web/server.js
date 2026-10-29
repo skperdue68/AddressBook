@@ -1,3 +1,4 @@
+import {requestableAccessKinds} from '../services/access-request-options.js';
 import {legalPage} from './legal-pages.js';
 import {previewChoices} from '../services/permission-preview.js';
 import {loginRecoveryPage} from './login-recovery.js';
@@ -162,6 +163,7 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
       return redirect(response, cleanPath, { 'set-cookie': context.selectionCookie });
     }
     const { session, guild, esoServer } = context;
+    if(workspace?.policy&&context.memberContext?.esoServer)context.memberContext.requestableAccess=await requestableAccessKinds(workspace.policy,context.memberContext);
     if(context.memberContext)session.accessContext=context.memberContext;
     if(context.memberContext?.permissionPreview){
       const c=context.memberContext,ownerOnly=/^\/app\/(?:catalog(?:\/|$)|feedback\/review(?:\/|$)|global-access$)/.test(url.pathname);
