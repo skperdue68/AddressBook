@@ -18,7 +18,7 @@ document.querySelectorAll('form[data-personal-action]').forEach(form=>{
  let savedValue=select?.value;
  const save=async()=>{
   if(form.dataset.saving==='true')return;
-  form.dataset.saving='true';form.setAttribute('aria-busy','true');status.textContent='Saving…';
+  form.dataset.saving='true';form.dataset.saveError='';form.setAttribute('aria-busy','true');status.textContent='Saving…';
   const payload=new URLSearchParams(new FormData(form));
   if(select)select.disabled=true;if(button)button.disabled=true;
   try{
@@ -26,11 +26,11 @@ document.querySelectorAll('form[data-personal-action]').forEach(form=>{
    const data=await response.json().catch(()=>({}));
    if(!response.ok||!data.ok)throw new Error(data.error||'Could not save. Please try again.');
    if(select){savedValue=data.state?.visit_state||'none';select.value=savedValue;}
-   if(button){const favorite=Boolean(Number(data.state?.is_favorite));button.textContent=favorite?'Unfavorite':'Favorite';button.setAttribute('aria-pressed',String(favorite));form.querySelector('[name="value"]').value=favorite?'0':'1';}
+   if(button){const favorite=Boolean(Number(data.state?.is_favorite));if(form.dataset.heart==='true'){const label=favorite?'Remove from favorites':'Add to favorites';button.setAttribute('aria-label',label);button.setAttribute('title',label);}else button.textContent=favorite?'Unfavorite':'Favorite';button.setAttribute('aria-pressed',String(favorite));form.querySelector('[name="value"]').value=favorite?'0':'1';}
    // Attribute each completed action to its own usage event.
    const eventKey=form.querySelector('[name="eventKey"]');if(eventKey&&crypto.randomUUID)eventKey.value=crypto.randomUUID();
    status.textContent='Saved';
-  }catch(error){if(select)select.value=savedValue;status.textContent=error.message;}
+  }catch(error){form.dataset.saveError='true';if(select)select.value=savedValue;status.textContent=error.message;}
   finally{form.dataset.saving='false';form.removeAttribute('aria-busy');if(select)select.disabled=false;if(button)button.disabled=false;}
  };
  form.addEventListener('submit',event=>{event.preventDefault();save();});
