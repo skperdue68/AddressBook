@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 15;
+export const SCHEMA_VERSION = 16;
 
 export const SCHEMA_V8 = [
   ['last_seen_tour_version', 'VARCHAR(32) NULL'],

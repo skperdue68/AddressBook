@@ -1,3 +1,4 @@
+import {migrateTourCovers} from './tour-cover-schema.js';
 import {migrateHouseImages} from './house-image-schema.js';
 import {migrateFeedback} from './feedback-schema.js';
 import {migrateCatalog} from './catalog-schema.js';
@@ -291,7 +292,7 @@ export async function migrate(db){
       applied.add(10);
     }
     if(!applied.has(11)){for(const sql of SQLITE_SCHEMA_V11)await db.query(sql);await db.query('INSERT INTO schema_migrations(version) VALUES (11)');applied.add(11);}
-    await migrateWorkspace(db);applied.add(12);await migrateCatalog(db);applied.add(13);await migrateFeedback(db);applied.add(14);await migrateHouseImages(db);applied.add(15);
+    await migrateWorkspace(db);applied.add(12);await migrateCatalog(db);applied.add(13);await migrateFeedback(db);applied.add(14);await migrateHouseImages(db);applied.add(15);await migrateTourCovers(db);applied.add(16);
     const latest=Math.max(0,...applied,1);
     if(latest>SQLITE_SCHEMA_VERSION) throw new Error(`Database schema version ${latest} is newer than this HearthBound release (${SQLITE_SCHEMA_VERSION}).`);
     return;
@@ -402,7 +403,7 @@ export async function migrate(db){
     applied.add(10);
   }
   if(!applied.has(11)){for(const sql of SCHEMA_V11)await db.query(sql);await db.query('INSERT INTO schema_migrations(version) VALUES (11)');applied.add(11);}
-  await migrateWorkspace(db);applied.add(12);await migrateCatalog(db);applied.add(13);await migrateFeedback(db);applied.add(14);await migrateHouseImages(db);applied.add(15);
+  await migrateWorkspace(db);applied.add(12);await migrateCatalog(db);applied.add(13);await migrateFeedback(db);applied.add(14);await migrateHouseImages(db);applied.add(15);await migrateTourCovers(db);applied.add(16);
   const latest=Math.max(0,...applied);
   if(latest>SCHEMA_VERSION) throw new Error(`Database schema version ${latest} is newer than this HearthBound release (${SCHEMA_VERSION}).`);
 }

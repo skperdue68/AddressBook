@@ -1,4 +1,5 @@
 import {houseCapacityBadge} from './house-capacity.js';
+import {tourCoverUrl} from './tour-cover.js';
 import {escape} from './render.js';
 import {linkButton,scopeLabel} from './workspace-render.js';
 
@@ -19,7 +20,7 @@ export async function featuredRoute({workspace:w,context:c,render}){
    }else if(item.target_kind==='tour'){
     const draft=await w.getTourDraft(c,item.target_id),t=draft.tour;
     if(!draft.canView||!shared(t,c,t.visibility))continue;
-    cards.push(`<article class="panel featured-card"><div class="eyebrow">FEATURED TOUR · ${escape(scopeLabel(t.visibility))}</div><h2>${escape(t.name)}</h2><p>${draft.stops.length} stop${draft.stops.length===1?'':'s'}</p>${paragraphs(t.description)}<div class="actions">${linkButton('View tour',`/app/tours/${Number(item.target_id)}`,'primary')}</div></article>`);
+    cards.push(`<article class="panel featured-card"><div class="eyebrow">FEATURED TOUR · ${escape(scopeLabel(t.visibility))}</div>${draft.cover?`<img class="house-cover" src="${tourCoverUrl(t.id)}" alt="Cover for ${escape(t.name)}" loading="lazy">`:''}<h2>${escape(t.name)}</h2><p>${draft.stops.length} stop${draft.stops.length===1?'':'s'}</p>${paragraphs(t.description)}<div class="actions">${linkButton('View tour',`/app/tours/${Number(item.target_id)}`,'primary')}</div></article>`);
    }
   }catch{/* A selection may become unavailable between listing and opening. */}
  }

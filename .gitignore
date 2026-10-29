@@ -24,3 +24,6 @@ Thumbs.db
 
 # Persistent uploaded house screenshots
 /data/house-images/
+
+# Persistent uploaded tour artwork
+/data/tour-covers/

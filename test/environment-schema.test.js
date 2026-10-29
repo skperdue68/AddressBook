@@ -17,8 +17,8 @@ test('fresh SQLite schema stores environment context and composite environment i
   const db=openDatabase({DB_TYPE:'sqlite',DATABASE_PATH:path.join(dir,'schema.sqlite')});
   try{
     await migrate(db);
-    assert.equal(SQLITE_SCHEMA_VERSION,15);
-    assert.equal(Number((await one(db,'SELECT max(version) version FROM schema_migrations')).version),15);
+    assert.equal(SQLITE_SCHEMA_VERSION,16);
+    assert.equal(Number((await one(db,'SELECT max(version) version FROM schema_migrations')).version),16);
     for(const table of environmentTables){
       const columns=new Set((await db.query(`PRAGMA table_info(${table})`)).map(row=>row.name));
       assert.equal(columns.has('eso_server'),true,`${table}.eso_server missing`);
@@ -40,7 +40,7 @@ test('fresh SQLite schema stores environment context and composite environment i
 });
 
 test('MariaDB schema declares the same environment columns and composite identities',()=>{
-  assert.equal(SCHEMA_VERSION,15);
+  assert.equal(SCHEMA_VERSION,16);
   const schema=[...SCHEMA_V1,...SCHEMA_V4,...SCHEMA_V6].join('\n');
   for(const table of environmentTables){
     const tableSql=schema.match(new RegExp(`CREATE TABLE IF NOT EXISTS ${table} \\([\\s\\S]*?\\) ENGINE=InnoDB`,'i'))?.[0]||'';

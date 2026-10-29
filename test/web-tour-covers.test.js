@@ -1,0 +1,43 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {mkdtemp,rm} from 'node:fs/promises';import {tmpdir} from 'node:os';import {join} from 'node:path';import sharp from 'sharp';
+import {fixture} from './workspace-fixture.js';import {closeDatabase} from '../src/db/database.js';import {TourCoverService} from '../src/services/tour-cover-service.js';
+import {createWebAdminServer} from '../src/web/server.js';import {WebAdminService} from '../src/services/web-admin-service.js';import {createSession,readSession} from '../src/web/session.js';
+import {tourWebPath,tourWebUrl} from '../src/web/tour-links.js';
+
+test('web tour covers upload, render on lists/details, replace, remove and enforce live access',async t=>{
+ const {db,svc,c}=await fixture(),directory=await mkdtemp(join(tmpdir(),'hearthbound-web-tour-'));svc.tourCovers=new TourCoverService(svc,{directory});
+ const owner=await svc.fresh({...c,userId:'1'}),house=await svc.registerHouse(owner,{houseId:1,esoOwner:'Builder',visibility:'public'}),tour=await svc.saveTourDraft(owner,{details:{name:'Halloween route',visibility:'public'},stopIds:[house.id]});
+ const server=createWebAdminServer({service:new WebAdminService(db),workspace:svc,config:{sessionSecret:'s'},resolveGuildMembership:async()=>({id:'g',name:'Guild',roleIds:[],esoServer:'pc_na'})});await new Promise(r=>server.listen(0,'127.0.0.1',r));
+ t.after(async()=>{await new Promise(r=>server.close(r));await closeDatabase(db);await rm(directory,{recursive:true,force:true});});
+ const base=`http://127.0.0.1:${server.address().port}`,token=createSession({id:'1',guilds:[{id:'g'}]},Date.now(),'s'),cookie=`addressbook_session=${token}`,csrf=readSession(token,Date.now(),'s').csrf,path=`/app/tours/${tour.id}`,image=await sharp({create:{width:80,height:50,channels:3,background:'#b75'}}).png().toBuffer();
+ const upload=async(value=csrf)=>{const form=new FormData();for(const[k,v]of Object.entries({csrf:value,contextGuildId:'g',contextEsoServer:'pc_na',action:'upload'}))form.set(k,v);form.set('image',new Blob([image],{type:'image/png'}),'cover.png');return fetch(base+path+'/cover',{method:'POST',headers:{cookie},body:form,redirect:'manual'});};
+ assert.equal((await upload('wrong')).status,403);assert.equal(await svc.tourCovers.get(owner,tour.id),null);
+ assert.equal((await upload()).status,302);const response=await fetch(base+path+'/cover',{headers:{cookie}});assert.equal(response.status,200);assert.equal(response.headers.get('content-type'),'image/webp');assert.equal(response.headers.get('cache-control'),'private, no-store');assert.ok((await response.arrayBuffer()).byteLength);
+ const html=await(await fetch(base+path,{headers:{cookie}})).text();assert.match(html,/class="tour-cover-image"/);assert.ok(html.indexOf('tour-cover-image')<html.indexOf('Open self-paced tour'));assert.match(html,/Link to this tour/);assert.ok(html.includes(`${path}?guildId=g`));
+ const player=await(await fetch(base+path+'/play',{headers:{cookie}})).text();assert.match(player,/class="tour-cover-image"/);
+ const list=await(await fetch(base+'/app/tours',{headers:{cookie}})).text();assert.ok(list.includes(`src="${path}/cover"`));assert.equal((await upload()).status,302);
+ const member=`addressbook_session=${createSession({id:'u',guilds:[{id:'g'}]},Date.now(),'s')}`;assert.equal((await fetch(base+path+'/cover',{headers:{cookie:member}})).status,200);
+ assert.equal((await fetch(base+path+'/cover',{method:'POST',headers:{cookie:member},body:new URLSearchParams({action:'remove'}),redirect:'manual'})).status,400);
+ const remove=await fetch(base+path+'/cover',{method:'POST',headers:{cookie},body:new URLSearchParams({csrf,contextGuildId:'g',contextEsoServer:'pc_na',action:'remove'}),redirect:'manual'});assert.equal(remove.status,302);assert.equal((await fetch(base+path+'/cover',{headers:{cookie}})).status,404);assert.ok(!(await(await fetch(base+'/app/tours',{headers:{cookie}})).text()).includes(`src="${path}/cover"`));
+ await upload();await db.query("UPDATE tours SET visibility='private',guild_id=NULL WHERE id=?",[tour.id]);assert.equal((await fetch(base+path+'/cover',{headers:{cookie:member}})).status,404);
+});
+
+test('direct tour links retain their destination through login and server selection',async t=>{
+ const {db,svc}=await fixture();await db.query("INSERT INTO guild_settings(guild_id,eso_server) VALUES('other','pc_na')");
+ const server=createWebAdminServer({service:new WebAdminService(db),workspace:svc,config:{sessionSecret:'s',oauth:{clientId:'123',clientSecret:'test',redirectUri:'https://example.test/auth/callback'}},fetchImpl:async()=>({ok:true,json:async()=>({access_token:'test'})}),resolveOAuthIdentity:async()=>({id:'1',guilds:[{id:'g'},{id:'other'}]}),resolveGuildMembership:async({guildId})=>({id:guildId,name:guildId,roleIds:[],esoServer:'pc_na'})});await new Promise(r=>server.listen(0,'127.0.0.1',r));t.after(async()=>{await new Promise(r=>server.close(r));await closeDatabase(db);});
+ const base=`http://127.0.0.1:${server.address().port}`,path='/app/tours/42?guildId=g',response=await fetch(base+path,{redirect:'manual'});assert.equal(response.status,302);assert.equal(new URL(response.headers.get('location'),base).searchParams.get('returnTo'),path);
+ const login=await fetch(base+response.headers.get('location'),{redirect:'manual'}),state=new URL(login.headers.get('location')).searchParams.get('state');const callback=await fetch(base+'/auth/callback?'+new URLSearchParams({state,code:'test'}),{redirect:'manual'});assert.equal(callback.headers.get('location'),path);const signedCookie=callback.headers.get('set-cookie').split(';')[0],selection=await fetch(base+path,{headers:{cookie:signedCookie},redirect:'manual'});assert.equal(selection.headers.get('location'),'/app/tours/42');assert.equal(readSession(selection.headers.get('set-cookie').split(';')[0].split('=')[1],Date.now(),'s').selectedGuildId,'g');assert.equal((await fetch(base+'/app/tours/42?guildId=forbidden',{headers:{cookie:signedCookie},redirect:'manual'})).status,403);
+ const cookie=`addressbook_session=${createSession({id:'1',guilds:[{id:'g'},{id:'other'}]},Date.now(),'s')}`;
+ const html=await(await fetch(base+'/app/tours/42',{headers:{cookie}})).text();assert.ok(html.includes('/app/tours/42?guildId=g'));assert.ok(html.includes('/app/tours/42?guildId=other'));
+ assert.equal(tourWebPath({id:42,visibility:'public',guild_id:'g'}),path);assert.equal(tourWebUrl({id:42,visibility:'global'},'https://hearthbound.example/'),'https://hearthbound.example/app/tours/42');
+});
+
+test('tour links recover the matching environment instead of using a previously selected different guild',async t=>{
+ const {db,svc,c}=await fixture();await db.query("INSERT INTO guild_settings(guild_id,eso_server) VALUES('eu','pc_eu')");
+ const tour=await svc.saveTourDraft(c,{details:{name:'NA tour',visibility:'global'},stopIds:[]});
+ const server=createWebAdminServer({service:new WebAdminService(db),workspace:svc,config:{sessionSecret:'s'},resolveGuildMembership:async({guildId})=>({id:guildId,name:guildId,roleIds:[],esoServer:guildId==='eu'?'pc_eu':'pc_na'})});await new Promise(r=>server.listen(0,'127.0.0.1',r));t.after(async()=>{await new Promise(r=>server.close(r));await closeDatabase(db);});
+ const base=`http://127.0.0.1:${server.address().port}`,cookie=`addressbook_session=${createSession({id:'u',selectedGuildId:'eu',guilds:[{id:'g'},{id:'eu'}]},Date.now(),'s')}`;
+ const path=tourWebPath({...tour,eso_server:'pc_na'});assert.ok(path.includes('esoServer=pc_na'));
+ const response=await fetch(base+path,{headers:{cookie},redirect:'manual'});assert.equal(response.status,302);const nextCookie=response.headers.get('set-cookie').split(';')[0];assert.equal(readSession(nextCookie.split('=')[1],Date.now(),'s').selectedGuildId,'g');assert.match(await(await fetch(base+response.headers.get('location'),{headers:{cookie:nextCookie}})).text(),/NA tour/);
+ assert.equal((await fetch(base+path+'&guildId=eu',{headers:{cookie},redirect:'manual'})).status,403,'explicit guild cannot bypass the environment');
+});

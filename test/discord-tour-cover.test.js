@@ -1,0 +1,34 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtemp,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import sharp from 'sharp';
+import {fixture} from './workspace-fixture.js';
+import {closeDatabase} from '../src/db/database.js';
+import {TourCoverService} from '../src/services/tour-cover-service.js';
+import {createHousingMenu} from '../src/ui/housing-menu.js';
+import {unifiedMessagePayload} from '../src/ui/message-layout.js';
+import {withTourCover} from '../src/ui/tour-cover.js';
+import {attachmentSafeInteraction} from '../src/ui/message-attachments.js';
+
+test('Discord tour information and self-paced start show a cover, with no placeholder for plain tours',async t=>{
+ const {db,svc,c}=await fixture(),directory=await mkdtemp(join(tmpdir(),'hearthbound-discord-tour-'));
+ t.after(async()=>{await closeDatabase(db);await rm(directory,{recursive:true,force:true});});
+ const covers=new TourCoverService(svc,{directory}),owner=await svc.fresh({...c,userId:'1'});
+ const house=await svc.registerHouse(owner,{houseId:1,esoOwner:'Builder',visibility:'public'});
+ const tour=await svc.saveTourDraft(owner,{details:{name:'Halloween route',visibility:'public'},stopIds:[house.id]});
+ const plain=await svc.saveTourDraft(owner,{details:{name:'Plain route',visibility:'public'},stopIds:[house.id]});
+ await covers.save(owner,tour.id,await sharp({create:{width:80,height:50,channels:3,background:'#b75'}}).png().toBuffer());
+ const menu=createHousingMenu(db,{tourCovers:covers});let payload;
+ const i={guildId:'g',guild:{name:'Guild'},channelId:'c',user:{id:'1'},member:{roles:[]},update:async p=>payload=p,reply:async p=>payload=p,followUp:async p=>payload=p};
+ await menu.button({...i,customId:`hu:tour:view:${tour.id}`});
+ assert.equal(payload.files?.[0]?.name,'tour-cover.webp');
+ const card=unifiedMessagePayload(payload);assert.equal(card.components[0].components[0].type,12);assert.equal(card.components[0].components[0].items[0].media.url,'attachment://tour-cover.webp');
+ await menu.button({...i,customId:`hu:tour:startprivate:${tour.id}`});assert.equal(payload.files?.[0]?.name,'tour-cover.webp');assert.ok(Buffer.isBuffer(payload.files[0].attachment));
+ await menu.button({...i,customId:`hu:tour:startpublic:${tour.id}`});assert.equal(payload.files?.[0]?.name,'tour-cover.webp');
+ await menu.button(attachmentSafeInteraction({...i,customId:`hu:tour:view:${plain.id}`}));assert.ok(!payload.files?.length);assert.deepEqual(payload.attachments,[]);assert.ok(!JSON.stringify(payload).includes('attachment://tour-cover.webp'));
+ await menu.button({...i,appPermissions:{has:()=>false},customId:`hu:tour:view:${tour.id}`});assert.ok(!payload.files?.length);
+ const privateTour=await svc.saveTourDraft(c,{details:{name:'Secret route',visibility:'private'},stopIds:[]});await covers.save(c,privateTour.id,await sharp({create:{width:20,height:20,channels:3,background:'#a74'}}).png().toBuffer());
+ const clean={embeds:[],components:[]};assert.equal(await withTourCover(covers,owner,i,privateTour,clean),clean,'bot owner cannot read another creator’s Private image');
+});

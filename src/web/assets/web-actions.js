@@ -1,4 +1,5 @@
 document.querySelectorAll('pre code').forEach(code => {
+  if(code.parentElement.hasAttribute('data-absolute-url'))code.textContent=new URL(code.textContent,location.origin).href;
   const button=document.createElement('button');button.type='button';button.textContent='Copy';button.className='copy-code';
   button.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(code.textContent);button.textContent='Copied';}catch{const selection=window.getSelection(),range=document.createRange();range.selectNodeContents(code);selection.removeAllRanges();selection.addRange(range);button.textContent='Text selected — copy now';}});
   code.parentElement.before(button);

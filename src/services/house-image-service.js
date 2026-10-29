@@ -10,6 +10,13 @@ const animatedPng=input=>{
  if(input.length<8||!input.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))return false;
  for(let offset=8;offset+12<=input.length;){const length=input.readUInt32BE(offset);if(length>input.length-offset-12)break;if(input.toString('ascii',offset+4,offset+8)==='acTL')return true;offset+=length+12;}return false;
 };
+export async function normalizeUploadedImage(input){
+  if(!Buffer.isBuffer(input)||input.length>HOUSE_IMAGE_BYTES)throw new Error('Choose an image no larger than 5 MB.');
+  let bytes;
+  try{if(animatedPng(input))throw new Error();const source=sharp(input,{limitInputPixels:40000000,failOn:'warning'}),meta=await source.metadata();if(!['png','jpeg','webp'].includes(meta.format)||Number(meta.pages||1)>1)throw new Error();bytes=await source.rotate().resize({width:1920,height:1920,fit:'inside',withoutEnlargement:true}).webp({quality:85}).toBuffer();}
+  catch{throw new Error('Choose a valid, still PNG, JPEG or WebP screenshot (up to 40 megapixels).');}
+  return bytes;
+}
 export class HouseImageService{
  constructor(workspace,{directory=process.env.HOUSE_IMAGE_DIR||'./data/house-images'}={}){this.w=workspace;this.db=workspace.db;this.directory=resolve(directory);}
  async access(context,houseId,edit=false,conn=this.db){
@@ -21,10 +28,7 @@ export class HouseImageService{
  async list(context,houseId){await this.access(context,houseId);return this.db.query('SELECT id,saved_house_id,caption,position,created_by,created_at FROM house_images WHERE saved_house_id=? ORDER BY position,id',[Number(houseId)]);}
  async add(context,houseId,input,caption=''){
   await this.access(context,houseId,true);
-  if(!Buffer.isBuffer(input)||input.length>HOUSE_IMAGE_BYTES)throw new Error('Choose an image no larger than 5 MB.');
-  let bytes;
-  try{if(animatedPng(input))throw new Error();const source=sharp(input,{limitInputPixels:40000000,failOn:'warning'}),meta=await source.metadata();if(!['png','jpeg','webp'].includes(meta.format)||Number(meta.pages||1)>1)throw new Error();bytes=await source.rotate().resize({width:1920,height:1920,fit:'inside',withoutEnlargement:true}).webp({quality:85}).toBuffer();}
-  catch{throw new Error('Choose a valid, still PNG, JPEG or WebP screenshot (up to 40 megapixels).');}
+  const bytes=await normalizeUploadedImage(input);
   caption=String(caption||'').trim();if(caption.length>250)throw new Error('Keep the caption to 250 characters.');
   const key=randomUUID()+'.webp';let written=false;
   try{return await withTransaction(this.db,async conn=>{
