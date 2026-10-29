@@ -18,3 +18,5 @@ test('official details group capacities and prices, format numbers and escape ca
  const empty=houseTourSection({id:1,status:'active',scope:'private'},[],'csrf');assert.match(empty,/Add to existing tour/);assert.match(empty,/Only your own Private tours/);assert.match(empty,/No eligible existing tours/);assert.doesNotMatch(empty,/<select/);
  const choices=houseTourSection({id:1,status:'active',scope:'global'},[{id:2,name:'Route',visibility:'global'}],'csrf');assert.match(choices,/add-to-tour/);assert.match(choices,/name="tourId"/);assert.match(choices,/Add house to tour/);
 });
+
+import './search-discovery-polish.test.js';

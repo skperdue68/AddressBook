@@ -62,3 +62,5 @@ document.querySelectorAll('[data-feedback-id]').forEach(card=>{
   if(form.dataset.feedbackAction==='status')select.addEventListener('change',save);
  });
 });
+
+document.querySelectorAll('[data-search-controls] select').forEach(select=>select.addEventListener('change',()=>select.form.requestSubmit()));
