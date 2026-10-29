@@ -27,13 +27,13 @@ function assertHouseBelongsToTour(tour,house){
 export class TourService{
   constructor(db){this.db=db;}
   async create({creatorId,guildId=null,originGuildId=null,esoServer,scope='personal',visibility,houseSource,sourceGuildId=null,name,description=null,tags=[]}){
-    const server=requireEsoServer(esoServer);const vis=visibility||visibilityFromLegacy(scope);validateVisibility(vis);const source=sourceForVisibility(vis);validateSource(source);if(vis==='public'&&!guildId)throw new Error('Server tours require a Discord server.');
+    const server=requireEsoServer(esoServer);const vis=visibility||visibilityFromLegacy(scope);validateVisibility(vis);const source=vis==='private'&&!guildId&&!sourceGuildId?'private_global':sourceForVisibility(vis);validateSource(source);if(vis==='public'&&!guildId)throw new Error('Server tours require a Discord server.');
     const srcGuild=sourceUsesPublic(source)?(sourceGuildId||guildId||null):null;if(sourceUsesPublic(source)&&!srcGuild)throw new Error('Public house sources require a Discord server.');
     const cleanName=boundedRequired(name,TOUR_NAME_MAX,'Tour name'),cleanDescription=boundedOptional(description,TOUR_DESCRIPTION_MAX,'Tour description');
     const origin=originGuildId||guildId||sourceGuildId||null;const r=await this.db.query('INSERT INTO tours(eso_server,visibility,guild_id,origin_guild_id,source_guild_id,creator_id,name,description,tags,house_source) VALUES(?,?,?,?,?,?,?,?,?,?)',[server,vis,vis==='public'?guildId:null,origin,srcGuild,creatorId,cleanName,cleanDescription,JSON.stringify(tags||[]),source]);return this.get(r.insertId);
   }
   async createInConnection(conn,{visibility='private',creatorId,guildId=null,originGuildId=null,sourceGuildId=null,esoServer,name,description=null,tags=[]}){
-    const server=requireEsoServer(esoServer);validateVisibility(visibility);const source=sourceForVisibility(visibility);validateSource(source);
+    const server=requireEsoServer(esoServer);validateVisibility(visibility);const source=visibility==='private'&&!guildId&&!sourceGuildId?'private_global':sourceForVisibility(visibility);validateSource(source);
     if(visibility==='public'&&!guildId)throw new Error('Server tours require a Discord server.');
     const srcGuild=sourceUsesPublic(source)?(sourceGuildId||guildId||null):null;
     if(sourceUsesPublic(source)&&!srcGuild)throw new Error('Server house visibility requires a Discord server.');

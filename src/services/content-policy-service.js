@@ -4,8 +4,15 @@ import {one} from '../db/database.js';
 import {requireEsoServer} from '../utils/eso-server.js';
 export class ContentPolicyService {
  constructor(db,env=process.env){this.db=db;this.server=new ServerModeratorService(db,env);this.global=new GlobalModeratorService(db,env);}
- async context({userId,guildId,esoServer,memberRoleIds=[],guildName=null,setupAuthority=false}){
-  const server=requireEsoServer(esoServer);if(!userId||!guildId)throw new Error('A signed-in member and server are required.');
+ async context({userId,guildId,esoServer,memberRoleIds=[],guildName=null,setupAuthority=false,personalWorkspace=false}){
+  const server=requireEsoServer(esoServer);
+  if(personalWorkspace===true&&!guildId){
+   if(!userId)throw new Error('A signed-in account is required.');
+   const isOwner=this.server.isOwner(userId),isGlobalAdmin=await this.global.isGlobalModerator(userId,server),roles=[];
+   if(isOwner)roles.push({kind:'owner',label:'Bot Owner'});if(isGlobalAdmin)roles.push({kind:'global',label:'Global Administrator',esoServer:server});if(!roles.length)roles.push({kind:'member',label:'Member'});
+   return {userId:String(userId),guildId:'',guildName:'Personal web workspace',esoServer:server,memberRoleIds:[],personalWorkspace:true,isOwner,isGlobalAdmin,isServerAdmin:false,bootstrap:false,adminSetupRequired:false,canClaimFirstAdmin:false,roles,settings:{registration_policy:'open',registration_role_ids:'[]',staff_role_ids:'[]',tour_role_ids:'[]',eso_server:server}};
+  }
+  if(!userId||!guildId)throw new Error('A signed-in member and server are required.');
   const settings=await one(this.db,'SELECT * FROM guild_settings WHERE guild_id=?',[String(guildId)]);
   if(!settings||settings.eso_server!==server)throw new Error('This server environment is unavailable.');
   const isOwner=this.server.isOwner(userId),access=await this.server.access({guildId,userId,roleIds:memberRoleIds.map(String),setupAuthority}),isGlobalAdmin=await this.global.isGlobalModerator(userId,server),isServerAdmin=access.isModerator;
