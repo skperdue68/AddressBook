@@ -1,7 +1,8 @@
+import {houseCapacityText} from '../utils/house-capacity.js';
 import {EmbedBuilder,ActionRowBuilder,StringSelectMenuBuilder} from 'discord.js';
 import {buttonRows} from './housing-ui.js';
 import {destinationLabel} from '../utils/labels.js';
-const routeLabel=(house,budget)=>{const owner=String(house.eso_owner||'Unknown owner').replace(/^@+/,'').slice(0,60),suffix=` — @${owner}`;return `${destinationLabel(house).slice(0,Math.max(1,budget-suffix.length))}${suffix}`;};
+const routeLabel=(house,budget)=>{const owner=String(house.eso_owner||'Unknown owner').replace(/^@+/,'').slice(0,60),suffix=`${houseCapacityText(house)?' • '+houseCapacityText(house):''} — @${owner}`;return `${destinationLabel(house).slice(0,Math.max(1,budget-suffix.length))}${suffix}`;};
 export function tourSelectionReviewPayload({token,rows,page=0,selectedPosition=0,backId}){
  const pages=Math.max(1,Math.ceil(rows.length/25)),current=Math.max(0,Math.min(pages-1,Number(page)||0)),start=current*25,slice=rows.slice(start,start+25);
  const components=[];

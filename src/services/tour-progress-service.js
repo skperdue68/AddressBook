@@ -138,7 +138,7 @@ export class TourProgressService {
     if (guildId != null || esoServer != null) await this.#tour(progress.tour_id, { userId, guildId, esoServer });
     const ready = await this.readiness.check(progress.tour_id, { viewerId: userId, guildId, esoServer: esoServer || progress.eso_server, passId: progress.share_pass_id });
     const eligible = new Set(ready.eligibleStops.map(stop => Number(stop.id)));
-    const rows = await this.db.query(`SELECT ps.completed_at,ts.id stop_id,ts.position,sh.id saved_house_id,COALESCE(h.name,sh.display_name) house_name,sh.display_name nickname,sh.eso_owner
+    const rows = await this.db.query(`SELECT ps.completed_at,ts.id stop_id,ts.position,sh.id saved_house_id,COALESCE(h.name,sh.display_name) house_name,sh.display_name nickname,sh.eso_owner,h.population_limit,h.population_limit_plus
       FROM tour_progress_stops ps JOIN tour_stops ts ON ts.id=ps.stop_id
       LEFT JOIN saved_houses sh ON sh.id=ts.saved_house_id LEFT JOIN houses h ON h.house_id=sh.house_id
       WHERE ps.progress_id=? ORDER BY ts.position,ts.id`, [Number(progressId)]);

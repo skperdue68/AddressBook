@@ -1,3 +1,4 @@
+import {houseCapacityBadge} from './house-capacity.js';
 import {escape} from './render.js';
 import {linkButton,scopeLabel} from './workspace-render.js';
 
@@ -14,7 +15,7 @@ export async function featuredRoute({workspace:w,context:c,render}){
     if(h.status!=='active'||!shared(h,c,h.scope))continue;
     const images=await w.images?.list(c,h.id)||[];
     const metadata=[h.zone,h.subzone,h.style].filter(Boolean);
-    cards.push(`<article class="panel featured-card"><div class="eyebrow">FEATURED HOUSE · ${escape(scopeLabel(h.scope))}</div>${images[0]?`<a href="/app/houses/${h.id}#screenshots"><img class="house-cover" src="/app/houses/${h.id}/images/${images[0].id}" alt="${escape(images[0].caption||h.display_name||h.house_name)}" loading="lazy"></a>`:''}<h2>${escape(h.display_name||h.house_name)}</h2><p><strong>ESO owner:</strong> ${escape(h.eso_owner)}${h.house_name?` · ${escape(h.house_name)}`:''}</p>${metadata.length?`<p class="note">${metadata.map(escape).join(' · ')}</p>`:''}${paragraphs(h.description)}${tags(h.tags).length?`<p>${tags(h.tags).map(tag=>`<span class="pill">${escape(tag)}</span>`).join(' ')}</p>`:''}<div class="actions">${linkButton('View house',`/app/houses/${Number(h.id)}`,'primary')}${linkButton('Add to tour',`/app/houses/${Number(h.id)}#add-to-tour`)}</div></article>`);
+    cards.push(`<article class="panel featured-card"><div class="eyebrow">FEATURED HOUSE · ${escape(scopeLabel(h.scope))}</div>${images[0]?`<a href="/app/houses/${h.id}#screenshots"><img class="house-cover" src="/app/houses/${h.id}/images/${images[0].id}" alt="${escape(images[0].caption||h.display_name||h.house_name)}" loading="lazy"></a>`:''}<h2>${escape(h.display_name||h.house_name)} ${houseCapacityBadge(h)}</h2><p><strong>ESO owner:</strong> ${escape(h.eso_owner)}${h.house_name?` · ${escape(h.house_name)}`:''}</p>${metadata.length?`<p class="note">${metadata.map(escape).join(' · ')}</p>`:''}${paragraphs(h.description)}${tags(h.tags).length?`<p>${tags(h.tags).map(tag=>`<span class="pill">${escape(tag)}</span>`).join(' ')}</p>`:''}<div class="actions">${linkButton('View house',`/app/houses/${Number(h.id)}`,'primary')}${linkButton('Add to tour',`/app/houses/${Number(h.id)}#add-to-tour`)}</div></article>`);
    }else if(item.target_kind==='tour'){
     const draft=await w.getTourDraft(c,item.target_id),t=draft.tour;
     if(!draft.canView||!shared(t,c,t.visibility))continue;

@@ -1,3 +1,4 @@
+import {houseCapacityBadge} from './house-capacity.js';
 import {houseListThumbnail} from './house-thumbnail.js';
 import {adminOverview} from './admin-overview.js';
 import {pagination} from './pagination.js';
@@ -274,7 +275,7 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
         const visibility = row.scope === 'global' ? 'Global' : 'Server';
         const submitter = row.created_by_display_name || row.created_by_global_name || row.created_by || 'Unknown';
         const form = action => `<form method="post" action="/admin/pending/${id}/${action}" onsubmit="return confirm('Confirm ${action === 'approve' ? 'approval' : 'rejection'} of this house?')"><input type="hidden" name="csrf" value="${escape(session.csrf)}"><input type="hidden" name="confirm" value="${action}"><input type="hidden" name="page" value="${currentPage}"><button class="${action === 'approve' ? 'approve' : 'deny'}" type="submit">${action === 'approve' ? 'Approve' : 'Reject'}</button></form>`;
-        return `<tr><td><div class="house-result-identity"><span>${escape(label)}</span>${houseListThumbnail(row)}</div></td><td>${escape(row.eso_owner || '')}</td><td>${visibility}</td><td>${escape(submitter)}</td><td>${escape(row.created_at || '')}</td><td><div class="actions table-actions">${form('approve')}${form('deny')}</div></td></tr>`;
+        return `<tr><td><div class="house-result-identity"><span>${escape(label)} ${houseCapacityBadge(row)}</span>${houseListThumbnail(row)}</div></td><td>${escape(row.eso_owner || '')}</td><td>${visibility}</td><td>${escape(submitter)}</td><td>${escape(row.created_at || '')}</td><td><div class="actions table-actions">${form('approve')}${form('deny')}</div></td></tr>`;
       }).join('')}</tbody></table>` : `${notice}<p>No pending submissions.</p>`;
       const navigation = `<p>Page ${currentPage}</p><p>${currentPage > 1 ? `<a href="/admin/pending?page=${currentPage - 1}">⬅️ Previous</a>` : ''}${requested.length > 25 ? `${currentPage > 1 ? ' · ' : ''}<a href="/admin/pending?page=${currentPage + 1}">➡️ Next</a>` : ''}</p>`;
       return send(response, 200, page('Pending Review', body + navigation, session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }));

@@ -1,3 +1,4 @@
+import {houseCapacityText} from '../utils/house-capacity.js';
 import {unifiedCard} from './message-layout.js';
 import {portalPublicUrl} from '../web/portal-url.js';
 import {registrationTourActions} from './registration-tour-ui.js';
@@ -648,7 +649,7 @@ export function tourDetailPayload(tour,stops,canEdit=false,navigation=null,featu
     {name:'Stops',value:String(stops.length),inline:true},
     {name:'Tour Visibility',value:visibility,inline:true}
   );
-  if(stops.length)e.addFields({name:'Route',value:stops.map(s=>`${s.position}. **${destinationLabel(s)}** — @${String(s.eso_owner).replace(/^@/,'')}`).join('\n').slice(0,1024)});
+  if(stops.length)e.addFields({name:'Route',value:stops.map(s=>`${s.position}. **${destinationLabel(s)}**${houseCapacityText(s)?' '+houseCapacityText(s):''} — @${String(s.eso_owner).replace(/^@/,'')}`).join('\n').slice(0,1024)});
   let specs=tourDetailButtonSpecs(canEdit).map(spec=>({...spec,customId:spec.customId==='hu:tour:start'?`hu:tour:start:${tour.id}${navigation?`:${navigation.stateId}:${navigation.index}`:featuredSource?`:featured:${featuredSource}`:''}`:spec.customId==='hu:tour:manage'?`hu:tour:manage:${tour.id}`:spec.customId==='hu:tour:add'?`hu:tour:add:${tour.id}`:featuredSource&&spec.customId==='hu:tours'?(featuredSource==='admin'?'hu:admin:featured':featuredSource==='home'?'hu:featured':'hu:tours:featured'):spec.customId,label:featuredSource&&spec.customId==='hu:tours'?'Back to Featured':spec.label}));
   specs.splice(1,0,{customId:`hu:pass:tour:share:${tour.id}`,label:'Share Tour Pass',style:'success'});
   specs.splice(2,0,{customId:`hu:report:tourid:${tour.id}`,label:'Report a Problem',style:'secondary'});
@@ -663,7 +664,7 @@ export function tourDetailPayload(tour,stops,canEdit=false,navigation=null,featu
   return {embeds:[e],components:buttonRows(specs)};
 }
 export function tourManagePayload(tour,stops){
-  const lines=stops.map(s=>`${s.position}. **${destinationLabel(s)}** — @${String(s.eso_owner||'').replace(/^@/,'')}`);
+  const lines=stops.map(s=>`${s.position}. **${destinationLabel(s)}**${houseCapacityText(s)?' '+houseCapacityText(s):''} — @${String(s.eso_owner||'').replace(/^@/,'')}`);
   const kept=[]; let used=0;
   for(const line of lines){
     const next=used+line.length+(kept.length?1:0);
@@ -735,7 +736,7 @@ export function tourEditVisibilityPayload(tour){ return {embeds:[embed(`Tour Vis
 ])}; }
 export function tourEditModal(tour){ return new ModalBuilder().setCustomId(`hu:modal:tour:edit:${tour.id}`).setTitle('Edit Tour Details').addComponents(textField('name','Tour name',{value:tour.name,required:true,maxLength:200}),textField('description','Description',{value:tour.description||'',paragraph:true,maxLength:2000})); }
 export function stopEditModal(tourId,stop){ const defaultTitle=stop.custom_title||stop.registration_nickname||stop.house_name||stop.title||''; return new ModalBuilder().setCustomId(`hu:modal:stop:edit:${tourId}:${stop.id}`).setTitle(`Edit Stop ${stop.position}`).addComponents(textField('title','Tour-specific stop title',{value:defaultTitle,maxLength:180}),textField('description','Tour notes / description',{value:stop.notes||'',paragraph:true,maxLength:1000})); }
-export function reorderPayload(tour,stop,total){ return {embeds:[embed(`↕️ Reorder — ${tour.name}`,`Selected stop **${stop.position} of ${total}**: ${destinationLabel(stop)}\n\nMove it with the buttons below.`)],components:buttonRows([{customId:`hu:reorder:up:${tour.id}:${stop.id}`,label:'Move Up',style:'secondary',disabled:stop.position<=1},{customId:`hu:reorder:down:${tour.id}:${stop.id}`,label:'Move Down',style:'secondary',disabled:stop.position>=total},{customId:`hu:reorder:first:${tour.id}:${stop.id}`,label:'Move to Beginning',style:'primary',disabled:stop.position<=1},{customId:`hu:reorder:last:${tour.id}:${stop.id}`,label:'Move to End',style:'primary',disabled:stop.position>=total},{customId:`hu:tour:manage:${tour.id}`,label:'Done',style:'success'}])}; }
+export function reorderPayload(tour,stop,total){ return {embeds:[embed(`↕️ Reorder — ${tour.name}`,`Selected stop **${stop.position} of ${total}**: ${destinationLabel(stop)} ${houseCapacityText(stop)}\n\nMove it with the buttons below.`)],components:buttonRows([{customId:`hu:reorder:up:${tour.id}:${stop.id}`,label:'Move Up',style:'secondary',disabled:stop.position<=1},{customId:`hu:reorder:down:${tour.id}:${stop.id}`,label:'Move Down',style:'secondary',disabled:stop.position>=total},{customId:`hu:reorder:first:${tour.id}:${stop.id}`,label:'Move to Beginning',style:'primary',disabled:stop.position<=1},{customId:`hu:reorder:last:${tour.id}:${stop.id}`,label:'Move to End',style:'primary',disabled:stop.position>=total},{customId:`hu:tour:manage:${tour.id}`,label:'Done',style:'success'}])}; }
 
 export function adminPayload(settings,{adminInterface=adminInterfaceMode(),isOwner=false}={}){
   const roles=ids=>ids.length?ids.map(id=>`<@&${id}>`).join(', '):'Not configured';
