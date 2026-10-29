@@ -35,7 +35,7 @@ export class AccessContextService{
     if(!house.eso_server||house.eso_server!==server)return this.#denied(house,server);
     const normalAccess=houseNormalAccess(house,{userId,guildId});
     const pass=passId==null?null:await one(conn,"SELECT * FROM house_share_passes WHERE id=? AND status='active'",[Number(passId)]);
-    const passAccess=!!house&&!!pass&&same(pass.saved_house_id,house.id);
+    const passAccess=house?.status==='active'&&!!pass&&same(pass.saved_house_id,house.id);
     const passOnly=passAccess&&!normalAccess;
     const owner=house?.scope==='private'&&same(house.owner_user_id,userId);
     return {

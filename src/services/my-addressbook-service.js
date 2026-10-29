@@ -14,7 +14,7 @@ export class MyAddressBookService{
   async summary(userId,guildId=null,esoServer){
     const id=String(userId),gid=String(guildId||''),server=requireEsoServer(esoServer);
     const [houses,tours,pendingHouses,pendingAccess,recent,personal,savedSearches]=await Promise.all([
-      one(this.db,"SELECT COUNT(*) c FROM saved_houses WHERE eso_server=? AND (owner_user_id=? OR created_by=?) AND status<>'archived'",[server,id,id]),
+      one(this.db,"SELECT COUNT(*) c FROM saved_houses WHERE eso_server=? AND (owner_user_id=? OR created_by=?) AND status='active'",[server,id,id]),
       one(this.db,'SELECT COUNT(*) c FROM tours WHERE eso_server=? AND creator_id=?',[server,id]),
       one(this.db,"SELECT COUNT(*) c FROM saved_houses WHERE eso_server=? AND created_by=? AND status='pending'",[server,id]),
       one(this.db,"SELECT COUNT(*) c FROM global_moderator_requests WHERE eso_server=? AND discord_user_id=? AND status='pending'",[server,id]),
@@ -23,18 +23,18 @@ export class MyAddressBookService{
       this.personalStates.counts({userId:id,guildId:gid,esoServer:server}),
       one(this.db,'SELECT COUNT(*) c FROM saved_house_searches WHERE discord_user_id=?',[id])
     ]);
-    return {houses:Number(houses.c),tours:Number(tours.c),pending:Number(pendingHouses.c)+Number(pendingAccess.c)+Number((await one(this.db,"SELECT COUNT(*) c FROM server_moderator_requests WHERE guild_id=? AND discord_user_id=? AND status='pending'",[gid,id])).c),recent:Number(recent.c),...personal,savedSearches:Number(savedSearches.c)};
+    return {houses:Number(houses.c),tours:Number(tours.c),pending:Number(pendingAccess.c)+Number((await one(this.db,"SELECT COUNT(*) c FROM server_moderator_requests WHERE guild_id=? AND discord_user_id=? AND status='pending'",[gid,id])).c),recent:Number(recent.c),...personal,savedSearches:Number(savedSearches.c)};
   }
   async houses(userId,esoServer){
     const id=String(userId),server=requireEsoServer(esoServer);
     return withCatalogHouseNames(await this.db.query(`SELECT s.*,${META} FROM saved_houses s JOIN houses h ON h.house_id=s.house_id
-      WHERE s.eso_server=? AND (s.owner_user_id=? OR s.created_by=?) AND s.status<>'archived'
+      WHERE s.eso_server=? AND (s.owner_user_id=? OR s.created_by=?) AND s.status='active'
       ORDER BY CASE s.scope WHEN 'global' THEN 1 WHEN 'public' THEN 2 ELSE 3 END,coalesce(s.display_name,h.name),s.id`,[server,id,id]));
   }
   tours(userId,esoServer){const server=requireEsoServer(esoServer);return this.db.query("SELECT *,CASE visibility WHEN 'private' THEN 'personal' WHEN 'public' THEN 'server' ELSE 'global' END scope FROM tours WHERE eso_server=? AND creator_id=? ORDER BY name",[server,String(userId)]);}
   async pending(userId,esoServer,guildId=null){
     const id=String(userId),server=requireEsoServer(esoServer);
-    const houses=withCatalogHouseNames(await this.db.query(`SELECT s.*,${META} FROM saved_houses s JOIN houses h ON h.house_id=s.house_id WHERE s.eso_server=? AND s.created_by=? AND s.status='pending' ORDER BY s.created_at DESC`,[server,id]));
+    const houses=[]; // House submissions are visible only in authorized approval queues.
     const requests=await this.db.query("SELECT * FROM global_moderator_requests WHERE eso_server=? AND discord_user_id=? AND status='pending' ORDER BY requested_at DESC",[server,id]);
     const serverRequests=guildId?await this.db.query("SELECT * FROM server_moderator_requests WHERE guild_id=? AND discord_user_id=? AND status='pending' ORDER BY requested_at DESC",[String(guildId),id]):[];
     return {houses,requests,serverRequests};

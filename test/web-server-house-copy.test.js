@@ -35,6 +35,7 @@ test('HTTP copy previews departed submitter replacement and records destination 
  const {db,svc,c}=await fixture();
  await db.query("INSERT INTO guild_settings(guild_id,eso_server,staff_role_ids) VALUES('g2','pc_na','[\"staff\"]')");
  const house=await svc.registerHouse(c,{houseId:1,esoOwner:'@Departed',visibility:'public'});
+ await db.query("UPDATE saved_houses SET status='active' WHERE id=?",[house.id]);
  const server=createWebAdminServer({service:new WebAdminService(db),workspace:svc,config:{sessionSecret:'s'},resolveGuildMembership:async({userId,guildId})=>userId===c.userId&&guildId==='g2'?null:{id:guildId,name:guildId,roleIds:[],esoServer:'pc_na',member:{id:userId,username:'Owner',globalName:'Owner Name',displayName:'Destination Owner'}}});
  await new Promise(r=>server.listen(0,'127.0.0.1',r));try{
   const token=createSession({id:'1',username:'Owner',selectedGuildId:'g',guilds:[{id:'g'},{id:'g2'}]},Date.now(),'s'),csrf=readSession(token,Date.now(),'s').csrf;

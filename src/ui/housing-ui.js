@@ -75,7 +75,7 @@ export function myAddressBookPayload({houses=0,tours=0,pending=0,recent=0,favori
     .addFields(
       {name:'🏠 My Houses',value:`**${Number(houses)}**`,inline:true},
       {name:'🗺️ My Tours',value:`**${Number(tours)}**`,inline:true},
-      {name:'⏳ Pending',value:`**${Number(pending)}**`,inline:true},
+      {name:'⏳ Access requests',value:`**${Number(pending)}**`,inline:true},
       {name:'🕘 Recently Viewed',value:`**${Number(recent)}**`,inline:true},
       {name:'⭐ Favorites',value:`**${Number(favorites)}**`,inline:true},
       {name:'🔎 Saved Searches',value:`**${Number(savedSearches)}**`,inline:true}
@@ -94,7 +94,7 @@ export function myAddressBookPayload({houses=0,tours=0,pending=0,recent=0,favori
     {customId:'hu:my:progress',label:'Tour Progress',style:'secondary',emoji:'🧭'},
     {customId:'hu:my:recent',label:'Recently Viewed',style:'secondary',emoji:'🕘'},
     {customId:'hu:my:searches',label:'Saved Searches',style:'secondary',emoji:'🔎'},
-    {customId:'hu:my:pending',label:'Pending',style:'secondary',emoji:'⏳'},
+    {customId:'hu:my:pending',label:'Access requests',style:'secondary',emoji:'⏳'},
     ...(legacyCount?[{customId:'hu:legacy:preview',label:`Assign to ${esoServerLabel(esoServer)}`,style:'success'}]:[]),
     {customId:backId,label:backId==='hu:home'?'Main Menu':'Back',style:'secondary',emoji:'↩️'}
   ],4)]};

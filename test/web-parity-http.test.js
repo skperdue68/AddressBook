@@ -36,7 +36,7 @@ test('web registration previews Housing Links and Jump Commands without writing 
 
 test('web tools hide unauthorized administration and mutations recheck ownership, CSRF and context',async()=>{
  const {db,svc,c}=await fixture();let roles=[];
- const own=await svc.registerHouse(c,{houseId:1,esoOwner:'@Owner'}),other=await svc.registerHouse({...c,userId:'someone'},{houseId:2,esoOwner:'@Other'});
+ const own=await svc.registerHouse(c,{houseId:1,esoOwner:'@Owner',visibility:'private'}),other=await svc.registerHouse({...c,userId:'someone'},{houseId:2,esoOwner:'@Other',visibility:'private'});
  const server=createWebAdminServer({service:new WebAdminService(db),workspace:svc,config:{sessionSecret:'s'},resolveGuildMembership:async()=>({id:'g',name:'Guild',roleIds:roles,esoServer:'pc_na'})});await new Promise(r=>server.listen(0,'127.0.0.1',r));
  const token=createSession({id:'u',username:'Member',guilds:[{id:'g',name:'Guild'}]},Date.now(),'s'),cookie=`addressbook_session=${token}`,csrf=readSession(token,Date.now(),'s').csrf,base=`http://127.0.0.1:${server.address().port}`;
  const get=path=>fetch(base+path,{headers:{cookie},redirect:'manual'}),post=(path,data)=>fetch(base+path,{method:'POST',headers:{cookie},body:new URLSearchParams({csrf,contextGuildId:'g',contextEsoServer:'pc_na',...data}),redirect:'manual'});

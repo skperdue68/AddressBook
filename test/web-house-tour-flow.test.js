@@ -40,7 +40,7 @@ test('advanced and saved searches retain their result route and offer tour short
  assert.ok(id,'saved search created');{const page=await(await f.get(`/app/searches/${id}/run`)).text();assert.match(page,/Add to tour/);assert.ok(page.includes(encodeURIComponent(`/app/searches/${id}/run`)));}
 });
 
-test('own pending house keeps an edit entry point and return context in its management section',async t=>{
+test('pending houses have no ordinary details or edit entry point, even for their submitter',async t=>{
  const f=await setup(t),pending=await f.svc.registerHouse(f.c,{houseId:2,esoOwner:'PendingBuilder',visibility:'public'}),origin='/app/personal/pending';assert.equal(pending.status,'pending');
- const page=await(await f.get(`/app/houses/${pending.id}?returnTo=${encodeURIComponent(origin)}`)).text();assert.match(page,/<summary>Manage house<\/summary>/);assert.ok(page.includes(`/app/houses/${pending.id}/edit?returnTo=`));assert.doesNotMatch(page,/id="add-to-tour"/);
+ const response=await f.get(`/app/houses/${pending.id}?returnTo=${encodeURIComponent(origin)}`);assert.equal(response.status,403);const page=await response.text();assert.doesNotMatch(page,/PendingBuilder|<summary>Manage house<\/summary>/);
 });

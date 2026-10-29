@@ -38,7 +38,7 @@ test('visibility HTTP preview and emitted confirmation work for creators and adm
    assert.equal(form.get('contextGuildId'),'g');assert.equal(form.get('contextEsoServer'),'pc_na');assert.ok(form.get('csrf'));
    const response=await fetch(base+path,{method:'POST',headers:{cookie:sessionCookie},body:form,redirect:'manual'});
    assert.equal(response.status,302,await response.text());
-   assert.equal(response.headers.get('location'),`/app/houses/${house.id}?saved=1`);
+   assert.equal(response.headers.get('location'),scenario.status==='pending'?'/app/register?submitted=1':`/app/houses/${house.id}?saved=1`);
    const changed=await svc.saved.get(house.id);assert.equal(changed.scope,scenario.target);assert.equal(changed.status,scenario.status);
    if(scenario.target==='private')assert.equal(changed.owner_user_id,creator.userId);
   }

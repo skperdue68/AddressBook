@@ -1,3 +1,4 @@
+import './pending-visibility.test.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {openDatabase,migrate,closeDatabase} from '../src/db/database.js';

@@ -43,6 +43,7 @@ test('copy attribution retains current submitters, falls back to the actor for d
    if(userId==='1')return actorPresent?{id:'1',username:'Actor',displayName:'Destination Actor'}:null;
    return originalPresent?{id:userId,username:'Original',displayName:'Original Member'}:null;
   }});
+  await assert.rejects(()=>service.preview(actor,h.id,target),/not available/);await db.query("UPDATE saved_houses SET status='active' WHERE id=?",[h.id]);
   const retained=await service.preview(actor,h.id,target);assert.equal(retained.attribution.submitterId,c.userId);
   originalPresent=false;await assert.rejects(()=>service.copy(actor,h.id,target,retained.version),/changed/);
   const reassigned=await service.preview(actor,h.id,target);assert.equal(reassigned.attribution.submitterId,'1');assert.equal(reassigned.attribution.reassigned,true);
