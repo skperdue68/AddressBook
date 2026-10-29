@@ -32,3 +32,17 @@ function animatedPng(png){
  const animation=Buffer.alloc(8);animation.writeUInt32BE(2);const parts=[png.subarray(0,8)],imageData=[];
  for(let offset=8;offset<png.length;){const length=png.readUInt32BE(offset),type=png.toString('ascii',offset+4,offset+8),raw=png.subarray(offset,offset+length+12);if(type==='IDAT')imageData.push(png.subarray(offset+8,offset+8+length));if(type==='IEND'){const sequence=Buffer.alloc(4);sequence.writeUInt32BE(2);parts.push(frame(1),chunk('fdAT',Buffer.concat([sequence,...imageData])));}parts.push(raw);if(type==='IHDR')parts.push(chunk('acTL',animation),frame(0));offset+=length+12;}return Buffer.concat(parts);
 }
+
+test('caption editing follows live house owner and Server/Global administration scope',async t=>{
+ const {db,svc,c}=await fixture(),dir=await mkdtemp(join(tmpdir(),'hearthbound-caption-policy-'));t.after(async()=>{await closeDatabase(db);await rm(dir,{recursive:true,force:true});});
+ const gallery=new HouseImageService(svc,{directory:dir}),owner=await svc.fresh({...c,userId:'1'}),server=await svc.fresh({...c,userId:'server',memberRoleIds:['staff']}),png=await sharp({create:{width:20,height:20,channels:3,background:'#345'}}).png().toBuffer();
+ await db.query("INSERT INTO global_moderators(discord_user_id,eso_server,approved_by) VALUES('global','pc_na','1')");const global=await svc.fresh({...c,userId:'global'});
+ const shared=await svc.registerHouse(owner,{houseId:1,esoOwner:'Builder',visibility:'public'}),globalHouse=await svc.registerHouse(owner,{houseId:2,esoOwner:'Builder',visibility:'global'}),privateHouse=await svc.registerHouse(c,{houseId:1,esoOwner:'Secret',visibility:'private'});
+ const a=await gallery.add(owner,shared.id,png),b=await gallery.add(owner,globalHouse.id,png),p=await gallery.add(c,privateHouse.id,png);
+ await gallery.updateCaption(server,shared.id,a.id,'Server allowed');await assert.rejects(()=>gallery.updateCaption(global,shared.id,a.id,'Wrong scope denied'),/editing/);await gallery.updateCaption(global,globalHouse.id,b.id,'Global allowed');
+ await assert.rejects(()=>gallery.updateCaption(c,shared.id,a.id,'Member denied'),/editing/);await assert.rejects(()=>gallery.updateCaption(server,globalHouse.id,b.id,'Server denied'),/editing/);
+ for(const actor of [server,global,owner])await assert.rejects(()=>gallery.updateCaption(actor,privateHouse.id,p.id,'Private denied'),/not available/);
+ await gallery.updateCaption(c,privateHouse.id,p.id,'Creator allowed');
+ await db.query("UPDATE guild_settings SET staff_role_ids='[]' WHERE guild_id='g'");await assert.rejects(()=>gallery.updateCaption(server,shared.id,a.id,'Stale role denied'),/editing/);
+ assert.equal((await gallery.list(owner,shared.id))[0].caption,'Server allowed');
+});
