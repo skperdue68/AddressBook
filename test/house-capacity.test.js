@@ -25,3 +25,5 @@ test('capacity reaches web searches, details, tour building, routes and player w
  await svc.progress.advance({progressId:run.id,userId:c.userId,guildId:c.guildId,esoServer:c.esoServer});assert.equal((await svc.progress.completedStops({progressId:run.id,userId:c.userId,guildId:c.guildId,esoServer:c.esoServer}))[0].population_limit,6);
  await db.query("UPDATE saved_houses SET scope='private',owner_user_id='1',guild_id=NULL WHERE id=?",[h.id]);const restricted=(await svc.getTourDraft(c,tour.id)).stops[0];assert.equal(restricted.house_name,null);assert.equal(restricted.population_limit,null);
 });
+
+import './tour-route-columns.test.js';
