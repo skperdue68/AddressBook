@@ -14,7 +14,7 @@ import {houseTools,houseQuickActions,handleWebActions} from '../src/web/web-acti
 test('personal controls expose auto-save forms, selected visit state and reversible favorite',async()=>{
  const html=await houseQuickActions({workspace:{actions:{states:{get:async()=>({is_favorite:1,visit_state:'visited'})}}},context:{},session:{csrf:'token'},house:{id:1,destination_id:1,status:'active',canEdit:false},returnTo:'/app/personal'});
  assert.match(html,/data-personal-action="favorite"/);
- assert.match(html,/>Unfavorite</);
+ assert.match(html,/aria-label="Remove from favorites"/);
  assert.doesNotMatch(html,/data-personal-action="visit"/);
  assert.match(html,/role="status"/);
 });
@@ -76,3 +76,5 @@ test('house editors get a visible top edit action for active and pending houses 
   const reader=await houseQuickActions({...args,house:{id:158,destination_id:2,status,canEdit:false}});assert.doesNotMatch(reader,/>Edit house<\/a>|\/158\/edit/);
  }
 });
+
+import './house-detail-player-hearts.test.js';
