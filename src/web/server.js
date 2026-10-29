@@ -1,3 +1,5 @@
+import {guestBrowsingRoute} from './guest-browsing.js';
+import {normalizeEsoServer} from '../utils/eso-server.js';
 import {houseCapacityBadge} from './house-capacity.js';
 import {tourCoverRoute} from './tour-cover.js';
 import {houseListThumbnail} from './house-thumbnail.js';
@@ -50,11 +52,11 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
     return workspace.policy.server.claimFirstAdmin({guildId,userId,setupAuthority:current.setupAuthority===true});
   };
 
-  async function sessionContext(request, url) {
+  async function sessionContext(request, url, inferred=null) {
     const session = readSession(cookieValue(request, 'addressbook_session'), now(), cfg.sessionSecret);
     if (!session) return null;
     const guilds = Array.isArray(session.guilds) ? session.guilds : [];
-    const choices = [],requestedEnvironment=url.searchParams.get('esoServer');
+    const choices = [],requestedEnvironment=inferred?.eso_server||url.searchParams.get('esoServer');
     for (const guild of guilds) {
       const current = resolveGuildMembership ? await resolveGuildMembership({ userId: session.id, guildId: guild.id }) : guild;
       if (!current) continue;
@@ -69,7 +71,8 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
       if (memberRoute?!!memberContext:authorization.allowed) choices.push({ guild: { ...guild, ...current }, settings, esoServer, memberContext });
     }
     const rememberedGuild=choices.some(item=>String(item.guild.id)===String(session.selectedGuildId))?session.selectedGuildId:'';
-    const requestedGuildId = url.searchParams.get('choose') === '1' ? '' : String(url.searchParams.get('guildId') || (requestedEnvironment!==null?rememberedGuild:session.selectedGuildId) || '');
+    const inferredGuild=(inferred?.scope==='public'||inferred?.visibility==='public')&&choices.some(item=>String(item.guild.id)===String(inferred.guild_id))?inferred.guild_id:'';
+    const requestedGuildId = url.searchParams.get('choose') === '1' ? '' : String(url.searchParams.get('guildId') || inferredGuild || (requestedEnvironment!==null?rememberedGuild:session.selectedGuildId) || '');
     if (!requestedGuildId && choices.length > 1) return { session, choices };
     const selected = choices.find(item => String(item.guild.id) === requestedGuildId) || (!requestedGuildId && choices.length === 1 ? choices[0] : null);
     if (!selected) return { session, forbidden: true };
@@ -103,14 +106,26 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
       } catch (error) { return send(response, 502, page('OAuth Error', `<p>${escape(error.message)}</p>`)); }
     }
     if (url.pathname === '/auth/logout') return redirect(response, '/admin', { 'set-cookie': 'addressbook_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0' });
-    const context = await sessionContext(request, url);
+    const signedIn=readSession(cookieValue(request,'addressbook_session'),now(),cfg.sessionSecret);
+    if(workspace&&url.pathname.startsWith('/browse'))return guestBrowsingRoute({request,response,url,workspace,send,redirect,preference:cookieValue(request,'hearthbound_guest_environment'),session:signedIn});
+    const entry=/^\/app\/(houses|tours)\/(\d+)(?:\/(?:play|edit|cover|images\/\d+))?$/.exec(url.pathname);
+    let inferred=null;
+    if(workspace&&entry&&request.method==='GET'){const row=entry[1]==='houses'?await workspace.saved.get(Number(entry[2])):await workspace.tours.get(Number(entry[2]));if(row&&normalizeEsoServer(row.eso_server))inferred=row;}
+    if(workspace&&!signedIn&&request.method==='GET'){
+      const detail=/^\/app\/(houses|tours)\/(\d+)$/.exec(url.pathname);
+      if(detail&&inferred&&(detail[1]==='houses'?inferred.scope==='global'&&inferred.status==='active':inferred.visibility==='global')){const guestUrl=new URL(url);guestUrl.pathname=url.pathname.replace('/app/','/browse/');return guestBrowsingRoute({request,response,url:guestUrl,workspace,send,redirect});}
+      const publicRoutes={'/app':'/browse','/app/houses':'/browse/houses','/app/tours':'/browse/tours','/app/random':'/browse/random','/app/search':'/browse/houses'};
+      if(publicRoutes[url.pathname])return redirect(response,publicRoutes[url.pathname]+url.search);
+    }
+    const context = await sessionContext(request, url,inferred);
     if (!context) return redirect(response, `/auth/discord?returnTo=${encodeURIComponent(url.pathname+url.search)}`);
     if (context.forbidden) return send(response, 403, page('Access unavailable', '<p>You do not have Housing Moderator access to a HearthBound guild.</p>'));
     if (context.choices) {
       const destination=url.pathname.startsWith('/app')?url.pathname+url.search:'/admin';
       return send(response, 200, guildPickerPage(context.choices,context.session,destination));
     }
-    if (context.selectionCookie) {
+    if(context.selectionCookie&&!url.searchParams.has('guildId'))response.setHeader('set-cookie',context.selectionCookie);
+    if (context.selectionCookie&&url.searchParams.has('guildId')) {
       const cleanPath = url.pathname === '/admin' ? '/admin' : `${url.pathname}${url.search.replace(/([?&])guildId=[^&]*&?/, '$1').replace(/[?&]$/, '')}`;
       return redirect(response, cleanPath, { 'set-cookie': context.selectionCookie });
     }

@@ -26,7 +26,7 @@ test('public root serves branded metadata and assets without login or membership
   }
   assert.deepEqual(calls,[]);
   for(const path of ['/assets/hearthbound-logo.png','/assets/hearthbound-preview.png','/assets/hearthbound-banner.webp','/assets/hearthbound-landscape.webp','/assets/public-pages.css'])assert.equal((await fetch(base+path,{redirect:'manual'})).status,200);
-  for(const path of ['/app','/admin']){const response=await fetch(base+path,{redirect:'manual'});assert.equal(response.status,302);assert.match(response.headers.get('location'),/^\/auth\/discord/);}
+  for(const path of ['/app','/admin']){const response=await fetch(base+path,{redirect:'manual'});assert.equal(response.status,302);assert.match(response.headers.get('location'),path==='/app'?/^\/browse$/:/^\/auth\/discord/);}
 });
 
 test('server picker is branded, escapes labels, restricts choices and persists selection',async t=>{
