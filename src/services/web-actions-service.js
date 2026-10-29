@@ -73,7 +73,7 @@ export class WebActionsService {
  async player(context,tourId){
   const c=await this.context(context),draft=await this.w.getTourDraft(c,tourId);if(!draft.canView)throw new Error('Tour is not available for playback.');
   let progress=await one(this.db,'SELECT * FROM tour_progress WHERE tour_id=? AND discord_user_id=? AND eso_server=?',[id(tourId),c.userId,c.esoServer]);
-  if(progress?.status==='active')progress=await this.w.progress.reconcile({progressId:progress.id,userId:c.userId,guildId:c.guildId,esoServer:c.esoServer});
+  if(progress)progress=await this.w.progress.reconcile({progressId:progress.id,userId:c.userId,guildId:c.guildId,esoServer:c.esoServer});
   const current=draft.stops.find(s=>Number(s.id)===Number(progress?.current_stop_id))||null;
   const house=current?await this.w.getHouse(c,current.saved_house_id):null;
   const completed=progress?await this.w.progress.completedStops({progressId:progress.id,userId:c.userId,guildId:c.guildId,esoServer:c.esoServer}):[];

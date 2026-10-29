@@ -30,6 +30,8 @@ export class TourProgressService {
     if(blocker)throw new Error(blocker.message);
   }
 
+  #unvisited(progress,conn,afterPosition=null){return one(conn,`SELECT ts.id FROM tour_stops ts JOIN saved_houses sh ON sh.id=ts.saved_house_id AND sh.status='active' WHERE ts.tour_id=? AND NOT EXISTS (SELECT 1 FROM tour_progress_stops ps WHERE ps.progress_id=? AND ps.stop_id=ts.id)${afterPosition==null?'':' AND ts.position>?'} ORDER BY ts.position,ts.id LIMIT 1`,afterPosition==null?[Number(progress.tour_id),Number(progress.id)]:[Number(progress.tour_id),Number(progress.id),Number(afterPosition)]);}
+
   async startOrResume({ userId, guildId, esoServer, tourId, sharePassId = null, globalName = null, displayName = null } = {}) {
     const tour = await this.#tour(tourId, { userId, guildId, esoServer });
     if (sharePassId != null) {
@@ -41,7 +43,7 @@ export class TourProgressService {
     const first = await one(this.db, 'SELECT id FROM tour_stops WHERE tour_id=? ORDER BY position,id LIMIT 1', [Number(tourId)]);
     if (!first) throw new Error('This tour has no stops.');
     const current = await one(this.db, 'SELECT * FROM tour_progress WHERE discord_user_id=? AND tour_id=? AND eso_server=?', [String(userId), Number(tourId), tour.eso_server]);
-    if (current) return {...current,_startedNew:false};
+    if (current) return {...await this.reconcile({progressId:current.id,userId,guildId,esoServer,resumeCompleted:true}),_startedNew:false};
     const now = asDate(this.db, this.now());
     const conflict = this.db.type === 'sqlite' ? 'ON CONFLICT(discord_user_id,tour_id,eso_server) DO NOTHING' : 'ON DUPLICATE KEY UPDATE id=id';
     const inserted=await this.db.query(`INSERT INTO tour_progress(discord_user_id,discord_global_name,discord_display_name,tour_id,tour_name,eso_server,status,current_stop_id,share_pass_id,run_started_at,last_activity_at) VALUES(?,?,?,?,?,?,?,?,?,?,?) ${conflict}`, [String(userId), globalName, displayName, Number(tourId), tour.name, tour.eso_server, 'active', Number(first.id), sharePassId == null ? null : Number(sharePassId), now, now]);
@@ -68,7 +70,7 @@ export class TourProgressService {
       }
       const insert = this.db.type === 'sqlite' ? 'INSERT OR IGNORE' : 'INSERT IGNORE';
       await conn.query(`${insert} INTO tour_progress_stops(progress_id,stop_id,completed_at) VALUES(?,?,?)`, [Number(progress.id), Number(current.id), asDate(this.db, this.now())]);
-      const next = await one(conn, 'SELECT id FROM tour_stops WHERE tour_id=? AND position>? ORDER BY position,id LIMIT 1', [Number(progress.tour_id), Number(current.position)]);
+      const next = await this.#unvisited(progress,conn,current.position)||await this.#unvisited(progress,conn);
       const now = asDate(this.db, this.now());
       if (next) await conn.query("UPDATE tour_progress SET current_stop_id=?,last_activity_at=? WHERE id=?", [Number(next.id), now, Number(progress.id)]);
       else await conn.query("UPDATE tour_progress SET status='completed',current_stop_id=NULL,last_activity_at=?,completion_count=completion_count+1,last_completed_at=? WHERE id=?", [now, now, Number(progress.id)]);
@@ -103,12 +105,18 @@ export class TourProgressService {
     });
   }
 
-  async reconcile({ progressId, userId, guildId = null, esoServer = null } = {}) {
+  async reconcile({ progressId, userId, guildId = null, esoServer = null, resumeCompleted = false } = {}) {
     return withTransaction(this.db, async conn => {
       const progress = await this.#row(progressId, userId, conn);
       if (guildId != null || esoServer != null) await this.#tour(progress.tour_id, { userId, guildId, esoServer }, conn);
+      if (progress.status === 'completed') {
+        const next=await this.#unvisited(progress,conn);
+        if(!resumeCompleted||!next)return {...progress,canResume:!!next};
+        await this.#ready(progress,{userId,guildId,esoServer},conn,{allowMissing:true});
+        await conn.query("UPDATE tour_progress SET status='active',current_stop_id=?,last_activity_at=? WHERE id=?",[Number(next.id),asDate(this.db,this.now()),Number(progress.id)]);
+        return one(conn,'SELECT * FROM tour_progress WHERE id=?',[Number(progress.id)]);
+      }
       await this.#ready(progress,{userId,guildId,esoServer},conn,{allowMissing:true});
-      if (progress.status === 'completed') return progress;
       const current = progress.current_stop_id == null ? null : await one(conn, 'SELECT id FROM tour_stops WHERE id=? AND tour_id=?', [Number(progress.current_stop_id), Number(progress.tour_id)]);
       if (current) return progress;
       const replacement = await one(conn, `SELECT ts.id FROM tour_stops ts

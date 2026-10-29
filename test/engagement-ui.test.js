@@ -165,7 +165,7 @@ test('self-paced progress card exposes navigation for a run', () => {
     tour: { name: 'Route', description: 'A polished route.' }, stops, currentPosition: 1, canEdit: true
   });
   const text = JSON.stringify(payload);
-  assert.match(text, /Stop 1 of 2.*Villa.*12 Players/);
+  assert.match(text, /Stop 1 of 2.*Villa.*12 max players/);
   assert.match(text, /Jump in ESO/);
   assert.match(text, /hu:progress:next:9:compact/);
   assert.match(text, /hu:progress:edit:9:7:compact/);

@@ -192,7 +192,7 @@ test('starting a self-paced tour immediately renders the complete first house ca
     const handlers=createHandlers(db); let rendered;
     await handlers.button(buttonInteraction('hu:tour:startprivate:1',{update:payload=>{rendered=payload;}}));
     const card=rendered.embeds[0].toJSON();
-    assert.match(card.title,/Stop 1 of 2.*Villa.*12 Players/);
+    assert.match(card.title,/Stop 1 of 2.*Villa.*12 max players/);
     assert.ok(card.fields.some(field=>field.name==='🔗 Jump in ESO'));
     assert.equal(control(rendered,'Open House'),undefined);
     assert.ok(control(rendered,'Previous'));
@@ -212,7 +212,7 @@ test('self-paced next preserves expanded house details', async () => {
     assert.equal(control(rendered,'Next').custom_id.endsWith(':expanded'),true);
     await handlers.button(buttonInteraction(control(rendered,'Next').custom_id,{update}));
     const card=rendered.embeds[0].toJSON();
-    assert.match(card.title,/Stop 2 of 2.*Manor.*24 Players/);
+    assert.match(card.title,/Stop 2 of 2.*Manor.*24 max players/);
     assert.equal(card.fields.find(field=>field.name==='🪑 Traditional Furnishings*').value,'350 • 700 with ESO+');
     assert.ok(control(rendered,'Hide Details'));
   } finally { await closeDatabase(db); }
@@ -613,3 +613,5 @@ for (const visibility of ['public','private']) test(`Shared ${visibility} launch
     assert.ok(posted.components.length);
   } finally {await closeDatabase(db);}
 });
+
+import './resume-changed-tours.test.js';
