@@ -64,3 +64,6 @@ document.querySelectorAll('[data-feedback-id]').forEach(card=>{
 });
 
 document.querySelectorAll('[data-search-controls] select').forEach(select=>select.addEventListener('change',()=>select.form.requestSubmit()));
+
+// Select-only preferences apply on change; their native GET/POST forms remain usable without JavaScript.
+document.querySelectorAll('form[data-auto-submit] select').forEach(select=>select.addEventListener('change',()=>select.form.requestSubmit()));
