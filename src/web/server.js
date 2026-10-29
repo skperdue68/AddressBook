@@ -1,3 +1,4 @@
+import {legalPage} from './legal-pages.js';
 import {previewChoices} from '../services/permission-preview.js';
 import {loginRecoveryPage} from './login-recovery.js';
 import {guestBrowsingRoute} from './guest-browsing.js';
@@ -95,6 +96,7 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
       if(request.method!=='GET')return send(response,405,'Method not allowed',{allow:'GET'});
       const asset=url.pathname.split('/').pop();return send(response,200,await readFile(new URL(`./assets/${asset}`,import.meta.url)),{'content-type':asset.endsWith('.png')?'image/png':asset.endsWith('.webp')?'image/webp':asset.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8','x-content-type-options':'nosniff'});
     }
+    if(['/privacy','/terms'].includes(url.pathname)){if(!['GET','HEAD'].includes(request.method))return send(response,405,'Method not allowed',{allow:'GET, HEAD'});return send(response,200,request.method==='HEAD'?'':legalPage(url.pathname));}
     if(url.pathname==='/'){
       if(!['GET','HEAD'].includes(request.method))return send(response,405,'Method not allowed',{allow:'GET, HEAD'});
       return send(response,200,welcomePage(cfg.oauth,readSession(cookieValue(request, 'addressbook_session'), now(), cfg.sessionSecret)));

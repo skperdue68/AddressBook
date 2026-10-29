@@ -1,0 +1,1 @@
+export function siteFooter({publicPage=false}={}){return `<footer class="site-footer"><span>HearthBound · ${publicPage?'Your houses. Your community. Your next open door.':'Explore a little. Find something extraordinary.'}</span><nav aria-label="Legal"><a href="/privacy">Privacy Policy</a><a href="/terms">Terms</a></nav></footer>`;}

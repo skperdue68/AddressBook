@@ -11,3 +11,5 @@ test('active runtime uses HearthBound branding while preserving stored compatibi
  assert.equal(pkg.name,'hearthbound-discord-bot');assert.equal(lock.name,pkg.name);assert.equal(lock.packages[''].name,pkg.name);
 });
 test('HearthBound primary command retains housing alias and Discord links to configured portal within limits',()=>{assert.deepEqual(commandJson.map(c=>c.name),['hearth','housing']);for(const payload of [homePayload({isAdmin:true,portalUrl:'https://homes.example.test/app'}),helpPayload({portalUrl:'https://homes.example.test/app'})]){const controls=payload.components.flatMap(r=>r.toJSON().components);const link=controls.find(c=>c.label==='Open Web Portal');assert.equal(link.url,'https://homes.example.test/app');assert.equal(link.style,5);assert.ok(payload.components.length<=5);assert.ok(payload.components.every(r=>r.toJSON().components.length<=5));}assert.match(JSON.stringify(homePayload()),/HearthBound/);assert.match(JSON.stringify(homePayload()),/\/hearth/);});
+
+import './landing-social-legal.test.js';

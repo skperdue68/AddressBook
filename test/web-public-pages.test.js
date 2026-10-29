@@ -20,7 +20,7 @@ test('public root serves branded metadata and assets without login or membership
     assert.equal(response.status,200);assert.equal(response.headers.get('location'),null);
     assert.match(html,/property="og:title" content="HearthBound/);
     assert.match(html,/property="og:url" content="https:\/\/hearthbound.example\/"/);
-    assert.match(html,/property="og:image" content="https:\/\/hearthbound.example\/assets\/hearthbound-banner.webp"/);
+    assert.match(html,/property="og:image" content="https:\/\/hearthbound.example\/assets\/hearthbound-preview.png"/);
     assert.match(html,/<img class="welcome-banner"[^>]*src="\/assets\/hearthbound-banner.webp"/);assert.match(html,/class="public-page welcome-page"/);assert.match(html,/name="twitter:card"/);if(headers.cookie){assert.match(html,/Account menu for Evaine/);assert.match(html,/Continue to HearthBound/);assert.doesNotMatch(html,/>Sign in with Discord/);}else assert.match(html,/Sign in with Discord/);assert.match(html,/Add the optional Discord bot/);
     assert.match(html,/permissions=274878024704/);assert.doesNotMatch(html,/First &lt;Guild&gt;|attacker.example/);
   }
