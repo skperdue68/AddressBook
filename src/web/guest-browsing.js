@@ -1,3 +1,4 @@
+import {previewExit} from './permission-preview.js';
 import {GuestBrowseService} from '../services/guest-browse-service.js';
 import {ESO_SERVERS,normalizeEsoServer,esoServerLabel} from '../utils/eso-server.js';
 import {buildJumpScript,buildHousingLink,buildHousePreviewScript} from '../utils/eso.js';
@@ -28,7 +29,7 @@ export async function guestBrowsingRoute({request,response,url,workspace,send,re
  const render=(title,body,returnTo='/app')=>{
   const signIn=session?returnTo:login(returnTo),region=`<form class="filters guest-region" action="${entry?'/browse/houses':escape(url.pathname)}" method="get"><label>Platform / region<select name="esoServer">${ESO_SERVERS.map(e=>`<option value="${e.value}" ${e.value===environment?'selected':''}>${escape(e.label)}</option>`).join('')}</select></label>${query.q?`<input type="hidden" name="q" value="${escape(query.q)}">`:''}${query.tag?`<input type="hidden" name="tag" value="${escape(query.tag)}">`:''}<button>Browse</button></form>`;
   const nav=`<nav class="library-navigation guest-navigation" aria-label="Guest navigation">${[['Discover','/browse'],['Houses','/browse/houses'],['Tours','/browse/tours'],['Random house','/browse/random']].map(([label,path])=>`<a href="${escape(href(path,environment))}">${label}</a>`).join('')}</nav>`;
-  return send(response,200,publicPage(title,`<div class="notice guest-banner"><div><strong>Browsing as a guest</strong><p>Explore Global homes and tours · ${escape(esoServerLabel(environment))}. Sign in to save favorites, comment, register houses, and manage tours.</p></div>${linkButton(session?'Return to signed-in view':'Sign in with Discord',signIn,'primary')}</div>${nav}${region}<h1>${escape(title)}</h1>${body}`,{signInHref:signIn,metadata:'<meta name="robots" content="noindex,follow">',extraScripts:['/assets/web-actions.js']}),{'set-cookie':cookie});
+  return send(response,200,publicPage(title,`<div class="notice guest-banner"><div><strong>${session?.permissionPreview==='guest'?'Previewing as Guest':'Browsing as a guest'}</strong><p>Explore Global homes and tours · ${escape(esoServerLabel(environment))}. Sign in to save favorites, comment, register houses, and manage tours.</p></div>${session?.permissionPreview==='guest'?previewExit(session):linkButton(session?'Return to signed-in view':'Sign in with Discord',signIn,'primary')}</div>${nav}${region}<h1>${escape(title)}</h1>${body}`,{signInHref:signIn,metadata:'<meta name="robots" content="noindex,follow">',extraScripts:['/assets/web-actions.js']}),{'set-cookie':cookie});
  };
  try{
   if(entry&&entry[1]==='houses'){

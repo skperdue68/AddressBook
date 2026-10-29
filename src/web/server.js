@@ -1,3 +1,4 @@
+import {previewChoices} from '../services/permission-preview.js';
 import {loginRecoveryPage} from './login-recovery.js';
 import {guestBrowsingRoute} from './guest-browsing.js';
 import {normalizeEsoServer} from '../utils/eso-server.js';
@@ -66,7 +67,7 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
       if(requestedEnvironment!==null&&esoServer!==requestedEnvironment)continue;
       const authorization = await service.authorizeGuild({ userId: session.id, guildId: guild.id, requestedGuildId: guild.id, esoServer, requestedEsoServer: esoServer, memberRoleIds: current.roleIds || [] });
       let memberContext=null;
-      if(workspace&&esoServer){try{memberContext=await workspace.authorizeContext({userId:session.id,guildId:guild.id,guildName:current.name||guild.name,esoServer,memberRoleIds:current.roleIds||[],setupAuthority:current.setupAuthority===true});}catch{/* unavailable context */}}
+      if(workspace&&esoServer){try{memberContext=await workspace.authorizeContext({userId:session.id,guildId:guild.id,guildName:current.name||guild.name,esoServer,memberRoleIds:current.roleIds||[],setupAuthority:current.setupAuthority===true,permissionPreview:session.permissionPreview});}catch{/* unavailable context */}}
       if(workspace&&!esoServer)memberContext={userId:String(session.id),guildId:String(guild.id),guildName:current.name||guild.name,esoServer:null,memberRoleIds:current.roleIds||[],roles:[{kind:'member',label:'Member'}],setupRequired:true};
       const memberRoute=url.pathname==='/'||url.pathname==='/app'||url.pathname.startsWith('/app/');
       if (memberRoute?!!memberContext:authorization.allowed) choices.push({ guild: { ...guild, ...current }, settings, esoServer, memberContext });
@@ -74,7 +75,7 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
     const memberPage=url.pathname==='/app'||url.pathname.startsWith('/app/'),explicitGuild=url.searchParams.has('guildId'),personalRequested=url.searchParams.get('workspace')==='personal'||(session.selectedWorkspace==='personal'&&url.searchParams.get('choose')!=='1');
     if(workspace&&memberPage&&!explicitGuild&&(personalRequested||choices.length===0)){
       const environment=normalizeEsoServer(inferred?.eso_server||url.searchParams.get('esoServer')||session.personalEsoServer)||'pc_na';
-      const memberContext=await workspace.authorizeContext({userId:session.id,guildId:'',esoServer:environment,personalWorkspace:true});
+      const memberContext=await workspace.authorizeContext({userId:session.id,guildId:'',esoServer:environment,personalWorkspace:true,permissionPreview:session.permissionPreview});
       const changed=session.selectedWorkspace!=='personal'||session.personalEsoServer!==environment;
       return {session,guild:{id:'',name:'Personal web workspace'},esoServer:environment,settings:memberContext.settings,memberContext,availableContexts:[memberContext],selectionCookie:changed?sessionCookie(createSession({...session,selectedWorkspace:'personal',personalEsoServer:environment},now(),cfg.sessionSecret,cfg.lifetimeSeconds,true),String(cfg.oauth.redirectUri||'').startsWith('https://'),cfg.lifetimeSeconds,now()):null};
     }
@@ -117,6 +118,25 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
     }
     if (url.pathname === '/auth/logout') return redirect(response, '/', { 'set-cookie': 'addressbook_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0' });
     const signedIn=readSession(cookieValue(request,'addressbook_session'),now(),cfg.sessionSecret);
+    if(workspace&&url.pathname==='/app/access-preview'){
+      if(!signedIn)return redirect(response,'/auth/discord?returnTo=%2Fapp');
+      if(request.method!=='POST')return send(response,405,'Use the account menu to change preview access.',{allow:'POST'});
+      const form=await readBody(request);if(!csrfMatches(signedIn.csrf,form.get('csrf')))return send(response,400,loginRecoveryPage('expired','/app'));
+      const level=form.get('level');
+      if(level!=='full'){
+        const current=await sessionContext(request,new URL('/app','http://localhost'));
+        if(!current?.memberContext)return redirect(response,'/app');
+        const actual=await workspace.authorizeContext({...current.memberContext,permissionPreview:null});
+        if(!previewChoices(actual).some(x=>x.value===level))return send(response,403,renderWorkspace({title:'Preview unavailable',user:signedIn,context:current.memberContext,body:'<p>You can preview only access you currently hold or lower.</p>'}));
+      }
+      const cookie=createSession({...signedIn,permissionPreview:level==='full'?null:level},now(),cfg.sessionSecret,cfg.lifetimeSeconds,true);
+      return redirect(response,level==='guest'?'/browse':'/app',{'set-cookie':sessionCookie(cookie,String(cfg.oauth.redirectUri||'').startsWith('https://'),cfg.lifetimeSeconds,now())});
+    }
+    if(signedIn?.permissionPreview&&signedIn.permissionPreview!=='full'&&!['GET','HEAD'].includes(request.method))return send(response,403,JSON.stringify({ok:false,error:'Access preview is read-only. Restore your access to make changes.'}),{'content-type':'application/json; charset=utf-8'});
+    if(signedIn?.permissionPreview==='guest'&&(url.pathname.startsWith('/app')||url.pathname.startsWith('/admin'))){
+      const guestPath=/^\/app\/(houses|tours)(?:\/\d+(?:\/images\/\d+|\/cover)?)?$/.test(url.pathname)?url.pathname.replace('/app/','/browse/'):url.pathname==='/app/random'?'/browse/random':'/browse';
+      return redirect(response,guestPath+url.search);
+    }
     if(workspace&&url.pathname.startsWith('/browse'))return guestBrowsingRoute({request,response,url,workspace,send,redirect,preference:cookieValue(request,'hearthbound_guest_environment'),session:signedIn});
     const entry=/^\/app\/(houses|tours)\/(\d+)(?:\/(?:play|edit|cover|images\/\d+))?$/.exec(url.pathname);
     let inferred=null;
@@ -141,6 +161,11 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
     }
     const { session, guild, esoServer } = context;
     if(context.memberContext)session.accessContext=context.memberContext;
+    if(context.memberContext?.permissionPreview){
+      const c=context.memberContext,ownerOnly=/^\/app\/(?:catalog(?:\/|$)|feedback\/review(?:\/|$)|global-access$)/.test(url.pathname);
+      if((url.pathname.startsWith('/admin')&&!c.isServerAdmin)||ownerOnly)return send(response,403,renderWorkspace({title:'Access unavailable in this preview',user:session,context:c,body:'<p>This page requires access outside the selected preview.</p>'}));
+    }
+
     if(workspace && url.pathname === '/app/guide') {
       if(request.method !== 'GET')return send(response,405,'Method not allowed',{allow:'GET'});
       if(!context.memberContext)return send(response,403,'This member context is unavailable.');
