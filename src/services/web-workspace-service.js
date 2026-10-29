@@ -26,7 +26,7 @@ export class WebWorkspaceService{
  async tourHouseCandidates(context){
   const c=await this.fresh(context);
   const rows=await this.db.query(`SELECT s.id,s.house_id,s.scope,s.guild_id,s.owner_user_id,s.display_name,s.eso_owner,s.tags,h.name catalog_house_name,h.zone,h.classification,h.house_type,h.style FROM saved_houses s JOIN houses h ON h.house_id=s.house_id WHERE s.eso_server=? AND s.status='active' AND (s.scope='global' OR (s.scope='public' AND s.guild_id=?) OR (s.scope='private' AND s.owner_user_id=?))`,[c.esoServer,c.guildId,c.userId]);
-  return withCatalogHouseNames(rows).sort((a,b)=>tourNameOrder.compare(a.display_name||a.house_name,b.display_name||b.house_name)||Number(a.id)-Number(b.id));
+  return (await this.withHouseCovers(withCatalogHouseNames(rows))).sort((a,b)=>tourNameOrder.compare(a.display_name||a.house_name,b.display_name||b.house_name)||Number(a.id)-Number(b.id));
  }
  async listHouses(c,{q='',scope='',page=1,personal=false,houseId='',ownerExact=''}={}){
   const clauses=['s.eso_server=?'],args=[c.esoServer];
@@ -41,14 +41,19 @@ export class WebWorkspaceService{
   const rows=await this.db.query(`SELECT s.*,h.name catalog_house_name,h.zone,h.classification,h.house_type,h.style FROM saved_houses s JOIN houses h ON h.house_id=s.house_id WHERE ${where} ORDER BY lower(coalesce(s.display_name,h.name)),s.id LIMIT 25 OFFSET ?`,[...args,(p-1)*25]);
   return {rows:withCatalogHouseNames(rows).map(h=>({...h,canEdit:this.policy.canEditHouse(h,c)})),total,page:p,hasNext:p*25<total};
  }
- async decorateHouses(c,rows){
-  if(!rows.length)return rows;
-  const ids=[...new Set(rows.filter(h=>h.scope!=='official'&&Number(h.id)>0).map(h=>Number(h.id)))],targets=[...new Set(rows.map(h=>Number(h.scope==='official'?h.house_id:h.destination_id)).filter(id=>id>0))];
+ async withHouseCovers(rows){
+  const ids=[...new Set(rows.filter(h=>h.scope!=='official'&&Number(h.id)>0).map(h=>Number(h.id)))];
   const covers=ids.length?await this.db.query(`SELECT id,saved_house_id FROM house_images WHERE saved_house_id IN (${ids.map(()=>'?').join(',')}) ORDER BY position,id`,ids):[];
   const coverMap=new Map();for(const image of covers)if(!coverMap.has(Number(image.saved_house_id)))coverMap.set(Number(image.saved_house_id),image.id);
+  return rows.map(h=>({...h,cover_image_id:h.scope==='official'?null:coverMap.get(Number(h.id))||null}));
+ }
+ async decorateHouses(c,rows){
+  if(!rows.length)return rows;
+  const targets=[...new Set(rows.map(h=>Number(h.scope==='official'?h.house_id:h.destination_id)).filter(id=>id>0))];
+  const covered=await this.withHouseCovers(rows);
   const states=targets.length?await this.db.query(`SELECT * FROM user_house_states WHERE discord_user_id=? AND target_id IN (${targets.map(()=>'?').join(',')})`,[c.userId,...targets]):[];
   const stateMap=new Map(states.map(state=>[`${state.target_kind}:${Number(state.target_id)}`,state]));
-  return rows.map(h=>({...h,cover_image_id:h.scope==='official'?null:coverMap.get(Number(h.id))||null,personal_state:stateMap.get(`${h.scope==='official'?'official':'destination'}:${Number(h.scope==='official'?h.house_id:h.destination_id)}`)||{is_favorite:0,visit_state:'none'}}));
+  return covered.map(h=>({...h,personal_state:stateMap.get(`${h.scope==='official'?'official':'destination'}:${Number(h.scope==='official'?h.house_id:h.destination_id)}`)||{is_favorite:0,visit_state:'none'}}));
  }
  async getHouse(c,id){const h=await this.saved.get(id);if(!h||(!this.policy.canViewHouse(h,c)&&!(this.policy.canEditHouse(h,c)&&h.status==='pending')))throw new Error('House is not available.');return {...h,canEdit:this.policy.canEditHouse(h,c)};}
  async registerHouse(context,{houseId,esoOwner,visibility,displayName=null,description=null,tags=[]}){
@@ -82,7 +87,7 @@ export class WebWorkspaceService{
   return rows.filter(t=>(scope?this.policy.canViewTour(t,c):(this.policy.canViewTour(t,c)||this.policy.canEditTour(t,c)))&&(!mine||t.creator_id===c.userId)&&(!scope||(scope==='shared'?(t.visibility==='global'||(t.visibility==='public'&&t.guild_id===c.guildId)):t.visibility===scope))&&(!matching||matching.has(Number(t.id)))&&(!q||t.name.toLowerCase().includes(String(q).toLowerCase()))).sort((a,b)=>tourNameOrder.compare(a.name.trim(),b.name.trim())||Number(a.id)-Number(b.id)).map(t=>({...t,canEdit:this.policy.canEditTour(t,c),canView:this.policy.canViewTour(t,c)}));
  }
  async tourSnapshot(conn,id){const tour=await one(conn,'SELECT * FROM tours WHERE id=? FOR UPDATE',[Number(id)]);if(!tour)return null;const stops=await conn.query('SELECT * FROM tour_stops WHERE tour_id=? ORDER BY position,id',[Number(id)]);return {tour,stops,version:createHash('sha256').update(JSON.stringify({tour,stops})).digest('hex')};}
- async getTourDraft(c,id){const snap=await this.tourSnapshot(this.db,id);if(!snap||(!this.policy.canViewTour(snap.tour,c)&&!this.policy.canEditTour(snap.tour,c)))throw new Error('Tour is not available.');const stops=[];for(const stop of snap.stops){const h=await this.saved.get(stop.saved_house_id);const visible=this.policy.canViewHouse(h,c);stops.push({...stop,display_name:visible?(stop.custom_title||h.display_name||h.house_name):'Restricted or unavailable stop',eso_owner:visible?h.eso_owner:null,house_name:visible?h.house_name:null,source_scope:visible?h.scope:null});}return {...snap,stops,canEdit:this.policy.canEditTour(snap.tour,c),canView:this.policy.canViewTour(snap.tour,c)};}
+ async getTourDraft(c,id){const snap=await this.tourSnapshot(this.db,id);if(!snap||(!this.policy.canViewTour(snap.tour,c)&&!this.policy.canEditTour(snap.tour,c)))throw new Error('Tour is not available.');const stops=[];for(const stop of snap.stops){const h=await this.saved.get(stop.saved_house_id);const visible=this.policy.canViewHouse(h,c);stops.push({...stop,display_name:visible?(stop.custom_title||h.display_name||h.house_name):'Restricted or unavailable stop',eso_owner:visible?h.eso_owner:null,house_name:visible?h.house_name:null,source_scope:visible?h.scope:null});}const covers=await this.withHouseCovers(stops.filter(s=>s.house_name).map(s=>({id:s.saved_house_id})));const byId=new Map(covers.map(h=>[Number(h.id),h.cover_image_id]));for(const s of stops)s.cover_image_id=byId.get(Number(s.saved_house_id))||null;return {...snap,stops,canEdit:this.policy.canEditTour(snap.tour,c),canView:this.policy.canViewTour(snap.tour,c)};}
  async saveTourDraft(context,{id=null,version=null,details={},stopIds=[],stopNotes={}}){
   const c=await this.fresh(context);if(!Array.isArray(stopIds)||stopIds.length>250)throw new Error('A tour supports at most 250 stops per save.');const ids=stopIds.map(Number);if(ids.some(n=>!Number.isSafeInteger(n)||n<=0))throw new Error('Invalid house selection.');if(new Set(ids).size!==ids.length)throw new Error('Duplicate house selection.');
   return withTransaction(this.db,async conn=>{

@@ -18,3 +18,10 @@ test('Featured cards show the available gallery cover and stay text-only when no
  const first=await featuredRoute({workspace,context,render:(_title,body)=>body});assert.match(first,/class="house-cover"/);assert.match(first,/\/app\/houses\/7\/images\/9/);assert.match(first,/Garden screenshot/);
  workspace.images.list=async()=>[];const empty=await featuredRoute({workspace,context,render:(_title,body)=>body});assert.doesNotMatch(empty,/<img/);assert.match(empty,/Garden &lt;home&gt;/);
 });
+import {tourEditorBody} from '../src/web/editor-forms.js';
+import {tourHousePicker} from '../src/web/tour-house-picker.js';
+test('tour candidates and existing draft stops display their cover without placeholders for text-only houses',()=>{
+ const candidate={...house,house_name:'Garden',guild_id:'g'},stop={saved_house_id:7,display_name:'Garden',house_name:'Garden',eso_owner:'Builder',cover_image_id:9};
+ const body=tourEditorBody({isNew:false,id:1,draft:{tour:{creator_id:'u'}},tour:{creator_id:'u',guild_id:'g',name:'Route',visibility:'public'},stops:[stop],candidates:[candidate],session:{csrf:'c'},context:{userId:'u',guildId:'g'},version:'v'});
+ assert.match(body.split('id="tour-stops"')[1].split('id="order-status"')[0],/\/app\/houses\/7\/images\/9/);assert.match(tourHousePicker([candidate],[]),/data-cover-image="9"/);assert.match(tourHousePicker([candidate],[]),/\/app\/houses\/7\/images\/9/);assert.doesNotMatch(tourHousePicker([{...candidate,cover_image_id:null}],[]),/<img/);
+});
