@@ -1,3 +1,4 @@
+import {loginRecoveryPage} from './login-recovery.js';
 import {guestBrowsingRoute} from './guest-browsing.js';
 import {normalizeEsoServer} from '../utils/eso-server.js';
 import {houseCapacityBadge} from './house-capacity.js';
@@ -103,16 +104,18 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
     }
     if (url.pathname === '/auth/callback') {
       const returnTo = consumeOAuthState(url.searchParams.get('state'), now(), cfg.sessionSecret);
-      if (!returnTo || !url.searchParams.get('code')) return send(response, 400, page('OAuth Error', '<p>The sign-in link is invalid or expired. Please try again.</p>'));
+      if(!returnTo)return send(response,400,loginRecoveryPage('expired'));
+      if(url.searchParams.get('error')==='access_denied')return send(response,200,loginRecoveryPage('cancelled',returnTo));
+      if(url.searchParams.has('error')||!url.searchParams.get('code'))return send(response,400,loginRecoveryPage('incomplete',returnTo));
       try {
         const tokens = await exchangeDiscordCode(url.searchParams.get('code'), cfg.oauth, fetchImpl);
         const identity = await identityResolver(tokens);
         const cookie = createSession(identity, now(), cfg.sessionSecret, cfg.lifetimeSeconds);
         const secure = String(cfg.oauth.redirectUri || '').startsWith('https://');
         return redirect(response, returnTo, { 'set-cookie': sessionCookie(cookie, secure, cfg.lifetimeSeconds, now()) });
-      } catch (error) { return send(response, 502, page('OAuth Error', `<p>${escape(error.message)}</p>`)); }
+      } catch { return send(response,502,loginRecoveryPage('unavailable',returnTo)); }
     }
-    if (url.pathname === '/auth/logout') return redirect(response, '/admin', { 'set-cookie': 'addressbook_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0' });
+    if (url.pathname === '/auth/logout') return redirect(response, '/', { 'set-cookie': 'addressbook_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0' });
     const signedIn=readSession(cookieValue(request,'addressbook_session'),now(),cfg.sessionSecret);
     if(workspace&&url.pathname.startsWith('/browse'))return guestBrowsingRoute({request,response,url,workspace,send,redirect,preference:cookieValue(request,'hearthbound_guest_environment'),session:signedIn});
     const entry=/^\/app\/(houses|tours)\/(\d+)(?:\/(?:play|edit|cover|images\/\d+))?$/.exec(url.pathname);
