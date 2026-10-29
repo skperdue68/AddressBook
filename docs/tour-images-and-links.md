@@ -1,6 +1,6 @@
 # Tour images and direct links
 
-Each tour can have one optional cover graphic. Open the tour on the web and use **Tour cover** to upload, replace, or remove it. PNG, JPEG, and WebP images up to 5 MB are supported; uploaded images are normalized to WebP and metadata is removed.
+Each tour can have one optional cover graphic. Open the tour on the web. Below the route and web link, use **Tour cover** to choose or drop an image. It uploads immediately and automatically replaces any current cover, without a caption or Replace button. **Remove tour image** removes it. Uploads, retries, and removal stay in place; the cover itself remains at the top for viewers. PNG, JPEG, and WebP images up to 5 MB are supported; uploaded images are normalized to WebP and metadata is removed.
 
 The cover appears in tour search results, featured tour cards, at the top of the tour page, and in Discord tour information and the first tour stop. Tours without an image use the normal text layout. Discord needs **Attach Files** permission to display the artwork.
 
