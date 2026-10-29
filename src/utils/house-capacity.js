@@ -5,4 +5,4 @@ export function houseCapacity(h={}){
  const count=Number(value);
  return Number.isSafeInteger(count)&&count>0?count:null;
 }
-export function houseCapacityText(h){const count=houseCapacity(h);return count===null?'':`👥 ${count}`;}
+export function houseCapacityText(h){const count=houseCapacity(h);return count===null?'':`👥 ${count} max`;}

@@ -8,13 +8,13 @@ import {createWebAdminServer} from '../src/web/server.js';import {WebAdminServic
 
 test('house cards display recorded capacity and never guess missing or invalid limits',()=>{
  const h={id:1,display_name:'Small Garden',house_name:'Cottage',scope:'public',status:'active',population_limit:6};
- assert.match(discoveryCards([h]),/class="house-capacity"/);assert.match(discoveryCards([h]),/fill="currentColor"/);assert.match(discoveryCards([h]),/Maximum house capacity: 6 players/);
+ assert.match(discoveryCards([h]),/class="house-capacity"/);assert.match(discoveryCards([h]),/fill="currentColor"/);assert.match(discoveryCards([h]),/Maximum house capacity: 6 players/);assert.match(discoveryCards([h]),/>6 max</);
  for(const population_limit of [null,'',0,-1,'not a number']){assert.doesNotMatch(discoveryCards([{...h,population_limit}]),/class="house-capacity"/);assert.equal(titleWithPlayerCap('Cottage',{population_limit}),'Cottage');}
 });
 test('Discord tour routes and selected-stop reviews show capacity beside each house',()=>{
  const stop={id:1,position:1,display_name:'Cottage',house_name:'Cottage',eso_owner:'Builder',population_limit:6};
- const route=tourManagePayload({id:1,name:'Route'},[stop]);assert.match(JSON.stringify(route.embeds.map(e=>e.toJSON())),/👥 6/);
- const review=tourSelectionReviewPayload({token:'t',rows:[stop],backId:'back'});assert.match(review.embeds[0].toJSON().description,/👥 6/);assert.match(review.components[0].toJSON().components[0].options[0].label,/👥 6/);
+ const route=tourManagePayload({id:1,name:'Route'},[stop]);assert.match(JSON.stringify(route.embeds.map(e=>e.toJSON())),/👥 6 max/);
+ const review=tourSelectionReviewPayload({token:'t',rows:[stop],backId:'back'});assert.match(review.embeds[0].toJSON().description,/👥 6 max/);assert.match(review.components[0].toJSON().components[0].options[0].label,/👥 6 max/);
 });
 test('capacity reaches web searches, details, tour building, routes and player without leaking restricted stops',async t=>{
  const {db,svc,c}=await fixture();t.after(()=>closeDatabase(db));await db.query('UPDATE houses SET population_limit=6,population_limit_plus=6 WHERE house_id=1');const owner=await svc.fresh({...c,userId:'1'}),h=await svc.registerHouse(owner,{houseId:1,esoOwner:'Builder',visibility:'public'}),tour=await svc.saveTourDraft(c,{details:{name:'Small-house route',visibility:'public'},stopIds:[h.id]});
