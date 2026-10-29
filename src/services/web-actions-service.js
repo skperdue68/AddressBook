@@ -92,7 +92,7 @@ export class WebActionsService {
  }
  async scopePreview(context,houseId,visibility){
   const c=await this.context(context),house=await this.writable(c,'house',houseId);
-  if(!['private','public','global'].includes(visibility))throw new Error('Invalid visibility.');
+  if(!['private','public','global'].includes(visibility))throw new Error('Invalid visibility.');if(c.personalWorkspace&&visibility==='public')throw new Error('Server visibility requires a connected Discord server.');
   const trusted=c.isOwner||JSON.parse(c.settings.registration_role_ids||'[]').some(r=>c.memberRoleIds.includes(r));
   if(visibility!=='private'&&!c.isServerAdmin&&c.settings.registration_policy==='roles'&&!trusted)throw new Error('A registration role is required for shared houses.');
   const status=visibility!=='private'&&!c.isServerAdmin&&!trusted&&c.settings.registration_policy==='approval'?'pending':'active';
@@ -144,7 +144,7 @@ export class WebActionsService {
   throw new Error('Invalid recovery action.');
  }
  async shareTarget(context,kind,targetId){const c=await this.context(context);if(kind==='house'){const record=await this.w.getHouse(c,targetId);if(record.status!=='active')throw new Error('House is not available to share.');return {c,record,stops:[]};}if(kind==='tour'){const draft=await this.w.getTourDraft(c,targetId);if(!draft.canView||(draft.tour.visibility==='private'&&draft.tour.creator_id!==c.userId))throw new Error('Tour is not available to share.');return {c,record:draft.tour,stops:draft.stops};}throw new Error('Invalid share type.');}
- async createPass(context,kind,targetId){const {c,record}=await this.shareTarget(context,kind,targetId);return this.passes[kind==='house'?'createHousePass':'createTourPass']({[kind==='house'?'savedHouseId':'tourId']:record.id,createdBy:c.userId,originGuildId:c.guildId,esoServer:c.esoServer,names:{originGuildName:c.guildName}});}
+ async createPass(context,kind,targetId){const {c,record}=await this.shareTarget(context,kind,targetId);if(c.personalWorkspace)throw new Error('Discord sharing requires a connected Discord server.');return this.passes[kind==='house'?'createHousePass':'createTourPass']({[kind==='house'?'savedHouseId':'tourId']:record.id,createdBy:c.userId,originGuildId:c.guildId,esoServer:c.esoServer,names:{originGuildName:c.guildName}});}
  async ownedPass(context,kind,passId){const c=await this.context(context),table=kind==='house'?'house_share_passes':kind==='tour'?'tour_share_passes':null;if(!table)throw new Error('Invalid pass type.');const pass=await one(this.db,`SELECT * FROM ${table} WHERE id=? AND created_by=?`,[id(passId),c.userId]);if(!pass)throw new Error('Pass is not available.');const targetId=pass[kind==='house'?'saved_house_id':'tour_id'];if(targetId){const target=kind==='house'?await this.w.saved.get(targetId):await this.w.tours.get(targetId);if(target?.eso_server!==c.esoServer)throw new Error('Pass is not available in this environment.');}return {c,pass};}
  async revokePass(context,kind,passId){const {c}=await this.ownedPass(context,kind,passId);return this.passes[kind==='house'?'revokeHousePass':'revokeTourPass'](passId,{actorId:c.userId});}
  async resolvePass(context,kind,token){const c=await this.context(context);if(!/^[A-Za-z0-9_-]{32}$/.test(String(token)))throw new Error('Invalid Share Pass.');return this.passes[kind==='house'?'resolveHousePass':'resolveTourPass'](token,{userId:c.userId,guildId:c.guildId,esoServer:c.esoServer});}

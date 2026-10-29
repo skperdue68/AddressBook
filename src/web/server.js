@@ -70,14 +70,21 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
       const memberRoute=url.pathname==='/'||url.pathname==='/app'||url.pathname.startsWith('/app/');
       if (memberRoute?!!memberContext:authorization.allowed) choices.push({ guild: { ...guild, ...current }, settings, esoServer, memberContext });
     }
+    const memberPage=url.pathname==='/app'||url.pathname.startsWith('/app/'),explicitGuild=url.searchParams.has('guildId'),personalRequested=url.searchParams.get('workspace')==='personal'||(session.selectedWorkspace==='personal'&&url.searchParams.get('choose')!=='1');
+    if(workspace&&memberPage&&!explicitGuild&&(personalRequested||choices.length===0)){
+      const environment=normalizeEsoServer(inferred?.eso_server||url.searchParams.get('esoServer')||session.personalEsoServer)||'pc_na';
+      const memberContext=await workspace.authorizeContext({userId:session.id,guildId:'',esoServer:environment,personalWorkspace:true});
+      const changed=session.selectedWorkspace!=='personal'||session.personalEsoServer!==environment;
+      return {session,guild:{id:'',name:'Personal web workspace'},esoServer:environment,settings:memberContext.settings,memberContext,availableContexts:[memberContext],selectionCookie:changed?sessionCookie(createSession({...session,selectedWorkspace:'personal',personalEsoServer:environment},now(),cfg.sessionSecret,cfg.lifetimeSeconds,true),String(cfg.oauth.redirectUri||'').startsWith('https://'),cfg.lifetimeSeconds,now()):null};
+    }
     const rememberedGuild=choices.some(item=>String(item.guild.id)===String(session.selectedGuildId))?session.selectedGuildId:'';
     const inferredGuild=(inferred?.scope==='public'||inferred?.visibility==='public')&&choices.some(item=>String(item.guild.id)===String(inferred.guild_id))?inferred.guild_id:'';
     const requestedGuildId = url.searchParams.get('choose') === '1' ? '' : String(url.searchParams.get('guildId') || inferredGuild || (requestedEnvironment!==null?rememberedGuild:session.selectedGuildId) || '');
     if (!requestedGuildId && choices.length > 1) return { session, choices };
     const selected = choices.find(item => String(item.guild.id) === requestedGuildId) || (!requestedGuildId && choices.length === 1 ? choices[0] : null);
     if (!selected) return { session, forbidden: true };
-    const selectionChanged = (url.searchParams.has('guildId')||requestedEnvironment!==null) && String(session.selectedGuildId || '') !== String(selected.guild.id);
-    return { session, ...selected, availableContexts:choices.map(item=>item.memberContext).filter(Boolean), selectionCookie: selectionChanged ? sessionCookie(createSession({ ...session, selectedGuildId: selected.guild.id }, now(), cfg.sessionSecret, cfg.lifetimeSeconds), String(cfg.oauth.redirectUri || '').startsWith('https://'), cfg.lifetimeSeconds, now()) : null };
+    const selectionChanged = session.selectedWorkspace==='personal'||((url.searchParams.has('guildId')||requestedEnvironment!==null)&&String(session.selectedGuildId||'')!==String(selected.guild.id));
+    return { session, ...selected, availableContexts:choices.map(item=>item.memberContext).filter(Boolean), selectionCookie: selectionChanged ? sessionCookie(createSession({ ...session,selectedWorkspace:'guild', selectedGuildId: selected.guild.id }, now(), cfg.sessionSecret, cfg.lifetimeSeconds,true), String(cfg.oauth.redirectUri || '').startsWith('https://'), cfg.lifetimeSeconds, now()) : null };
   }
 
   async function route(request, response) {
