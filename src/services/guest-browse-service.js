@@ -28,6 +28,7 @@ export class GuestBrowseService{
    let house;try{house=await this.house(s.saved_house_id);}catch{}
    stops.push(house&&house.eso_server===tour.eso_server?{id:s.id,position:s.position,available:true,house,title:s.custom_title||house.display_name||house.house_name,notes:s.notes}:{position:s.position,available:false});
   }
+  const covered=await this.w.withHouseCovers(stops.filter(s=>s.available).map(s=>s.house)),covers=new Map(covered.map(h=>[Number(h.id),h.cover_image_id]));for(const stop of stops)if(stop.available)stop.house={...stop.house,cover_image_id:covers.get(Number(stop.house.id))||null};
   return {tour,stops,cover:!!await one(this.db,'SELECT tour_id FROM tour_covers WHERE tour_id=?',[Number(id)])};
  }
  async images(id){await this.house(id);return this.db.query('SELECT id,caption FROM house_images WHERE saved_house_id=? ORDER BY position,id',[Number(id)]);}

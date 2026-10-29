@@ -1,3 +1,4 @@
+import {tourRouteLines,tourRouteSummary} from '../utils/tour-route-summary.js';
 import {houseCapacityText} from '../utils/house-capacity.js';
 import {unifiedCard} from './message-layout.js';
 import {portalPublicUrl} from '../web/portal-url.js';
@@ -649,7 +650,7 @@ export function tourDetailPayload(tour,stops,canEdit=false,navigation=null,featu
     {name:'Stops',value:String(stops.length),inline:true},
     {name:'Tour Visibility',value:visibility,inline:true}
   );
-  if(stops.length)e.addFields({name:'Route',value:stops.map(s=>`${s.position}. **${destinationLabel(s)}**${houseCapacityText(s)?' '+houseCapacityText(s):''} — @${String(s.eso_owner).replace(/^@/,'')}`).join('\n').slice(0,1024)});
+  if(stops.length)e.addFields({name:'Route',value:tourRouteSummary(stops)});
   let specs=tourDetailButtonSpecs(canEdit).map(spec=>({...spec,customId:spec.customId==='hu:tour:start'?`hu:tour:start:${tour.id}${navigation?`:${navigation.stateId}:${navigation.index}`:featuredSource?`:featured:${featuredSource}`:''}`:spec.customId==='hu:tour:manage'?`hu:tour:manage:${tour.id}`:spec.customId==='hu:tour:add'?`hu:tour:add:${tour.id}`:featuredSource&&spec.customId==='hu:tours'?(featuredSource==='admin'?'hu:admin:featured':featuredSource==='home'?'hu:featured':'hu:tours:featured'):spec.customId,label:featuredSource&&spec.customId==='hu:tours'?'Back to Featured':spec.label}));
   specs.splice(1,0,{customId:`hu:pass:tour:share:${tour.id}`,label:'Share Tour Pass',style:'success'});
   specs.splice(2,0,{customId:`hu:report:tourid:${tour.id}`,label:'Report a Problem',style:'secondary'});
@@ -664,7 +665,7 @@ export function tourDetailPayload(tour,stops,canEdit=false,navigation=null,featu
   return {embeds:[e],components:buttonRows(specs)};
 }
 export function tourManagePayload(tour,stops){
-  const lines=stops.map(s=>`${s.position}. **${destinationLabel(s)}**${houseCapacityText(s)?' '+houseCapacityText(s):''} — @${String(s.eso_owner||'').replace(/^@/,'')}`);
+  const lines=tourRouteLines(stops);
   const kept=[]; let used=0;
   for(const line of lines){
     const next=used+line.length+(kept.length?1:0);
