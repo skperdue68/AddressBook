@@ -1,3 +1,4 @@
+import {houseCapacity} from './house-capacity.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { buildJumpScript, buildHousingLink, buildHousePreviewScript } from './eso.js';
 import { destinationActionButtonSpecs, tourButtonSpecs } from './jump-ui.js';
@@ -6,7 +7,7 @@ import { discordDescription, discordTitle } from './text-limits.js';
 
 const n=v=>Number.isFinite(v)?v.toLocaleString('en-US'):null;
 const parseTags=v=>{try{return Array.isArray(v)?v:JSON.parse(v||'[]')}catch{return []}};
-export function titleWithPlayerCap(label,h={}){ const cap=h.population_limit; return cap!=null?`${label} • 👥 ${cap} Player${Number(cap)===1?'':'s'}`:label; }
+export function titleWithPlayerCap(label,h={}){ const cap=houseCapacity(h); return cap!=null?`${label} • 👥 ${cap} Player${Number(cap)===1?'':'s'}`:label; }
 const limitSummary=(base,plus)=>plus!=null?`${n(base)} • ${n(plus)} with ESO+`:n(base);
 function priceSummary(h){ const parts=[]; if(h.gold_price!=null)parts.push(`${n(h.gold_price)} gold`); if(h.crown_price_unfurnished!=null)parts.push(`${n(h.crown_price_unfurnished)} crowns`); if(h.crown_price_furnished!=null)parts.push(`${n(h.crown_price_furnished)} furnished`); return parts.join(' • '); }
 export function addHouseMetadata(e,h){

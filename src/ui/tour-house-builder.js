@@ -1,3 +1,4 @@
+import {houseCapacityText} from '../utils/house-capacity.js';
 import {ActionRowBuilder,EmbedBuilder,ModalBuilder,TextInputBuilder,TextInputStyle} from 'discord.js';
 import {buttonRows} from './housing-ui.js';
 import {normalizeAccount} from '../utils/eso.js';
@@ -27,6 +28,6 @@ export function tourStopNotesModal(tour,stop,pickerId='none',returnHouseId=null)
  return new ModalBuilder().setCustomId(`hu:modal:stop:notes:${tour.id}:${stop.id}:${pickerId}:${returnHouseId||'none'}`).setTitle('Notes for this tour stop').addComponents(new ActionRowBuilder().addComponents(field));
 }
 export function tourHouseAddedPayload(tour,stop,{pickerId='none',notesSaved=false,returnHouseId=null}={}){
- const embed=new EmbedBuilder().setColor(0x368568).setTitle(notesSaved?'Tour notes saved':'House added to tour').setDescription(`**${String(tour.name).slice(0,180)}**\n\nStop ${Number(stop.position)} · ${String(stop.display_name||stop.house_name||'House').slice(0,180)}\n${String(stop.house_name||'').slice(0,180)} · @${String(stop.eso_owner||'').replace(/^@/,'').slice(0,100)}`).addFields({name:'Tour-specific notes',value:stop.notes?String(stop.notes).slice(0,1000):'Optional: point out a detail, hidden room, or activity visitors should see. These notes belong only to this tour.'});
+ const embed=new EmbedBuilder().setColor(0x368568).setTitle(notesSaved?'Tour notes saved':'House added to tour').setDescription(`**${String(tour.name).slice(0,180)}**\n\nStop ${Number(stop.position)} · ${String(stop.display_name||stop.house_name||'House').slice(0,180)} ${houseCapacityText(stop)}\n${String(stop.house_name||'').slice(0,180)} · @${String(stop.eso_owner||'').replace(/^@/,'').slice(0,100)}`).addFields({name:'Tour-specific notes',value:stop.notes?String(stop.notes).slice(0,1000):'Optional: point out a detail, hidden room, or activity visitors should see. These notes belong only to this tour.'});
  return {content:'',allowedMentions:{parse:[]},embeds:[embed],components:buttonRows([{customId:`hu:stop:notes:${tour.id}:${stop.id}:${pickerId}:${returnHouseId||'none'}`,label:stop.notes?'Edit Tour Notes':'Add Tour Notes',style:'primary'},{customId:`hu:tour:addmore:${tour.id}:${pickerId}`,label:'Add Another House',style:'success'},{customId:`hu:tour:view:${tour.id}`,label:returnHouseId?'Open Tour':'View Tour',style:'secondary'},{customId:`hu:tour:manage:${tour.id}`,label:'Manage Stops',style:'secondary'},...(returnHouseId?[{customId:`hu:registration:house:${Number(returnHouseId)}`,label:'Back to House',style:'secondary'}]:[])],2)};
 }

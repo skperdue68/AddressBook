@@ -1,3 +1,4 @@
+import {houseCapacityText} from '../utils/house-capacity.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, StringSelectMenuBuilder } from 'discord.js';
 import { tourEmbed } from '../utils/render.js';
 import { buildHousingLink, buildJumpScript } from '../utils/eso.js';
@@ -128,12 +129,12 @@ export function progressCompletedPayload({ items = [], page = 1, activePage = 1 
 export function progressHistoryPayload({ progress = null, stops = [], page = 1, listPage = 1, activePage = 1 } = {}) {
   const currentPage=Math.max(1,Number(page)||1),pageSize=25,start=(currentPage-1)*pageSize,pageStops=stops.slice(start,start+pageSize),hasNext=start+pageSize<stops.length;
   const embed = new EmbedBuilder().setColor(0x2b7ddd).setTitle(discordTitle(`✅ ${progress?.tour_name || 'Tour'} — Completed Stops`)).setDescription(discordDescription(stops.length
-    ? pageStops.map(stop => `**${stop.position}.** ${destinationLabel(stop)}${stop.eso_owner ? ` — @${String(stop.eso_owner).replace(/^@/,'')}` : ''}`).join('\n')
+    ? pageStops.map(stop => `**${stop.position}.** ${destinationLabel(stop)}${stop.eso_owner ? ` — @${String(stop.eso_owner).replace(/^@/,'')}` : ''}${houseCapacityText(stop)?' • '+houseCapacityText(stop):''}`).join('\n')
     : 'No completed stops were recorded for this run.'));
   const houses = pageStops.filter(stop => stop.saved_house_id != null);
   const listSuffix=Number(listPage)>1?`:${Math.floor(Number(listPage))}`:'';
   const activeSuffix=Number(activePage)>1?`:from:${Math.floor(Number(activePage))}`:'';
-  const picker = houses.length ? new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId(`hu:progress:history:house:${progress?.id || ''}${listSuffix||activeSuffix?`:${Math.max(1,Number(listPage)||1)}:${currentPage}`:''}${activeSuffix}`).setPlaceholder('Open a completed house').addOptions(houses.map(stop => ({ label: `${stop.position}. ${destinationLabel(stop)}`.slice(0, 100), value: String(stop.saved_house_id), description: 'Open house details' })))) : null;
+  const picker = houses.length ? new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId(`hu:progress:history:house:${progress?.id || ''}${listSuffix||activeSuffix?`:${Math.max(1,Number(listPage)||1)}:${currentPage}`:''}${activeSuffix}`).setPlaceholder('Open a completed house').addOptions(houses.map(stop => ({ label: `${stop.position}. ${destinationLabel(stop)}`.slice(0, 100), value: String(stop.saved_house_id), description: [houseCapacityText(stop),'Open house details'].filter(Boolean).join(' • ') })))) : null;
   const navigation=[button(`hu:progress:history:prev:${progress?.id || ''}:${Math.max(1,currentPage-1)}${listSuffix||activeSuffix?`:${Math.max(1,Number(listPage)||1)}`:''}${activeSuffix}`,'Previous',ButtonStyle.Secondary,currentPage<=1),button(`hu:progress:history:next:${progress?.id || ''}:${currentPage+1}${listSuffix||activeSuffix?`:${Math.max(1,Number(listPage)||1)}`:''}${activeSuffix}`,'Next',ButtonStyle.Secondary,!hasNext),button(activeSuffix?`hu:progress:completed:page:${Math.max(1,Number(listPage)||1)}${activeSuffix}`:listSuffix?`hu:progress:completed:page:${Math.floor(Number(listPage))}`:'hu:progress:completed', 'Back')];
   return { embeds: [embed], components: [...(picker ? [picker] : []), row(navigation)] };
 }

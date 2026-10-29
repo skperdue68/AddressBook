@@ -12,14 +12,14 @@ test('browser tour picker filters house and owner terms, applies facets, and kee
  try{await access(browser);}catch{t.skip('Chrome unavailable; set CHROME_PATH to run browser regression');return;}
  const temp=await mkdtemp(join(tmpdir(),'hearthbound-picker-'));
  try{
- const rows=[{id:1,house_name:'Grand Psijic Villa',eso_owner:'@Alpha',scope:'public',guild_id:'g',tags:'["garden","games"]',zone:'Artaeum',style:'Altmer',house_type:'Manor',classification:'Notable'},{id:2,house_name:'Autumn Cottage',eso_owner:'Bravo',scope:'global',tags:'["garden"]',zone:'Glenumbra',style:'Breton',house_type:'Small',classification:'Staple'},{id:3,house_name:'Hidden Home',eso_owner:'Member',scope:'private',owner_user_id:'u',tags:'[]'}];
+ const rows=[{id:1,population_limit:6,house_name:'Grand Psijic Villa',eso_owner:'@Alpha',scope:'public',guild_id:'g',tags:'["garden","games"]',zone:'Artaeum',style:'Altmer',house_type:'Manor',classification:'Notable'},{id:2,house_name:'Autumn Cottage',eso_owner:'Bravo',scope:'global',tags:'["garden"]',zone:'Glenumbra',style:'Breton',house_type:'Small',classification:'Staple'},{id:3,house_name:'Hidden Home',eso_owner:'Member',scope:'private',owner_user_id:'u',tags:'[]'}];
  const source=await readFile(new URL('../src/web/assets/tour-editor.js',import.meta.url),'utf8');
  const css=await readFile(new URL('../src/web/assets/workspace.css',import.meta.url),'utf8');
  const checks=`const report=[];const check=(value,message)=>{if(!value)throw Error(message);report.push(message);};const set=(id,value)=>{const el=document.getElementById(id);el.value=value;el.dispatchEvent(new Event('input',{bubbles:true}));};const visible=()=>[...document.querySelectorAll('[data-candidate-label]')].filter(el=>getComputedStyle(el).display!=='none').map(el=>el.querySelector('input').dataset.addHouse).join(',');
  check(visible()==='1,2','initial eligibility hides private houses');
  set('candidate-filter','Villa');check(visible()==='1','plain live text filter works');
  set('candidate-filter','@alpha villa');check(visible()==='1','house and ESO owner terms work together');
- document.querySelector('[data-add-house="1"]').click();check(document.getElementById('stopIds').value==='1','adding visible house updates draft');
+ document.querySelector('[data-add-house="1"]').click();check(document.getElementById('stopIds').value==='1','adding visible house updates draft');check(document.querySelector('#tour-stops .house-capacity').textContent.trim()==='6','new stop keeps capacity badge');
  document.getElementById('candidate-clear').click();set('candidate-tags','garden');set('candidate-style','Breton');check(visible()==='2','tags and style combine');
  document.querySelector('[data-add-house="2"]').click();check(document.getElementById('stopIds').value==='1,2','adding filtered house preserves selection order');
  set('candidate-filter','no match');check(visible()==='','no matches are hidden visually');check(!document.getElementById('candidate-empty').hidden,'empty state shown');

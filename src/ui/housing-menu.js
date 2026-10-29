@@ -1,3 +1,4 @@
+import {houseCapacityText} from '../utils/house-capacity.js';
 import {messageControls,mapMessageControls,refreshComponentCommentCount,messageFlagBits} from './message-layout.js';
 import {HouseImageService} from '../services/house-image-service.js';
 import {commentReaderPayload,commentPageSize,commentPageModal} from './comment-reader.js';
@@ -279,7 +280,8 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     if(kind==='visit'||kind.startsWith('personal-'))return `${destinationLabel(r)}`;
     return `${destinationLabel(r)}${r.eso_owner?` — @${String(r.eso_owner).replace(/^@/,'')}`:''}`;
   }
-  function pickerDescription(kind,r){
+  function pickerDescription(kind,r){const description=pickerDescriptionBody(kind,r),capacity=houseCapacityText(r);return capacity?[capacity,description].filter(Boolean).join(' • '):description;}
+  function pickerDescriptionBody(kind,r){
     if(kind==='admin-legacy-tour')return `${r.visibility==='global'?'Global':'Server'} • Creator: ${r.creator_display_name||r.creator_global_name||r.creator_id||'Unknown'}`;
     if(kind==='featured-house')return [r.house_name,r.zone,r.scope==='global'?'Global':'Server'].filter(Boolean).join(' • ');
     if(kind==='featured-tour')return r.description||undefined;

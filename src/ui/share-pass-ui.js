@@ -1,3 +1,4 @@
+import {houseCapacityText} from '../utils/house-capacity.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } from 'discord.js';
 import {portalPublicUrl} from '../web/portal-url.js';
 import { cleanDestinationEmbed, buttonRows, houseStateSpecs } from './housing-ui.js';
@@ -132,7 +133,7 @@ export function tourCopyPreviewPayload(preview,{token}={}){
 }
 
 export function tourPassInformationPayload({tour,stops},{token}={}){
-  const route=stops.length?stops.slice(0,20).map((stop,index)=>`${index+1}. ${destinationLabel({...stop,display_name:stop.custom_title||stop.display_name})}${stop.eso_owner?` — @${String(stop.eso_owner).replace(/^@/,'')}`:''}`).join('\n'):'No stops available.';
+  const route=stops.length?stops.slice(0,20).map((stop,index)=>`${index+1}. ${destinationLabel({...stop,display_name:stop.custom_title||stop.display_name})}${stop.eso_owner?` — @${String(stop.eso_owner).replace(/^@/,'')}`:''}${houseCapacityText(stop)?' • '+houseCapacityText(stop):''}`).join('\n'):'No stops available.';
   const embed=new EmbedBuilder().setColor(0x2b7ddd).setTitle(discordTitle(`Tour Information — ${tour.name}`)).setDescription(discordDescription([tour.description||'A shared HearthBound housing tour.',`**Stops:** ${stops.length}`,'**Route**',route].join('\n\n')));
   return {embeds:[embed],components:buttonRows([{customId:`hu:pass:tour:start:${token}`,label:'Start Self-Paced Tour',style:'success'},{customId:`hu:pass:tour:copy:${token}`,label:'Copy Tour to My Address Book',style:'secondary'}])};
 }
