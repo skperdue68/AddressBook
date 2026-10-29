@@ -40,3 +40,5 @@ test('guide download requires a signed-in account, serves exact Word bytes, and 
   member=false;assert.equal((await fetch(base+'/app/guide',{headers:{cookie},redirect:'manual'})).status,200);assert.equal((await fetch(base+'/app/guide?guildId=g',{headers:{cookie},redirect:'manual'})).status,403);
  }finally{await new Promise(r=>server.close(r));await closeDatabase(db);}
 });
+
+import './permission-preview.test.js';

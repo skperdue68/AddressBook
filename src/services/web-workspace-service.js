@@ -1,3 +1,4 @@
+import {applyPermissionPreview} from './permission-preview.js';
 import {TourCoverService} from './tour-cover-service.js';
 import {pageWindow} from '../utils/pagination.js';
 import {HouseImageService} from './house-image-service.js';
@@ -21,7 +22,7 @@ import {one} from '../db/database.js';
 const tourNameOrder=new Intl.Collator('en',{sensitivity:'base'});
 export class WebWorkspaceService{
  constructor(db,{env=process.env}={}){this.db=db;this.feedback=new FeedbackService(db,env);this.policy=new ContentPolicyService(db,env);this.statistics=new CommunityStatisticsService(db);this.usage=new UsageActivityService(db);this.ownerCatalog=new HouseCatalogService(db,env);this.saved=new SavedHouseService(db);this.tours=new TourService(db);this.progress=new TourProgressService(db);this.catalog=new HouseService(db);this.featuredService=new FeaturedContentService(db);this.actions=new WebActionsService(this);this.images=new HouseImageService(this,{directory:env.HOUSE_IMAGE_DIR});this.tourCovers=new TourCoverService(this,{directory:env.TOUR_COVER_DIR});}
- authorizeContext(input){return this.policy.context(input);}
+ async authorizeContext(input){return applyPermissionPreview(await this.policy.context({...input,memberRoleIds:input.previewMemberRoleIds||input.memberRoleIds}),input.permissionPreview);}
  fresh(c){return this.authorizeContext(c);}
  houseScopes(c){if(c.personalWorkspace)return ['global','private'];return c.settings.registration_policy!=='roles'||c.isServerAdmin||c.isOwner||JSON.parse(c.settings.registration_role_ids||'[]').some(r=>c.memberRoleIds.includes(r))?['public','private','global']:['private'];}
  async tourHouseCandidates(context){
