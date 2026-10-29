@@ -103,3 +103,5 @@ a.pill,a.pill:hover,a.pill:focus-visible{text-decoration:none}a.pill:hover{filte
 @media(max-width:700px){.house-detail-heading{flex-direction:column;align-items:stretch;gap:16px}.house-detail-cover{flex:auto;width:100%;max-width:640px}.stop>.house-list-thumbnail,.stop-cover{width:64px;flex-basis:64px}.stop>.house-list-thumbnail img,.stop-cover{width:64px;height:48px}}
 
 @media(max-width:700px){#tour-stops .stop{display:grid;grid-template-columns:repeat(3,44px) minmax(0,1fr);gap:10px}#tour-stops .stop>.handle{grid-column:1;grid-row:1}#tour-stops .stop>.house-list-thumbnail,#tour-stops .stop>.stop-cover{grid-column:4;grid-row:1;justify-self:end}#tour-stops .stop>.name{grid-column:1/-1;grid-row:2}#tour-stops .stop>button{grid-row:3}.stop{flex-wrap:wrap}.stop>.name{min-width:120px}}
+
+.house-gallery>[data-gallery-upload]{margin:18px 0 28px}.gallery-grid figcaption{min-height:1.5em}.house-gallery>.section-heading{flex-wrap:wrap;column-gap:16px}.house-gallery [data-gallery-count]{margin-left:auto}
