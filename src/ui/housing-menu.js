@@ -1,3 +1,5 @@
+import {TourCoverService} from '../services/tour-cover-service.js';
+import {withTourCover} from './tour-cover.js';
 import {houseCapacityText} from '../utils/house-capacity.js';
 import {messageControls,mapMessageControls,refreshComponentCommentCount,messageFlagBits} from './message-layout.js';
 import {HouseImageService} from '../services/house-image-service.js';
@@ -96,7 +98,7 @@ export function searchCriteria(searchType,filters={}){
 ${lines.length?lines.join('\n'):'• No parameters supplied'}`;
 }
 
-export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),adminInterface=adminInterfaceMode(),images=null}={}){
+export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),adminInterface=adminInterfaceMode(),images=null,tourCovers=null}={}){
   const houses=new HouseService(db),regs=new RegistrationService(db),bookmarks=new BookmarkService(db),visits=new VisitService(db),tours=new TourService(db),guilds=new GuildService(db),environments=new GuildEnvironmentService(db,{guildService:guilds}),comments=new CommentService(db),saved=new SavedHouseService(db),sessions=new TourSessionService(db),globalMods=new GlobalModeratorService(db),myAddressBook=new MyAddressBookService(db);
   const progress=new TourProgressService(db),featured=new FeaturedContentService(db),readiness=new TourReadinessService(db),auditLog=new AuditLogService(db),dataExport=new DataExportService(db),maintenance=new HouseMaintenanceService(db);
   const usage=new UsageActivityService(db);
@@ -151,6 +153,8 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
   const handleCatalog=createCatalogMenu(new HouseCatalogService(db));
   const contentPolicy=new ContentPolicyService(db);
   const galleryImages=images||new HouseImageService({db,saved,policy:contentPolicy,fresh:context=>contentPolicy.context(context)});
+  const coverService=tourCovers||new TourCoverService({db,tours,policy:contentPolicy,fresh:context=>contentPolicy.context(context)});
+  const tourCover=(i,t,payload)=>withTourCover(coverService,{...contextFor(i),memberRoleIds:[...(i.member?.roles?.cache?.keys?.()||i.member?.roles||[])].map(String)},i,t,payload);
   const policyContext=i=>({...contextFor(i),isServerAdmin:isModerator(i),isGlobalAdmin:isGlobalTourAdmin(i)});
   const canManageTour=(i,t)=>contentPolicy.canEditTour(t?{...t,visibility:t.visibility||({personal:'private',server:'public'}[t.scope]||t.scope)}:null,policyContext(i));
   const tourUpdateContext=(i,t)=>isGlobalTourAdmin(i)?{
@@ -257,7 +261,8 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     const index=stops.findIndex(stop=>Number(stop.id)===Number(view.current_stop_id));
     if(!tour||index<0)return {...progressRunPayload({item:view,listPage}),...(content?{content}:{})};
     const stop=stops[index],commentCount=await tourStopCommentCount(stop,i.user.id),canEdit=await canEditTourStop(i,stop);
-    return personalStopActions(i,{...progressRunPayload({item:view,tour,stops,currentPosition:index+1,commentCount,showDetails,canEdit,listPage}),...(content?{content}:{})},stop,{progressId:view.id,stopId:stop.id});
+    const payload=await personalStopActions(i,{...progressRunPayload({item:view,tour,stops,currentPosition:index+1,commentCount,showDetails,canEdit,listPage}),...(content?{content}:{})},stop,{progressId:view.id,stopId:stop.id});
+    return index===0?tourCover(i,tour,payload):payload;
   }
   const onboardingNames=i=>({globalName:i.user.globalName||i.user.username,displayName:i.member?.displayName});
 
@@ -513,7 +518,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
   async function tourById(i,id,{forManagement=false}={}){const access=await accessContexts.forTour({userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId),tourId:id});if(!access.environmentMatch)throw new Error(access.message);if(!access.canView&&!(forManagement&&isGlobalTourAdmin(i)&&access.record?.visibility==='public'))return null;const t=access.record;return {...t,scope:t.visibility==='private'?'personal':t.visibility==='public'?'server':'global'};}
   async function tourDetail(i,id,mode='update'){
     const t=await tourById(i,id); if(!t)return respond(i,{content:'Tour not found.',embeds:[],components:[]},mode);
-    return respond(i,tourDetailPayload(t,await tours.getStops(t.id),canManageTour(i,t)),mode);
+    return respond(i,await tourCover(i,t,tourDetailPayload(t,await tours.getStops(t.id),canManageTour(i,t))),mode);
   }
   async function tourBrowseDetail(i,stateId,index){
     const s=states.get(stateId);
@@ -521,11 +526,11 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     const safeIndex=Math.max(0,Math.min(Number(index)||0,s.rows.length-1)),listed=s.rows[safeIndex],t=listed?await tourById(i,listed.id):null;
     if(!t)return i.reply({content:'That tour is no longer available.',flags:MessageFlags.Ephemeral});
     s.page=Math.floor(safeIndex/PAGE);
-    return i.update(tourDetailPayload(t,await tours.getStops(t.id),canManageTour(i,t),{stateId,index:safeIndex,total:s.rows.length}));
+    return i.update(await tourCover(i,t,tourDetailPayload(t,await tours.getStops(t.id),canManageTour(i,t),{stateId,index:safeIndex,total:s.rows.length})));
   }
   async function tourStartPreflight(i,t,{backId=null}={}){
     const result=await readiness.check(t.id,{viewerId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)});
-    return tourStartChoicePayload(t,canRunSharedTour(i,t),result,{canManage:canManageTour(i,t),backId});
+    return tourCover(i,t,tourStartChoicePayload(t,canRunSharedTour(i,t),result,{canManage:canManageTour(i,t),backId}));
   }
   async function tourManage(i,id,mode='update'){
     const t=await tourById(i,id,{forManagement:true}); if(!t)return respond(i,{content:'Tour not found.',embeds:[],components:[]},mode);
@@ -549,7 +554,8 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
   }
   async function tourSessionCard(i,t,stops,session,position,showDetails=false){
     const stop=stops[Math.max(0,Number(position)-1)],count=await tourStopCommentCount(stop,session.mode==='self_paced'?i.user.id:null),canEdit=await canEditTourStop(i,stop);
-    const payload={embeds:[tourEmbed(t,stops,Number(position),count,showDetails,{shared:session.mode==='shared',leaderId:session.started_by})],components:tourButtons(session.id,count,showDetails,{canEdit,savedHouseId:stop?.source_id})};
+    let payload={embeds:[tourEmbed(t,stops,Number(position),count,showDetails,{shared:session.mode==='shared',leaderId:session.started_by})],components:tourButtons(session.id,count,showDetails,{canEdit,savedHouseId:stop?.source_id})};
+    if(Number(position)===1)payload=await tourCover(i,t,payload);
     if(session.mode==='self_paced'){const own=await personalStopActions(i,payload,stop,{sessionId:session.id,stopId:stop.id});if(own.components.flatMap(row=>(row.toJSON?.()||row).components).some(c=>c.label==='Add Comment'))return own;}
     return {...payload,components:[...payload.components,...buttonRows([{customId:`tour:commentquick:${session.id}:${stop.id}`,label:'Add Comment',style:'primary'}])]};
   }
@@ -935,7 +941,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       if(!rows.some(item=>item.target_kind==='tour'&&Number(item.target_id)===tourId))return i.reply({content:'That tour is no longer Featured.',flags:MessageFlags.Ephemeral});
       const t=await tourById(i,tourId);
       if(!t)return i.reply({content:'That tour is no longer available.',flags:MessageFlags.Ephemeral});
-      return i.update(tourDetailPayload(t,await tours.getStops(t.id),canManageTour(i,t),null,source));
+      return i.update(await tourCover(i,t,tourDetailPayload(t,await tours.getStops(t.id),canManageTour(i,t),null,source)));
     }
     if(id.startsWith('hu:featured:house:')){
       const parts=id.split(':'),houseId=Number(parts[3]),source=parts[4]==='admin'&&isAdmin(i)?'admin':parts[4]==='home'?'home':'viewer';

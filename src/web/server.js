@@ -1,4 +1,5 @@
 import {houseCapacityBadge} from './house-capacity.js';
+import {tourCoverRoute} from './tour-cover.js';
 import {houseListThumbnail} from './house-thumbnail.js';
 import {adminOverview} from './admin-overview.js';
 import {pagination} from './pagination.js';
@@ -53,12 +54,13 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
     const session = readSession(cookieValue(request, 'addressbook_session'), now(), cfg.sessionSecret);
     if (!session) return null;
     const guilds = Array.isArray(session.guilds) ? session.guilds : [];
-    const choices = [];
+    const choices = [],requestedEnvironment=url.searchParams.get('esoServer');
     for (const guild of guilds) {
       const current = resolveGuildMembership ? await resolveGuildMembership({ userId: session.id, guildId: guild.id }) : guild;
       if (!current) continue;
       const settings = service.guilds?.getSettings ? service.guilds.getSettings(guild.id) : { eso_server: current.esoServer || guild.esoServer || null };
       const esoServer = settings?.eso_server || current.esoServer || guild.esoServer || null;
+      if(requestedEnvironment!==null&&esoServer!==requestedEnvironment)continue;
       const authorization = await service.authorizeGuild({ userId: session.id, guildId: guild.id, requestedGuildId: guild.id, esoServer, requestedEsoServer: esoServer, memberRoleIds: current.roleIds || [] });
       let memberContext=null;
       if(workspace&&esoServer){try{memberContext=await workspace.authorizeContext({userId:session.id,guildId:guild.id,guildName:current.name||guild.name,esoServer,memberRoleIds:current.roleIds||[],setupAuthority:current.setupAuthority===true});}catch{/* unavailable context */}}
@@ -66,11 +68,12 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
       const memberRoute=url.pathname==='/'||url.pathname==='/app'||url.pathname.startsWith('/app/');
       if (memberRoute?!!memberContext:authorization.allowed) choices.push({ guild: { ...guild, ...current }, settings, esoServer, memberContext });
     }
-    const requestedGuildId = url.searchParams.get('choose') === '1' ? '' : String(url.searchParams.get('guildId') || session.selectedGuildId || '');
+    const rememberedGuild=choices.some(item=>String(item.guild.id)===String(session.selectedGuildId))?session.selectedGuildId:'';
+    const requestedGuildId = url.searchParams.get('choose') === '1' ? '' : String(url.searchParams.get('guildId') || (requestedEnvironment!==null?rememberedGuild:session.selectedGuildId) || '');
     if (!requestedGuildId && choices.length > 1) return { session, choices };
     const selected = choices.find(item => String(item.guild.id) === requestedGuildId) || (!requestedGuildId && choices.length === 1 ? choices[0] : null);
     if (!selected) return { session, forbidden: true };
-    const selectionChanged = url.searchParams.has('guildId') && String(session.selectedGuildId || '') !== String(selected.guild.id);
+    const selectionChanged = (url.searchParams.has('guildId')||requestedEnvironment!==null) && String(session.selectedGuildId || '') !== String(selected.guild.id);
     return { session, ...selected, availableContexts:choices.map(item=>item.memberContext).filter(Boolean), selectionCookie: selectionChanged ? sessionCookie(createSession({ ...session, selectedGuildId: selected.guild.id }, now(), cfg.sessionSecret, cfg.lifetimeSeconds), String(cfg.oauth.redirectUri || '').startsWith('https://'), cfg.lifetimeSeconds, now()) : null };
   }
 
@@ -101,10 +104,10 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
     }
     if (url.pathname === '/auth/logout') return redirect(response, '/admin', { 'set-cookie': 'addressbook_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0' });
     const context = await sessionContext(request, url);
-    if (!context) return redirect(response, `/auth/discord?returnTo=${encodeURIComponent(url.pathname)}`);
+    if (!context) return redirect(response, `/auth/discord?returnTo=${encodeURIComponent(url.pathname+url.search)}`);
     if (context.forbidden) return send(response, 403, page('Access unavailable', '<p>You do not have Housing Moderator access to a HearthBound guild.</p>'));
     if (context.choices) {
-      const destination=['/app/feedback','/app/feedback/review'].includes(url.pathname)?url.pathname:url.pathname.startsWith('/app')?'/app':'/admin';
+      const destination=url.pathname.startsWith('/app')?url.pathname+url.search:'/admin';
       return send(response, 200, guildPickerPage(context.choices,context.session,destination));
     }
     if (context.selectionCookie) {
@@ -135,7 +138,7 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
       if(request.method!=='GET')return send(response,405,'Method not allowed',{allow:'GET, POST'});
       return send(response,200,renderWorkspace({title:'Choose this server’s ESO environment',user:session,context:context.memberContext,body:`<p>This is the same initial setup offered in Discord. Choose carefully; later changes require administration and an impact confirmation.</p><form action="/app/setup" method="post">${csrfField(session.csrf)}<label>ESO environment<select name="esoServer">${ESO_SERVERS.map(s=>`<option value="${s.value}">${s.label}</option>`).join('')}</select></label><button class="primary">Complete initial setup</button></form>`}));
     }
-    if(workspace&&context.memberContext){const gallery=await houseGalleryRoute({request,response,url,workspace,context:context.memberContext,session,send,redirect,readBody});if(gallery!==null)return gallery;}
+    if(workspace&&context.memberContext){const tourImage=await tourCoverRoute({request,response,url,workspace,context:context.memberContext,session,send,redirect,readBody});if(tourImage!==null)return tourImage;const gallery=await houseGalleryRoute({request,response,url,workspace,context:context.memberContext,session,send,redirect,readBody});if(gallery!==null)return gallery;}
     if(workspace&&(url.pathname==='/'||url.pathname==='/app'||url.pathname.startsWith('/app/'))){return handleWorkspaceRoute({request,response,url,session,context:context.memberContext,workspace,serverContexts:context.availableContexts||[],memberLookup,claimFirstAdmin,readBody,send,redirect});}
     const common = { guildId: guild.id, esoServer };
     const reportMutation = /^\/admin\/reports\/(\d+)\/(review|resolve|dismiss)$/.exec(url.pathname);
