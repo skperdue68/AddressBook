@@ -253,7 +253,8 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     return {...payload,components:[...payload.components,...buttonRows(houseStateSpecs({...row,personal_token:stateToken,personal_state:await personalStates.get(i.user.id,houseTarget(row))}))]};
   }
   async function progressRunCard(i,item,{showDetails=false,content=null,overrideStopId=null,listPage=1}={}){
-    const view=await progressView(i,item);
+    let view=await progressView(i,item);
+    if(view?.status==='completed')view={...view,...await progress.reconcile({progressId:view.id,userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)})};
     if(view&&overrideStopId!=null)view.current_stop_id=Number(overrideStopId);
     if(!view||view.status==='completed')return {...progressRunPayload({item:view,listPage}),...(content?{content}:{})};
     const current=await readiness.check(view.tour_id,{viewerId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId),passId:view.share_pass_id});
@@ -1171,19 +1172,19 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     }
     if(id.startsWith('hu:progress:history:prev:')||id.startsWith('hu:progress:history:next:')){
       const parts=id.split(':'),progressId=Number(parts[4]),page=Number(parts[5]),listPage=Math.max(1,Number(parts[6])||1),from=parts.indexOf('from'),activePage=from>=0?Math.max(1,Number(parts[from+1])||1):1;
-      try{const rows=await db.query('SELECT * FROM tour_progress WHERE id=? AND discord_user_id=?',[progressId,String(i.user.id)]);if(!rows[0])return i.reply({content:'That progress run is no longer available.',flags:MessageFlags.Ephemeral});const stops=await progress.completedStops({progressId,userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)});return i.update(progressHistoryPayload({progress:rows[0],stops,page,listPage,activePage}));}catch(error){return i.reply({content:error.message,flags:MessageFlags.Ephemeral});}
+      try{const rows=await db.query('SELECT * FROM tour_progress WHERE id=? AND discord_user_id=?',[progressId,String(i.user.id)]);if(!rows[0])return i.reply({content:'That progress run is no longer available.',flags:MessageFlags.Ephemeral});const stops=await progress.completedStops({progressId,userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)});return i.update(progressHistoryPayload({progress:rows[0].status==='completed'?await progress.reconcile({progressId,userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)}):rows[0],stops,page,listPage,activePage}));}catch(error){return i.reply({content:error.message,flags:MessageFlags.Ephemeral});}
     }
     if(id.startsWith('hu:ph:')){
       const parts=id.split(':'),progressId=Number(parts[2]),listPage=Math.max(1,Number(parts[3])||1),page=Math.max(1,Number(parts[4])||1),activePage=Math.max(1,Number(parts[5])||1);
-      try{const rows=await db.query('SELECT * FROM tour_progress WHERE id=? AND discord_user_id=?',[progressId,String(i.user.id)]);if(!rows[0])return i.reply({content:'That progress run is no longer available.',flags:MessageFlags.Ephemeral});const stops=await progress.completedStops({progressId,userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)});return i.update(progressHistoryPayload({progress:rows[0],stops,page,listPage,activePage}));}catch(error){return i.reply({content:error.message,flags:MessageFlags.Ephemeral});}
+      try{const rows=await db.query('SELECT * FROM tour_progress WHERE id=? AND discord_user_id=?',[progressId,String(i.user.id)]);if(!rows[0])return i.reply({content:'That progress run is no longer available.',flags:MessageFlags.Ephemeral});const stops=await progress.completedStops({progressId,userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)});return i.update(progressHistoryPayload({progress:rows[0].status==='completed'?await progress.reconcile({progressId,userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)}):rows[0],stops,page,listPage,activePage}));}catch(error){return i.reply({content:error.message,flags:MessageFlags.Ephemeral});}
     }
     if(id.startsWith('hu:progress:history:')){
       const parts=id.split(':'),progressId=Number(parts[3]),listPage=Math.max(1,Number(parts[4])||1),page=Math.max(1,Number(parts[5])||1),from=parts.indexOf('from'),activePage=from>=0?Math.max(1,Number(parts[from+1])||1):1;
-      try{const rows=await db.query('SELECT * FROM tour_progress WHERE id=? AND discord_user_id=?',[progressId,String(i.user.id)]);if(!rows[0])return i.reply({content:'That progress run is no longer available.',flags:MessageFlags.Ephemeral});const stops=await progress.completedStops({progressId,userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)});return i.update(progressHistoryPayload({progress:rows[0],stops,page,listPage,activePage}));}catch(error){return i.reply({content:error.message,flags:MessageFlags.Ephemeral});}
+      try{const rows=await db.query('SELECT * FROM tour_progress WHERE id=? AND discord_user_id=?',[progressId,String(i.user.id)]);if(!rows[0])return i.reply({content:'That progress run is no longer available.',flags:MessageFlags.Ephemeral});const stops=await progress.completedStops({progressId,userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)});return i.update(progressHistoryPayload({progress:rows[0].status==='completed'?await progress.reconcile({progressId,userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId)}):rows[0],stops,page,listPage,activePage}));}catch(error){return i.reply({content:error.message,flags:MessageFlags.Ephemeral});}
     }
     if(id.startsWith('hu:progress:resume:')){
       const item=await db.query('SELECT * FROM tour_progress WHERE id=? AND discord_user_id=?',[Number(id.split(':')[3]),String(i.user.id)]);
-      return i.update(await progressRunCard(i,item[0]||null,{listPage:Math.max(1,Number(id.split(':')[4])||1)}));
+      try{const current=item[0]?await progress.startOrResume({userId:i.user.id,guildId:i.guildId,esoServer:guilds.getEsoServer(i.guildId),tourId:item[0].tour_id,sharePassId:item[0].share_pass_id}):null;return i.update(await progressRunCard(i,current,{listPage:Math.max(1,Number(id.split(':')[4])||1)}));}catch(error){return i.reply({content:error.message,flags:MessageFlags.Ephemeral});}
     }
     if(id.startsWith('hu:progress:return:')){
       const payload=await tourReturnPayload(i,id);

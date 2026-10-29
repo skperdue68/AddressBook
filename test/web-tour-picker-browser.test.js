@@ -19,7 +19,7 @@ test('browser tour picker filters house and owner terms, applies facets, and kee
  check(visible()==='1,2','initial eligibility hides private houses');
  set('candidate-filter','Villa');check(visible()==='1','plain live text filter works');
  set('candidate-filter','@alpha villa');check(visible()==='1','house and ESO owner terms work together');
- document.querySelector('[data-add-house="1"]').click();check(document.getElementById('stopIds').value==='1','adding visible house updates draft');check(document.querySelector('#tour-stops .house-capacity').textContent.trim()==='6','new stop keeps capacity badge');
+ document.querySelector('[data-add-house="1"]').click();check(document.getElementById('stopIds').value==='1','adding visible house updates draft');check(document.querySelector('#tour-stops .house-capacity').textContent.trim()==='6 max','new stop keeps capacity badge');
  document.getElementById('candidate-clear').click();set('candidate-tags','garden');set('candidate-style','Breton');check(visible()==='2','tags and style combine');
  document.querySelector('[data-add-house="2"]').click();check(document.getElementById('stopIds').value==='1,2','adding filtered house preserves selection order');
  set('candidate-filter','no match');check(visible()==='','no matches are hidden visually');check(!document.getElementById('candidate-empty').hidden,'empty state shown');
