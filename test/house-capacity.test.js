@@ -8,7 +8,7 @@ import {createWebAdminServer} from '../src/web/server.js';import {WebAdminServic
 
 test('house cards display recorded capacity and never guess missing or invalid limits',()=>{
  const h={id:1,display_name:'Small Garden',house_name:'Cottage',scope:'public',status:'active',population_limit:6};
- assert.match(discoveryCards([h]),/class="house-capacity"/);assert.match(discoveryCards([h]),/Maximum house capacity: 6 players/);
+ assert.match(discoveryCards([h]),/class="house-capacity"/);assert.match(discoveryCards([h]),/fill="currentColor"/);assert.match(discoveryCards([h]),/Maximum house capacity: 6 players/);
  for(const population_limit of [null,'',0,-1,'not a number']){assert.doesNotMatch(discoveryCards([{...h,population_limit}]),/class="house-capacity"/);assert.equal(titleWithPlayerCap('Cottage',{population_limit}),'Cottage');}
 });
 test('Discord tour routes and selected-stop reviews show capacity beside each house',()=>{
