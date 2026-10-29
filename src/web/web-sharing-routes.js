@@ -33,7 +33,7 @@ export async function handleWebSharing({url,session,context:c,workspace:w,form,r
  const shared=/^\/app\/shared\/(house|tour)\/([A-Za-z0-9_-]{32})$/.exec(path);
  if(shared){const kind=shared[1],token=shared[2],resolved=await a.resolvePass(c,kind,token);
   if(form?.get('action')==='copy'){
-   const result=await a.copyPass(c,kind,token,Object.fromEntries(form));setUsageKind('used_personal');return go(`/app/${kind==='house'?'houses':'tours'}/${kind==='house'?result.house.id:result.id}?saved=1`);
+   const result=await a.copyPass(c,kind,token,Object.fromEntries(form));setUsageKind('used_personal');if(kind==='house'&&result.house.status==='pending')return go('/app/register?submitted=1');return go(`/app/${kind==='house'?'houses':'tours'}/${kind==='house'?result.house.id:result.id}?saved=1`);
   }
   let index=0;if(kind==='tour'&&form?.get('cursor')){const cursor=read(form.get('cursor'),session.csrf);if(cursor.token!==token||cursor.userId!==c.userId||cursor.guildId!==c.guildId||cursor.esoServer!==c.esoServer)throw new Error('This route screen changed. Reopen the pass.');index=Math.min(resolved.stops.length,Math.max(0,Number(cursor.index)+(form.get('action')==='next'?1:form.get('action')==='back'?-1:0)));}
   const current=kind==='house'?resolved.house:resolved.stops[index],h=current?await w.saved.get(kind==='house'?resolved.house.id:current.saved_house_id):null;

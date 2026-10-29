@@ -123,6 +123,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     return match?houseManagementStates.get(match[1])?.view:null;
   }
   function destinationMenuPayload(row,options={}){
+    if(row?.status&&row.status!=='active')return {content:'This house is awaiting approval or is unavailable. Pending submissions are visible only in Administration.',embeds:[],components:buttonRows([{customId:'hu:home',label:'Back',style:'secondary'}])};
     const view=houseReturnOptions(options.backId);
     return rawDestinationMenuPayload(row,view?{...options,...view}:options);
   }
@@ -228,8 +229,8 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
   const dashboard=async(i,{backId='hu:home'}={})=>{await recordUsage(i,'used_personal');const esoServer=guilds.getEsoServer(i.guildId);return myAddressBookPayload({...await myAddressBook.summary(i.user.id,i.guildId,esoServer),continueItems:await myAddressBook.continueItems(i.user.id,i.guildId,esoServer),legacy:await myAddressBook.legacyUnassigned(i.user.id),esoServer,backId});};
   const progressView=async(i,item)=>{
     if(!item)return null;
-    const rows=await db.query(`SELECT p.*,ts.position stop_position,ts.notes stop_notes,sh.id current_saved_house_id,sh.scope current_house_scope,COALESCE(h.name,sh.display_name) current_house_name,sh.display_name current_house_nickname,sh.eso_owner current_house_owner
-      FROM tour_progress p LEFT JOIN tour_stops ts ON ts.id=p.current_stop_id LEFT JOIN saved_houses sh ON sh.id=ts.saved_house_id LEFT JOIN houses h ON h.house_id=sh.house_id
+    const rows=await db.query(`SELECT p.*,ts.position stop_position,CASE WHEN sh.id IS NOT NULL THEN ts.notes ELSE NULL END stop_notes,sh.id current_saved_house_id,sh.scope current_house_scope,COALESCE(h.name,sh.display_name) current_house_name,sh.display_name current_house_nickname,sh.eso_owner current_house_owner
+      FROM tour_progress p LEFT JOIN tour_stops ts ON ts.id=p.current_stop_id LEFT JOIN saved_houses sh ON sh.id=ts.saved_house_id AND sh.status='active' LEFT JOIN houses h ON h.house_id=sh.house_id
       WHERE p.id=? AND p.discord_user_id=?`,[Number(item.id),String(i.user.id)]);
     return rows[0]||item;
   };
@@ -655,7 +656,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
   }
   async function registrationExistingEntries(i,house,esoOwner){
     return db.query(`SELECT id,scope,display_name,status FROM saved_houses
-      WHERE eso_server=? AND normalized_owner=? AND house_id=? AND status<>'archived'
+      WHERE eso_server=? AND normalized_owner=? AND house_id=? AND status='active'
       AND (scope='global' OR (scope='public' AND guild_id=?) OR (scope='private' AND owner_user_id=?))
       ORDER BY CASE scope WHEN 'global' THEN 1 WHEN 'public' THEN 2 ELSE 3 END,id`,[guilds.getEsoServer(i.guildId),normalizeAccount(esoOwner),Number(house.house_id),i.guildId,i.user.id]);
   }

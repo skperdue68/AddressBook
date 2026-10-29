@@ -21,12 +21,12 @@ test('My Address Book renders personal counts and dashboard actions',()=>{
   assert.match(json.title,/My Address Book/);
   assert.deepEqual(json.fields.map(field=>[field.name,field.value]),[
     ['🏠 My Houses','**18**'],['🗺️ My Tours','**4**'],
-    ['⏳ Pending','**2**'],['🕘 Recently Viewed','**3**'],
+    ['⏳ Access requests','**2**'],['🕘 Recently Viewed','**3**'],
     ['⭐ Favorites','**0**'],['🔎 Saved Searches','**0**']
   ]);
   assert.deepEqual(labels(payload),[
     'All Saved Places','Favorites','Submitted Houses',
-    'My Tours','Tour Progress','Recently Viewed','Saved Searches','Pending','Main Menu'
+    'My Tours','Tour Progress','Recently Viewed','Saved Searches','Access requests','Main Menu'
   ]);
 });
 
@@ -86,7 +86,7 @@ test('dashboard counts user-owned work and recent views without exposing another
     await service.recordView('u1',5);
     await service.recordView('u2',4);
     const summary=await service.summary('u1','g1','pc_na');
-    assert.deepEqual(summary,{houses:3,tours:1,pending:2,recent:2,favorites:0,wantToVisit:0,visited:0,savedSearches:0});
+    assert.deepEqual(summary,{houses:2,tours:1,pending:1,recent:2,favorites:0,wantToVisit:0,visited:0,savedSearches:0});
     assert.deepEqual((await service.recent('u1','g1','pc_na')).map(row=>row.id),[2,1]);
     assert.deepEqual(await service.legacyUnassigned('u1'),{houses:1,tours:1});
   }finally{await closeDatabase(db);}

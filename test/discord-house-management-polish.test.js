@@ -32,6 +32,7 @@ test('legacy quick comment refreshes house-card count without changing controls'
 });
 test('management edit and visibility preserve list navigation and expanded details, and reject another user',async()=>{
  const {db,svc,c}=await fixture();try{
+ await db.query("UPDATE guild_settings SET registration_policy='open' WHERE guild_id='g'");
  const owner=await svc.fresh({...c,userId:'1'}),h=await svc.registerHouse(owner,{houseId:1,esoOwner:'Builder',visibility:'private'});await svc.registerHouse(owner,{houseId:2,esoOwner:'Builder',visibility:'private'});
  const menu=createHousingMenu(db);let payload,modal;const i={guildId:'g',channelId:'c',guild:{name:'Guild'},user:{id:'1',username:'Owner'},member:{roles:{cache:new Map()}},update:async p=>payload=p,reply:async p=>payload=p,showModal:async m=>modal=m};
  const click=async label=>{const b=controls(payload).find(b=>b.label===label);assert.ok(b,`Missing ${label}`);await menu.button({...i,message:payload,customId:b.custom_id});};
@@ -54,12 +55,11 @@ test('deleting from management returns to the refreshed house list',async()=>{
  assert.match(payload.embeds[0].toJSON().title,/My Houses/);assert.equal(controls(payload).find(b=>b.type===3).options.length,1);
  }finally{await closeDatabase(db);}
 });
-test('pending house management remains available to the creator',async()=>{
+test('pending houses do not reopen normal management for their creator',async()=>{
  const {db,svc,c}=await fixture();try{
  const h=await svc.registerHouse(c,{houseId:1,esoOwner:'Builder',visibility:'private'});
  const menu=createHousingMenu(db);let payload;const i={guildId:'g',channelId:'c',guild:{name:'Guild'},user:{id:'u'},member:{roles:{cache:new Map()}},update:async p=>payload=p,reply:async p=>payload=p};
  await menu.button({...i,customId:`hu:scope:set:public:${h.id}:hu%3Amy`});assert.equal((await svc.saved.get(h.id)).status,'pending');
- const manage=controls(payload).find(b=>b.label==='Manage House');assert.ok(manage);await menu.button({...i,message:payload,customId:manage.custom_id});
- assert.ok(controls(payload).some(b=>b.label==='Delete House'));assert.ok(controls(payload).some(b=>b.label==='Change Visibility'));
+ assert.ok(!controls(payload).some(b=>b.label==='Manage House'));assert.deepEqual(payload.embeds,[]);assert.match(payload.content,/approval/);
  }finally{await closeDatabase(db);}
 });

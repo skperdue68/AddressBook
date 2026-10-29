@@ -31,7 +31,7 @@ export class WebWorkspaceService{
  }
  async listHouses(c,{q='',scope='',page=1,personal=false,houseId='',ownerExact=''}={}){
   const clauses=['s.eso_server=?'],args=[c.esoServer];
-  if(personal){clauses.push("s.status<>'archived' AND ((s.scope='private' AND s.owner_user_id=?) OR (s.scope<>'private' AND s.created_by=? AND (s.scope='global' OR s.guild_id=?)))");args.push(c.userId,c.userId,c.guildId);}
+  if(personal){clauses.push("s.status='active' AND ((s.scope='private' AND s.owner_user_id=?) OR (s.scope<>'private' AND s.created_by=? AND (s.scope='global' OR s.guild_id=?)))");args.push(c.userId,c.userId,c.guildId);}
   else{clauses.push("s.status='active' AND (s.scope='global' OR (s.scope='public' AND s.guild_id=?) OR (s.scope='private' AND s.owner_user_id=?))");args.push(c.guildId,c.userId);}
   if(['private','public','global'].includes(scope)){clauses.push('s.scope=?');args.push(scope);}
   if(scope==='shared'){clauses.push("s.scope IN ('public','global')");}
