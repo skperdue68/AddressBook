@@ -1,3 +1,4 @@
+import './web-login-recovery.test.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildDiscordAuthorizeUrl, consumeOAuthState, createOAuthState, exchangeDiscordCode } from '../src/web/oauth.js';
