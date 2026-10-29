@@ -1,3 +1,4 @@
+import {houseListThumbnail} from './house-thumbnail.js';
 import {adminOverview} from './admin-overview.js';
 import {pagination} from './pagination.js';
 import {houseGalleryRoute} from './house-gallery.js';
@@ -265,7 +266,7 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
     if (url.pathname === '/admin/pending') {
       const currentPage = pendingPage(url.searchParams.get('page'));
       const requested = await service.listPending({ ...common, limit: 26, offset: (currentPage - 1) * 25 });
-      const rows = requested.slice(0, 25);
+      const rows = workspace ? await workspace.withHouseCovers(requested.slice(0,25)) : requested.slice(0,25);
       const status = url.searchParams.get('status');
       const notice = status === 'approved' ? '<p><strong>House approved.</strong></p>' : status === 'denied' ? '<p><strong>House rejected.</strong></p>' : '';
       const body = rows.length ? `${notice}<table><thead><tr><th>House</th><th>Owner</th><th>Visibility</th><th>Submitter</th><th>Submitted</th><th>Actions</th></tr></thead><tbody>${rows.map(row => {
@@ -273,7 +274,7 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
         const visibility = row.scope === 'global' ? 'Global' : 'Server';
         const submitter = row.created_by_display_name || row.created_by_global_name || row.created_by || 'Unknown';
         const form = action => `<form method="post" action="/admin/pending/${id}/${action}" onsubmit="return confirm('Confirm ${action === 'approve' ? 'approval' : 'rejection'} of this house?')"><input type="hidden" name="csrf" value="${escape(session.csrf)}"><input type="hidden" name="confirm" value="${action}"><input type="hidden" name="page" value="${currentPage}"><button class="${action === 'approve' ? 'approve' : 'deny'}" type="submit">${action === 'approve' ? 'Approve' : 'Reject'}</button></form>`;
-        return `<tr><td>${escape(label)}</td><td>${escape(row.eso_owner || '')}</td><td>${visibility}</td><td>${escape(submitter)}</td><td>${escape(row.created_at || '')}</td><td><div class="actions table-actions">${form('approve')}${form('deny')}</div></td></tr>`;
+        return `<tr><td><div class="house-result-identity"><span>${escape(label)}</span>${houseListThumbnail(row)}</div></td><td>${escape(row.eso_owner || '')}</td><td>${visibility}</td><td>${escape(submitter)}</td><td>${escape(row.created_at || '')}</td><td><div class="actions table-actions">${form('approve')}${form('deny')}</div></td></tr>`;
       }).join('')}</tbody></table>` : `${notice}<p>No pending submissions.</p>`;
       const navigation = `<p>Page ${currentPage}</p><p>${currentPage > 1 ? `<a href="/admin/pending?page=${currentPage - 1}">⬅️ Previous</a>` : ''}${requested.length > 25 ? `${currentPage > 1 ? ' · ' : ''}<a href="/admin/pending?page=${currentPage + 1}">➡️ Next</a>` : ''}</p>`;
       return send(response, 200, page('Pending Review', body + navigation, session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }));

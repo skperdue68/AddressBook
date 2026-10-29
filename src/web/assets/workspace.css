@@ -97,3 +97,9 @@ body:has(.gallery-viewer[open]){overflow:hidden}
 @media(max-width:1000px){.statistics-page .server-rankings{grid-template-columns:1fr}}
 a.pill,a.pill:hover,a.pill:focus-visible{text-decoration:none}a.pill:hover{filter:brightness(1.15)}a.pill:focus-visible{outline:2px solid var(--hb-gold);outline-offset:3px}
 .statistics-page .card .number a.stat-count{display:inline-flex;color:#f1f5ff;letter-spacing:normal}
+
+/* Put the current cover beside the identity, before the actions and gallery. */
+.house-detail-heading{display:flex;align-items:center;justify-content:space-between;gap:32px;min-width:0}.house-detail-heading>div{min-width:0;overflow-wrap:anywhere}.house-detail-cover{display:block;flex:0 1 480px;width:42%;line-height:0;border:1px solid #48617d;border-radius:12px;overflow:hidden}.house-detail-cover img{display:block;width:100%;height:auto;aspect-ratio:8/5;object-fit:cover}.house-detail-cover:hover,.house-detail-cover:focus-visible{border-color:var(--hb-gold);outline-offset:4px}.stop-cover{display:block;width:96px;height:64px;object-fit:cover;border-radius:8px;flex-shrink:0}.checklist [data-candidate-label]>span{flex:1;min-width:0}.stop>.house-list-thumbnail{flex-shrink:0}
+@media(max-width:700px){.house-detail-heading{flex-direction:column;align-items:stretch;gap:16px}.house-detail-cover{flex:auto;width:100%;max-width:640px}.stop>.house-list-thumbnail,.stop-cover{width:64px;flex-basis:64px}.stop>.house-list-thumbnail img,.stop-cover{width:64px;height:48px}}
+
+@media(max-width:700px){#tour-stops .stop{display:grid;grid-template-columns:repeat(3,44px) minmax(0,1fr);gap:10px}#tour-stops .stop>.handle{grid-column:1;grid-row:1}#tour-stops .stop>.house-list-thumbnail,#tour-stops .stop>.stop-cover{grid-column:4;grid-row:1;justify-self:end}#tour-stops .stop>.name{grid-column:1/-1;grid-row:2}#tour-stops .stop>button{grid-row:3}.stop{flex-wrap:wrap}.stop>.name{min-width:120px}}

@@ -1,7 +1,9 @@
+import sharp from 'sharp';
+import {HouseImageService} from '../src/services/house-image-service.js';
 import test from 'node:test';
 import {randomUUID} from 'node:crypto';
 import assert from 'node:assert/strict';
-import {access,mkdtemp,readFile,rm} from 'node:fs/promises';
+import {access,mkdtemp,readFile,rm,writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {spawn} from 'node:child_process';
@@ -14,6 +16,7 @@ const browser=process.env.CHROME_PATH||'C:/Program Files/Google/Chrome/Applicati
 test('real browser personal saves, feedback review, tooltip, aligned controls and mobile bounds',async t=>{
  try{await access(browser);}catch{t.skip('Chrome unavailable; set CHROME_PATH to run actual browser checks');return;}
  const {db,svc,c}=await fixture(),owner=await svc.fresh({...c,userId:'1'}),house=await svc.registerHouse(owner,{houseId:1,esoOwner:'Builder',visibility:'public'});
+ const imageDir=await mkdtemp(join(tmpdir(),'hearthbound-cover-'));svc.images=new HouseImageService(svc,{directory:imageDir});await svc.images.add(owner,house.id,await sharp({create:{width:1200,height:750,channels:3,background:'#35546b'}}).png().toBuffer(),'Garden cover');const tour=await svc.saveTourDraft(owner,{details:{name:'Gallery route',visibility:'public'},stopIds:[house.id]});
  await svc.feedback.submit(c,{name:'Member'},{eventKey:randomUUID(),category:'idea',subject:'A thoughtful idea',message:'Make exploring even easier.'});
  const server=createWebAdminServer({service:new WebAdminService(db),workspace:svc,config:{sessionSecret:'s'},resolveGuildMembership:async({guildId})=>({id:guildId,name:'Guild',roleIds:[],esoServer:'pc_na'})});await new Promise(r=>server.listen(0,'127.0.0.1',r));
  const profile=await mkdtemp(join(tmpdir(),'hearthbound-polish-')),chrome=spawn(browser,['--headless=new','--no-sandbox','--disable-gpu','--no-first-run','--remote-debugging-port=0',`--user-data-dir=${profile}`,'about:blank'],{windowsHide:true,stdio:'ignore'});let ws,call;const browserErrors=[];
@@ -26,7 +29,7 @@ test('real browser personal saves, feedback review, tooltip, aligned controls an
   const base=`http://127.0.0.1:${server.address().port}`;await call('Page.enable');await call('Emulation.setFocusEmulationEnabled',{enabled:true});await call('Runtime.enable');await call('Network.enable');await call('Network.setCookie',{name:'addressbook_session',url:base,value:createSession({id:'1',username:'Owner',selectedGuildId:'g',guilds:[{id:'g'}]},Date.now(),'s')});
   await call('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,mobile:false,deviceScaleFactor:1});
   const navigate=async path=>{await call('Page.navigate',{url:base+path});await wait(`document.readyState==='complete'&&location.pathname===${JSON.stringify(path.split('?')[0])}`,'navigation');};
-  await navigate(`/app/houses/${house.id}`);assert.equal(await evaluate(`document.querySelector('.house-metadata').open&&document.getElementById('visit-house').open`),true);
+  await navigate(`/app/houses/${house.id}`);await wait(`document.querySelector('.house-detail-cover img')?.complete&&document.querySelector('.house-detail-cover img').naturalWidth>0`,'cover loaded');assert.equal(await evaluate(`document.querySelector('.house-detail-cover').getBoundingClientRect().width>=300`),true);if(process.env.POLISH_SCREENSHOT_DIR)await writeFile(join(process.env.POLISH_SCREENSHOT_DIR,'HearthBound-house-cover-desktop.png'),Buffer.from((await call('Page.captureScreenshot',{format:'png',captureBeyondViewport:false})).data,'base64'));assert.equal(await evaluate(`document.querySelector('.house-metadata').open&&document.getElementById('visit-house').open`),true);
   await evaluate(`document.querySelector('[data-personal-action="favorite"] button').click()`);await wait(`document.querySelector('[data-personal-action="favorite"] button').getAttribute('aria-pressed')==='true'`,'favorite saves');
   await evaluate(`document.querySelector('[data-personal-action="favorite"] button').click()`);await wait(`document.querySelector('[data-personal-action="favorite"] button').getAttribute('aria-pressed')==='false'`,'unfavorite saves');
   assert.equal(await evaluate(`document.querySelector('[data-personal-action="visit"]')===null`),true);
@@ -34,7 +37,8 @@ test('real browser personal saves, feedback review, tooltip, aligned controls an
   for(const path of ['/app/tours','/app/activity','/app/feedback/review']){await navigate(path);assert.equal(await evaluate(`(()=>{const f=document.querySelector('form.filters'),b=f.querySelector('button').getBoundingClientRect(),input=f.querySelector('input:not([type=hidden]),select').getBoundingClientRect();return Math.abs(b.bottom-input.bottom)<=2})()`),true,'filter button aligns with its control on '+path);}
   assert.equal(await evaluate(`[...document.querySelectorAll('main a,main button')].some(el=>el.textContent==='Send feedback')`),false);
   await evaluate(`const s=document.querySelector('[data-feedback-action="status"] select');s.value='resolved';s.dispatchEvent(new Event('change',{bubbles:true}));`);await wait(`document.querySelector('[data-feedback-status]').textContent==='Resolved'`,'feedback autosave');assert.equal(await evaluate('location.pathname'),'/app/feedback/review');
-  await call('Emulation.setDeviceMetricsOverride',{width:390,height:1000,mobile:true,deviceScaleFactor:1});await navigate(`/app/houses/${house.id}`);assert.equal(await evaluate('innerWidth'),390);assert.ok(await evaluate('document.documentElement.scrollWidth<=innerWidth+2'),'mobile page stays within viewport');
+  await call('Emulation.setDeviceMetricsOverride',{width:390,height:1000,mobile:true,deviceScaleFactor:1});await navigate(`/app/houses/${house.id}`);await wait(`document.querySelector('.house-detail-cover img')?.complete&&document.querySelector('.house-detail-cover img').naturalWidth>0`,'mobile cover loaded');assert.ok(await evaluate(`(()=>{const h=document.querySelector('.house-detail-heading').getBoundingClientRect(),c=document.querySelector('.house-detail-cover').getBoundingClientRect();return Math.abs(h.width-c.width)<2})()`),'mobile cover fills header');if(process.env.POLISH_SCREENSHOT_DIR)await writeFile(join(process.env.POLISH_SCREENSHOT_DIR,'HearthBound-house-cover-mobile.png'),Buffer.from((await call('Page.captureScreenshot',{format:'png',captureBeyondViewport:false})).data,'base64'));assert.equal(await evaluate('innerWidth'),390);assert.ok(await evaluate('document.documentElement.scrollWidth<=innerWidth+2'),'mobile page stays within viewport');
+  await navigate(`/app/tours/${tour.id}/edit`);assert.ok(await evaluate(`document.querySelector('#tour-stops textarea').getBoundingClientRect().width>=200`),'mobile stop notes remain usable');assert.equal(await evaluate(`document.querySelector('#tour-stops .house-list-thumbnail').target`),'_blank');assert.ok(await evaluate(`(()=>{const b=[...document.querySelectorAll('#tour-stops .stop>button')].map(el=>el.getBoundingClientRect());return b.every(r=>Math.abs(r.top-b[0].top)<2)})()`),'mobile stop controls share a row');assert.ok(await evaluate('document.documentElement.scrollWidth<=innerWidth+2'));
   await call('Browser.close');ws.close();
- }finally{ws?.close();chrome.kill();await new Promise(r=>server.close(r));await closeDatabase(db);await rm(profile,{recursive:true,force:true,maxRetries:10,retryDelay:100});}
+ }finally{ws?.close();chrome.kill();await new Promise(r=>server.close(r));await closeDatabase(db);await rm(imageDir,{recursive:true,force:true});await rm(profile,{recursive:true,force:true,maxRetries:10,retryDelay:100});}
 });
