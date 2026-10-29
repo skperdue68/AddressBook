@@ -1,0 +1,11 @@
+import {escape} from './render.js';
+const labels={zone:'Zone',style:'Style',classification:'Classification',tag:'Tag'};
+export const sortChoices=[['az','A–Z'],['newest','Newest'],['favorites','Most favorited']];
+export function sortSelect(query={}){return `<label>Sort by<select name="sort">${sortChoices.map(([value,label])=>`<option value="${value}" ${(query.sort||'az')===value?'selected':''}>${label}</option>`).join('')}</select></label>`;}
+export function quickFilters(choices,query={}){return `<div class="quick-search-filters" aria-label="Browse house attributes">${Object.entries(labels).map(([key,label])=>{const values=[...new Set([...(choices[key]||[]),...(query[key]?[query[key]]:[])])];return `<label>${label}<select name="${key}"><option value="">All ${key==='classification'?'classifications':key==='tag'?'tags':key+'s'}</option>${values.map(value=>`<option value="${escape(value)}" ${query[key]===value?'selected':''}>${escape(value)}</option>`).join('')}</select></label>`;}).join('')}</div>`;}
+export function resultsToolbar({query={},path,total,page=1}){
+ const target=value=>{const params=new URLSearchParams(query);params.set('view',value);return path+'?'+params;};
+ const hidden=Object.entries(query).filter(([key])=>!['sort','page'].includes(key)).map(([key,value])=>`<input type="hidden" name="${escape(key)}" value="${escape(value)}">`).join('');
+ return `<div class="results-toolbar"><p class="note">${Number(total)} matching house${total===1?'':'s'}${total>25?` · Page ${Number(page)}`:''}</p><form class="results-sort" method="get" action="${escape(path)}" data-search-controls>${hidden}${sortSelect(query)}<noscript><button>Sort</button></noscript></form><nav class="view-switch" aria-label="House results layout">${[['cards','Cards'],['list','Compact list']].map(([value,label])=>`<a href="${escape(target(value))}" ${(query.view==='list'?'list':'cards')===value?'aria-current="page"':''}>${label}</a>`).join('')}</nav></div>`;
+}
+export async function resultPage(workspace,context,rows,query){const ordered=workspace.sortHouseResults?await workspace.sortHouseResults(rows,query.sort):rows,total=ordered.length,pages=Math.max(1,Math.ceil(total/25)),page=Math.min(pages,Math.max(1,Math.floor(Number(query.page)||1)));return {rows:await workspace.decorateHouses(context,ordered.slice((page-1)*25,page*25)),total,page};}

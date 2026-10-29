@@ -1,0 +1,28 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {fixture} from './workspace-fixture.js';import {closeDatabase} from '../src/db/database.js';
+test('main discovery filters and orders the complete visible collection without private leakage',async t=>{
+ const {db,svc,c}=await fixture();t.after(()=>closeDatabase(db));const owner=await svc.fresh({...c,userId:'1'});
+ const a=await svc.registerHouse(owner,{houseId:1,esoOwner:'A',displayName:'Zulu',visibility:'global',tags:['garden']}),b=await svc.registerHouse(owner,{houseId:2,esoOwner:'B',displayName:'Alpha',visibility:'global',tags:['cozy']});await db.query("UPDATE saved_houses SET created_at='2026-01-01T00:00:00Z' WHERE id=?",[a.id]);await db.query("UPDATE saved_houses SET created_at='2026-02-01T00:00:00Z' WHERE id=?",[b.id]);await svc.actions.houseAction(c,a.id,'favorite',{value:'1'});
+ assert.deepEqual((await svc.listHouses(c,{sort:'favorites'})).rows.map(h=>h.id),[a.id,b.id]);assert.deepEqual((await svc.listHouses(c,{sort:'newest'})).rows.map(h=>h.id),[b.id,a.id]);assert.deepEqual((await svc.listHouses(c,{tag:'garden'})).rows.map(h=>h.id),[a.id]);
+ const hidden=await svc.registerHouse(owner,{houseId:1,esoOwner:'Secret',visibility:'private',tags:['hidden-only']});assert.ok(!(await svc.listHouses(c,{sort:'favorites'})).rows.some(h=>h.id===hidden.id));assert.ok(!(await svc.houseFilterChoices(c)).tag.includes('hidden-only'));
+});
+
+import {GuestBrowseService} from '../src/services/guest-browse-service.js';
+test('guest sorting and quick filters remain Global-only and environment-scoped',async t=>{
+ const {db,svc,c}=await fixture();t.after(()=>closeDatabase(db));const owner=await svc.fresh({...c,userId:'1'}),a=await svc.registerHouse(owner,{houseId:1,esoOwner:'A',displayName:'Zulu',visibility:'global',tags:['garden']}),b=await svc.registerHouse(owner,{houseId:2,esoOwner:'B',displayName:'Alpha',visibility:'public',tags:['server-only']});await svc.actions.houseAction(c,a.id,'favorite',{value:'1'});const guest=new GuestBrowseService(svc);
+ assert.deepEqual((await guest.houses('pc_na',{sort:'favorites',tag:'garden'})).rows.map(h=>h.id),[a.id]);assert.equal((await guest.houses('pc_eu',{sort:'newest'})).total,0);assert.ok(!(await svc.houseFilterChoices({esoServer:'pc_na'},{globalOnly:true})).tag.includes('server-only'));assert.ok(!(await guest.houses('pc_na')).rows.some(h=>h.id===b.id));
+});
+
+import {houseTable} from '../src/web/house-table.js';import {resultPage,resultsToolbar} from '../src/web/search-controls.js';import {pagination} from '../src/web/pagination.js';import {safeHouseReturn} from '../src/web/flow-navigation.js';
+test('official results use catalog previews in compact layout and never offer Add to tour',()=>{const html=houseTable([{id:99,house_id:7,scope:'official',house_name:'Catalog cottage',zone:'Zone'}],{returnTo:'/app/search?includeNonPlayer=1&view=list&sort=newest'});assert.match(html,/\/app\/official\/7/);assert.doesNotMatch(html,/\/app\/houses\/99|Add to tour/);assert.match(html,/Official preview/);});
+test('result pagination preserves filters sorting and layout without truncating source results',async()=>{
+ const rows=Array.from({length:61},(_,id)=>({id:id+1,house_name:'House '+id})),query={sort:'favorites',tag:'garden',view:'list',page:'2'},workspace={sortHouseResults:async input=>input,decorateHouses:async(_c,input)=>input},result=await resultPage(workspace,{},rows,query);assert.equal(result.total,61);assert.equal(result.rows.length,25);assert.equal(result.rows[0].id,26);assert.equal(rows.length,61);
+ const html=resultsToolbar({query,path:'/app/search',...result})+pagination({...result,path:'/app/search',params:query});assert.match(html,/sort=favorites/);assert.match(html,/tag=garden/);assert.match(html,/view=list/);assert.match(html,/Page 2 of 3/);assert.match(html,/Jump to page/);assert.ok(safeHouseReturn('/app/search?sort=favorites&tag=garden&view=list&page=2'));
+});
+
+import {createWebAdminServer} from '../src/web/server.js';import {WebAdminService} from '../src/services/web-admin-service.js';import {createSession} from '../src/web/session.js';import {quickFilters} from '../src/web/search-controls.js';
+test('actual search pages paginate 31 matches and retain sort/filter/view in links and action returns',async t=>{
+ const {db,svc,c}=await fixture();t.after(()=>closeDatabase(db));const owner=await svc.fresh({...c,userId:'1'});for(let i=0;i<31;i++)await svc.registerHouse(owner,{houseId:1,esoOwner:'Pagination'+i,displayName:'Entry '+String(i).padStart(2,'0'),visibility:'global',tags:['garden']});
+ const server=createWebAdminServer({service:new WebAdminService(db),workspace:svc,config:{sessionSecret:'search'},resolveGuildMembership:async()=>({id:'g',name:'Guild',roleIds:[],esoServer:'pc_na'})});await new Promise(r=>server.listen(0,'127.0.0.1',r));t.after(()=>new Promise(r=>server.close(r)));const base=`http://127.0.0.1:${server.address().port}`,cookie='addressbook_session='+createSession({id:'1',selectedGuildId:'g',guilds:[{id:'g'}]},Date.now(),'search');
+ for(const path of ['/app/houses','/app/search']){const response=await fetch(base+path+'?tag=garden&sort=newest&view=cards&page=2',{headers:{cookie}});assert.equal(response.status,200);const html=await response.text();assert.equal((html.match(/<article class="panel discovery-card">/g)||[]).length,6);assert.match(html,/Page 2 of 2/);assert.match(html,/sort=newest/);assert.match(html,/tag=garden/);assert.match(html,/view=cards/);assert.match(html,/returnTo/);}
+ const options=quickFilters({tag:['"><script>bad</script>']});assert.doesNotMatch(options,/<script>/);assert.match(options,/&lt;script&gt;/);
+});

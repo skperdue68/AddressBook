@@ -1,6 +1,6 @@
 import {escape} from './render.js';
 
-const filters=new Set(['q','scope','page','query','name','nickname','owner','tag','zone','houseType','classification','style','names','owners','tags','zones','houseTypes','classifications','styles','visibility','includeNonPlayer','notOnPublicTours','server','member','cursor','houseId','ownerExact','view','kind']);
+const filters=new Set(['q','scope','page','query','name','nickname','owner','tag','zone','houseType','classification','style','names','owners','tags','zones','houseTypes','classifications','styles','visibility','includeNonPlayer','notOnPublicTours','server','member','cursor','houseId','ownerExact','view','kind','sort']);
 export function safeHouseReturn(value){
  if(typeof value!=='string'||value.length>4096||!value.startsWith('/app/')||/[\\\x00-\x20]/.test(value))return null;
  try{

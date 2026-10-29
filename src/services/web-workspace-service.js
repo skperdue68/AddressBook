@@ -30,7 +30,7 @@ export class WebWorkspaceService{
   const rows=await this.db.query(`SELECT s.id,s.house_id,s.scope,s.guild_id,s.owner_user_id,s.display_name,s.eso_owner,s.tags,h.name catalog_house_name,h.zone,h.classification,h.house_type,h.style,h.population_limit,h.population_limit_plus FROM saved_houses s JOIN houses h ON h.house_id=s.house_id WHERE s.eso_server=? AND s.status='active' AND (s.scope='global' OR (s.scope='public' AND s.guild_id=?) OR (s.scope='private' AND s.owner_user_id=?))`,[c.esoServer,c.guildId,c.userId]);
   return (await this.withHouseCovers(withCatalogHouseNames(rows))).sort((a,b)=>tourNameOrder.compare(a.display_name||a.house_name,b.display_name||b.house_name)||Number(a.id)-Number(b.id));
  }
- async listHouses(c,{q='',scope='',page=1,personal=false,houseId='',ownerExact=''}={}){
+ async listHouses(c,{q='',scope='',page=1,personal=false,houseId='',ownerExact='',sort='az',zone='',style='',classification='',tag=''}={}){
   const clauses=['s.eso_server=?'],args=[c.esoServer];
   if(personal){clauses.push("s.status='active' AND ((s.scope='private' AND s.owner_user_id=?) OR (s.scope<>'private' AND s.created_by=? AND (s.scope='global' OR s.guild_id=?)))");args.push(c.userId,c.userId,c.guildId);}
   else{clauses.push("s.status='active' AND (s.scope='global' OR (s.scope='public' AND s.guild_id=?) OR (s.scope='private' AND s.owner_user_id=?))");args.push(c.guildId,c.userId);}
@@ -38,10 +38,25 @@ export class WebWorkspaceService{
   if(scope==='shared'){clauses.push("s.scope IN ('public','global')");}
   if(houseId!==''){clauses.push('s.house_id=?');args.push(Number(houseId)||0);}
   if(ownerExact!==''){clauses.push('s.normalized_owner=?');args.push(normalizeAccount(ownerExact));}
+  for(const [column,value] of [['zone',zone],['style',style],['classification',classification]])if(value){clauses.push(`lower(coalesce(h.${column},''))=?`);args.push(String(value).trim().toLowerCase());}
+  if(tag){clauses.push("lower(coalesce(s.tags,'')) LIKE ? ESCAPE '!'");const token=JSON.stringify(String(tag).trim()).toLowerCase().replace(/[!%_]/g,c=>'!'+c);args.push('%'+token+'%');}
   if(q){clauses.push("(lower(h.name) LIKE ? OR lower(coalesce(s.display_name,'')) LIKE ? OR lower(s.eso_owner) LIKE ? OR lower(coalesce(h.zone,'')) LIKE ?)");const term=`%${String(q).slice(0,200).toLowerCase()}%`;args.push(term,term,term,term);}
   const where=clauses.join(' AND '),total=Number((await one(this.db,`SELECT count(*) c FROM saved_houses s JOIN houses h ON h.house_id=s.house_id WHERE ${where}`,args)).c),p=pageWindow(page,total).page;
-  const rows=await this.db.query(`SELECT s.*,h.name catalog_house_name,h.zone,h.classification,h.house_type,h.style,h.population_limit,h.population_limit_plus FROM saved_houses s JOIN houses h ON h.house_id=s.house_id WHERE ${where} ORDER BY lower(coalesce(s.display_name,h.name)),s.id LIMIT 25 OFFSET ?`,[...args,(p-1)*25]);
+  const rows=await this.db.query(`SELECT s.*,h.name catalog_house_name,h.zone,h.classification,h.house_type,h.style,h.population_limit,h.population_limit_plus FROM saved_houses s JOIN houses h ON h.house_id=s.house_id WHERE ${where} ORDER BY ${sort==='newest'?'s.created_at DESC,':sort==='favorites'?"(SELECT count(*) FROM user_house_states us WHERE us.target_kind='destination' AND us.target_id=s.destination_id AND us.is_favorite=1) DESC,":''}lower(coalesce(s.display_name,h.name)),s.id LIMIT 25 OFFSET ?`,[...args,(p-1)*25]);
   return {rows:withCatalogHouseNames(rows).map(h=>({...h,canEdit:this.policy.canEditHouse(h,c)})),total,page:p,hasNext:p*25<total};
+ }
+ async houseFilterChoices(c,{globalOnly=false}={}){
+  const rows=await this.db.query(`SELECT h.zone,h.style,h.classification,s.tags FROM saved_houses s JOIN houses h ON h.house_id=s.house_id WHERE s.eso_server=? AND s.status='active' AND ${globalOnly?"s.scope='global'":"(s.scope='global' OR (s.scope='public' AND s.guild_id=?) OR (s.scope='private' AND s.owner_user_id=?))"}`,globalOnly?[c.esoServer]:[c.esoServer,c.guildId,c.userId]);
+  const sets={zone:new Set(),style:new Set(),classification:new Set(),tag:new Set()};for(const row of rows){for(const key of ['zone','style','classification'])if(row[key])sets[key].add(String(row[key]));try{const tags=JSON.parse(row.tags||'[]');if(Array.isArray(tags))for(const tag of tags)sets.tag.add(String(tag));}catch{}}
+  return Object.fromEntries(Object.entries(sets).map(([key,values])=>[key,[...values].sort((a,b)=>tourNameOrder.compare(a,b))]));
+ }
+ async sortHouseResults(rows,sort='az'){
+  const ranked=rows.map(h=>({...h}));
+  if(sort==='favorites'&&rows.length){const destinations=[...new Set(rows.filter(h=>h.scope!=='official').map(h=>Number(h.destination_id)).filter(Boolean))],official=[...new Set(rows.filter(h=>h.scope==='official').map(h=>Number(h.house_id)).filter(Boolean))],counts=new Map();
+   for(const [kind,ids] of [['destination',destinations],['official',official]])if(ids.length){const totals=await this.db.query(`SELECT target_id,count(*) c FROM user_house_states WHERE target_kind=? AND is_favorite=1 AND target_id IN (${ids.map(()=>'?').join(',')}) GROUP BY target_id`,[kind,...ids]);for(const total of totals)counts.set(`${kind}:${Number(total.target_id)}`,Number(total.c));}
+   for(const h of ranked)h.favorite_count=counts.get(`${h.scope==='official'?'official':'destination'}:${Number(h.scope==='official'?h.house_id:h.destination_id)}`)||0;
+  }
+  return ranked.sort((a,b)=>(sort==='favorites'?Number(b.favorite_count||0)-Number(a.favorite_count||0):sort==='newest'?(Date.parse(b.created_at)||0)-(Date.parse(a.created_at)||0):0)||tourNameOrder.compare(a.display_name||a.house_name||a.name,b.display_name||b.house_name||b.name)||Number(a.id)-Number(b.id));
  }
  async withHouseCovers(rows){
   const ids=[...new Set(rows.filter(h=>h.scope!=='official'&&Number(h.id)>0).map(h=>Number(h.id)))];
