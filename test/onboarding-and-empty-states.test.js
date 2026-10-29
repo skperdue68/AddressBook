@@ -40,7 +40,7 @@ test('contextual onboarding actions complete first use before opening real featu
   try{
     await db.query("INSERT INTO guild_settings(guild_id,eso_server) VALUES('g1','pc_na')");
     const menu=createHousingMenu(db),cases=[
-      ['search','Filters'],['register','Global'],['addressbook','My Houses'],['tours','Browse Tours'],['help','Moderator Access']
+      ['search','Filters'],['register','Global'],['addressbook','My Houses'],['tours','Browse Tours'],['help','Request Elevated Access']
     ];
     for(const [target,expected] of cases){
       const userId=`user-${target}`,updates=[],replies=[];

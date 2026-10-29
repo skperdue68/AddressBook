@@ -1,3 +1,5 @@
+import {requestableAccessKinds} from '../services/access-request-options.js';
+import {moderatorAccessPayload,serverRequestModal} from './moderator-access-ui.js';
 import {TourCoverService} from '../services/tour-cover-service.js';
 import {withTourCover} from './tour-cover.js';
 import {houseCapacityText} from '../utils/house-capacity.js';
@@ -153,6 +155,10 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
   const isGlobalTourAdmin=i=>globalMods.isGlobalModeratorCached(i.user.id,guilds.getEsoServer(i.guildId));
   const handleCatalog=createCatalogMenu(new HouseCatalogService(db));
   const contentPolicy=new ContentPolicyService(db);
+  const availableRequests=async i=>requestableAccessKinds(contentPolicy,await contentPolicy.context({...contextFor(i),memberRoleIds:[...(i.member?.roles?.cache?.keys?.()||i.member?.roles||[])].map(String)}));
+  const supportPayload=async(i,options={})=>{const access=i.guildId?await guilds.ensureModeratorAccess(i):null;return helpPayload({...options,requestableKinds:await availableRequests(i),canSetUpServer:!!(access?.setupRequired&&access.canClaimFirstAdmin),canReviewGlobal:globalMods.isApprover(i.user.id)});};
+  const openAccessRequest=async(i,kind)=>{const kinds=await availableRequests(i);if(kind&&!kinds.includes(kind))return i.reply({content:'That elevated access request is not available.',flags:MessageFlags.Ephemeral});const selected=kind||(kinds.length===1?kinds[0]:null);return selected?i.showModal(selected==='server'?serverRequestModal():globalModeratorRequestModal()):i.update(moderatorAccessPayload(kinds));};
+
   const galleryImages=images||new HouseImageService({db,saved,policy:contentPolicy,fresh:context=>contentPolicy.context(context)});
   const coverService=tourCovers||new TourCoverService({db,tours,policy:contentPolicy,fresh:context=>contentPolicy.context(context)});
   const tourCover=(i,t,payload)=>withTourCover(coverService,{...contextFor(i),memberRoleIds:[...(i.member?.roles?.cache?.keys?.()||i.member?.roles||[])].map(String)},i,t,payload);
@@ -927,6 +933,8 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     const id=i.customId;
     if(id.startsWith('hu:catalog:')||id.startsWith('hu:modal:catalog:')||(id==='hu:admin:tool'&&['catalog','catalog_edit'].includes(i.values?.[0])))return handleCatalog(i);
     if(isRetiredEventInteraction(id))return id.startsWith('hu:modal:')?i.reply({...retiredEventPayload(),flags:MessageFlags.Ephemeral}):i.update(retiredEventPayload());
+    if(id==='hu:help:elevated'||id==='hu:help:moderators')return openAccessRequest(i);
+    if(id==='hu:elevated:kind')return openAccessRequest(i,i.values?.[0]);
     if(isServerModeratorAction(id))return handleServerModeratorAction(i,{serverModerators:guilds.serverModerators,guilds});
     if(isTourShareDestination(id))return handleTourShareDestination(i,{sharePasses,tours,guilds,loadHouse:async(i,id)=>(await loadSavedReference(i,id)).record});
     if(isDiscordAdminInteraction(id))return i.reply({content:webOnlyAdminNotice(),flags:MessageFlags.Ephemeral});
@@ -986,7 +994,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       if(target==='register')return i.update(registrationPayload(i,{backId}));
       if(target==='addressbook')return i.update(await dashboard(i,{backId}));
       if(target==='tours'){const rows=await visibleTours(i);return i.update(toursPayload(rows.length,{backId}));}
-      if(target==='help')return i.update(helpPayload({backId}));
+      if(target==='help')return i.update(await supportPayload(i,{backId}));
       return i.update(homePayload({isAdmin:isAdmin(i),esoServer:guilds.getEsoServer(i.guildId)}));
     }
     if(id.startsWith('hu:onboarding:'))return i.update(homePayload({isAdmin:isAdmin(i),esoServer:guilds.getEsoServer(i.guildId)}));
@@ -1240,7 +1248,7 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       return i.update(await tourSessionCard(i,tour,stops,session,position,false));
     }
     if(id==='hu:globalmod')return globalModeratorScreen(i);
-    if(id==='hu:globalmod:request')return i.showModal(globalModeratorRequestModal());
+    if(id==='hu:globalmod:request')return openAccessRequest(i,'global');
     if(id==='hu:globalmod:requests'||id.startsWith('hu:globalmod:requests:')){
       if(!globalMods.isApprover(i.user.id))return i.reply({content:'Only a configured Global Moderator approver can review requests.',flags:MessageFlags.Ephemeral});
       return i.update(globalModeratorRequestsPayload(await globalMods.listPending(),Number(id.split(':')[3])||1));
@@ -1490,8 +1498,8 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
       return finishHouseForm(i,scope,'add',null,{owner:draft.esoOwner,nickname:draft.nickname||null,description:draft.description||null,tags:draft.tags||[]},draft.house,'update','hu:home');
     }
     if(id==='hu:tours'){ await recordUsage(i,'searched_tours');const rows=await visibleTours(i); return i.update(toursPayload(rows.length)); }
-    if(id.startsWith('hu:help:learning')||id.startsWith('hu:help:whatsnew')||id.startsWith('hu:help:topic:'))return i.update(helpPayload());
-    if(id==='hu:help')return i.update(helpPayload());
+    if(id.startsWith('hu:help:learning')||id.startsWith('hu:help:whatsnew')||id.startsWith('hu:help:topic:'))return i.update(await supportPayload(i));
+    if(id==='hu:help')return i.update(await supportPayload(i));
     if(id==='hu:admin'){ if(!isAdmin(i))return i.reply({content:'You do not have access to Housing administration.',flags:MessageFlags.Ephemeral}); return i.update(renderAdminPayload(guilds.getSettings(i.guildId),{adminInterface,isOwner:guilds.isBotOwner(i)})); }
     if(id==='hu:admin:settings'){ if(!isAdmin(i))return i.reply({content:'You do not have access to Housing administration.',flags:MessageFlags.Ephemeral}); return i.update(adminSettingsPayload(guilds.getSettings(i.guildId))); }
     if(id==='hu:admin:otherroles'){ if(!isAdmin(i))return i.reply({content:'You do not have access to Housing administration.',flags:MessageFlags.Ephemeral}); return i.update(adminOtherRolesPayload(guilds.getSettings(i.guildId))); }
@@ -1703,6 +1711,8 @@ export function createHousingMenu(db,{discovery=new HouseDiscoveryService(),admi
     const id=i.customId;
     if(id.startsWith('hu:catalog:')||id.startsWith('hu:modal:catalog:')||(id==='hu:admin:tool'&&['catalog','catalog_edit'].includes(i.values?.[0])))return handleCatalog(i);
     if(isRetiredEventInteraction(id))return id.startsWith('hu:modal:')?i.reply({...retiredEventPayload(),flags:MessageFlags.Ephemeral}):i.update(retiredEventPayload());
+    if(id==='hu:help:elevated'||id==='hu:help:moderators')return openAccessRequest(i);
+    if(id==='hu:elevated:kind')return openAccessRequest(i,i.values?.[0]);
     if(isServerModeratorAction(id))return handleServerModeratorAction(i,{serverModerators:guilds.serverModerators,guilds});
     if(isTourShareDestination(id))return handleTourShareDestination(i,{sharePasses,tours,guilds,loadHouse:async(i,id)=>(await loadSavedReference(i,id)).record});
     if(isDiscordAdminInteraction(id))return i.reply({content:webOnlyAdminNotice(),flags:MessageFlags.Ephemeral});
