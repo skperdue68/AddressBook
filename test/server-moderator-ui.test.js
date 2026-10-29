@@ -10,8 +10,8 @@ async function setup(t){const db=openDatabase({DB_TYPE:'sqlite',DATABASE_PATH:':
 function interaction(id,user='u',roles=[]){return {guildId:'g1',channelId:'c',user:{id:user},member:{roles:{cache:new Map(roles.map(r=>[r,true]))}},customId:id,update(p){this.payload=p;return Promise.resolve(p);},reply(p){this.payload=p;return Promise.resolve(p);},showModal(p){this.payload=p;return Promise.resolve(p);}};}
 test('Help owns moderator requests and current Server administrators review them',async t=>{
  const db=await setup(t),menu=createHousingMenu(db),i=interaction('hu:home');await menu.button(i);assert.doesNotMatch(json(i.payload),/Global Moderator Access/);
- i.customId='hu:help';await menu.button(i);assert.match(json(i.payload),/hu:help:moderators/);
- i.customId='hu:help:moderators';await menu.button(i);assert.match(json(i.payload),/Request Server Moderator Access/);assert.match(json(i.payload),/Request Global Moderator Access/);
+ i.customId='hu:help';await menu.button(i);assert.match(json(i.payload),/hu:help:elevated/);
+ i.customId='hu:help:moderators';await menu.button(i);assert.match(json(i.payload),/Server administrator/);assert.match(json(i.payload),/Global administrator/);
  i.customId='hu:modal:servermod:request';i.fields={getTextInputValue:()=> 'I help members'};await menu.modal(i);
  const req=(await db.query('SELECT * FROM server_moderator_requests'))[0];assert.equal(req.status,'pending');
  const admin=interaction(`hu:servermod:approve:${req.id}:${req.revision}`,'admin',['staff']);await menu.button(admin);

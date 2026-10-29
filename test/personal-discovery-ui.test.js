@@ -119,8 +119,8 @@ test('26 Favorites paginate as 25 options then one',async()=>{
 });
 
 test('support retains access and removes training links',()=>{
- const payload=ui.helpPayload();
- assert.ok(labels(payload).includes('Moderator Access'));
+ const payload=ui.helpPayload({requestableKinds:['server','global']});
+ assert.ok(labels(payload).includes('Request Elevated Access'));
  assert.ok(!components(payload).some(c=>/learning|onboarding/.test(c.custom_id||'')));
  assert.match(payload.embeds[0].toJSON().title,/Support/);
 });
