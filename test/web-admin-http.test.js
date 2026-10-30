@@ -541,3 +541,67 @@ test('administration known-total lists provide page jumps and clamp stale page l
     const clamped=await fetch(`${base}/admin/reports?page=99&status=resolved`,{headers,redirect:'manual'});assert.equal(clamped.status,302);assert.equal(clamped.headers.get('location'),'/admin/reports?page=2&status=resolved');
   }finally{await new Promise(resolve=>server.close(resolve));}
 });
+
+test('pages carry security headers, and HSTS only over HTTPS', async () => {
+  const plain = await running();
+  try {
+    const response = await fetch(`${plain.base}/privacy`);
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get('content-security-policy'), /frame-ancestors 'none'/);
+    assert.equal(response.headers.get('x-frame-options'), 'DENY');
+    assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+    assert.equal(response.headers.get('strict-transport-security'), null);
+    const asset = await fetch(`${plain.base}/assets/workspace.css`);
+    assert.equal(asset.headers.get('x-content-type-options'), 'nosniff');
+  } finally { await new Promise(resolve => plain.server.close(resolve)); }
+  const secure = await running({ config: { oauth: { clientId: 'client', clientSecret: 'secret', redirectUri: 'https://admin.example.test/auth/callback' } } });
+  try {
+    const response = await fetch(`${secure.base}/privacy`);
+    assert.match(response.headers.get('strict-transport-security'), /max-age=\d+/);
+    assert.match(response.headers.get('content-security-policy'), /default-src 'self'/);
+  } finally { await new Promise(resolve => secure.server.close(resolve)); }
+});
+
+test('administration downloads are not sniffable', async () => {
+  const { server, base } = await running();
+  try {
+    const { cookie } = await loggedIn(base);
+    const response = await fetch(`${base}/admin/export`, { headers: { cookie }, redirect: 'manual' });
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+  } finally { await new Promise(resolve => server.close(resolve)); }
+});
+
+test('sign-out ignores requests that another website started', async () => {
+  const { server, base } = await running();
+  try {
+    for (const site of ['cross-site', 'same-site']) {
+      const response = await fetch(`${base}/auth/logout`, { headers: { 'sec-fetch-site': site }, redirect: 'manual' });
+      assert.equal(response.status, 302);
+      assert.equal(response.headers.get('location'), '/');
+      assert.equal(response.headers.get('set-cookie'), null, site);
+    }
+    for (const headers of [{ 'sec-fetch-site': 'same-origin' }, { 'sec-fetch-site': 'none' }, {}]) {
+      const response = await fetch(`${base}/auth/logout`, { headers, redirect: 'manual' });
+      assert.match(response.headers.get('set-cookie'), /Max-Age=0/);
+    }
+  } finally { await new Promise(resolve => server.close(resolve)); }
+});
+
+test('unexpected errors show a reference instead of internal details', async () => {
+  const service = { authorizeGuild: () => ({ allowed: true }), overview: async () => { throw new Error("SQLITE_ERROR: no such table: secrets at /app/src/db/database.js:42:7"); } };
+  const { server, base } = await running({ service });
+  const original = console.error;
+  const logged = [];
+  console.error = (...args) => logged.push(args.map(String).join(' '));
+  try {
+    const { cookie } = await loggedIn(base);
+    const response = await fetch(`${base}/admin`, { headers: { cookie }, redirect: 'manual' });
+    assert.equal(response.status, 500);
+    const html = await response.text();
+    assert.doesNotMatch(html, /SQLITE|no such table|\/app\/src/);
+    const reference = /Reference: <code>([a-f0-9]{8})<\/code>/.exec(html)?.[1];
+    assert.ok(reference, 'the page shows a reference code');
+    assert.ok(logged.some(line => line.includes(reference) && line.includes('web error')), 'the real error is logged with the same reference');
+  } finally { console.error = original; await new Promise(resolve => server.close(resolve)); }
+});
