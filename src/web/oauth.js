@@ -1,5 +1,12 @@
 import crypto from 'node:crypto';
 
+// Pending OAuth sign-ins are kept in memory. Each state is single use, expires
+// after STATE_TTL_MS, and is bound to the browser that started the sign-in through
+// a short-lived cookie so a state cannot be replayed from a different browser.
+export const OAUTH_BINDING_COOKIE = 'hearthbound_oauth';
+export const STATE_TTL_MS = 10 * 60 * 1000;
+export const MAX_PENDING_STATES = 5000;
+
 const states = new Map();
 const safeAdminReturn = value => {
   const path = String(value)==='/'?'/app':String(value);
@@ -11,18 +18,34 @@ const safeAdminReturn = value => {
   return '/admin';
 };
 
-export function createOAuthState(returnTo = '/admin', now = Date.now(), secret = process.env.WEB_SESSION_SECRET) {
-  if (!secret) throw new Error('WEB_SESSION_SECRET is required for OAuth state.');
-  const state = `${cryptoRandom()}${cryptoRandom()}`;
-  states.set(state, { returnTo: safeAdminReturn(returnTo), expires: Number(now) + 10 * 60 * 1000, secret: String(secret) });
-  return { state };
+const hashBinding = binding => crypto.createHash('sha256').update(String(binding ?? ''), 'utf8').digest();
+
+// Drop expired entries, then evict the oldest ones if the table is still full so
+// unauthenticated traffic cannot grow it without bound.
+function prune(now) {
+  for (const [key, value] of states) if (value.expires <= Number(now)) states.delete(key);
+  while (states.size >= MAX_PENDING_STATES) states.delete(states.keys().next().value);
 }
 
-export function consumeOAuthState(state, now = Date.now(), secret = process.env.WEB_SESSION_SECRET) {
+export function createOAuthState(returnTo = '/admin', now = Date.now(), secret = process.env.WEB_SESSION_SECRET) {
+  if (!secret) throw new Error('WEB_SESSION_SECRET is required for OAuth state.');
+  prune(now);
+  const state = `${cryptoRandom()}${cryptoRandom()}`;
+  const binding = crypto.randomBytes(24).toString('base64url');
+  states.set(state, { returnTo: safeAdminReturn(returnTo), expires: Number(now) + STATE_TTL_MS, secret: String(secret), bindingHash: hashBinding(binding) });
+  return { state, binding };
+}
+
+export function consumeOAuthState(state, now = Date.now(), secret = process.env.WEB_SESSION_SECRET, binding = '') {
   const value = states.get(String(state));
   states.delete(String(state));
   if (!value || value.secret !== String(secret || '') || value.expires <= Number(now)) return null;
+  if (!binding || !crypto.timingSafeEqual(value.bindingHash, hashBinding(binding))) return null;
   return value.returnTo;
+}
+
+export function pendingOAuthStateCount() {
+  return states.size;
 }
 
 export function buildDiscordAuthorizeUrl(state, { clientId, redirectUri } = {}) {

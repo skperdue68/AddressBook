@@ -81,7 +81,7 @@ test('a revoked selected guild never silently switches administration to another
 async function loggedIn(base) {
   const login = await fetch(`${base}/auth/discord`, { redirect: 'manual' });
   const state = new URL(login.headers.get('location')).searchParams.get('state');
-  const callback = await fetch(`${base}/auth/callback?code=test&state=${state}`, { redirect: 'manual' });
+  const callback = await fetch(`${base}/auth/callback?code=test&state=${state}`, { headers: { cookie: login.headers.get('set-cookie').split(';')[0] }, redirect: 'manual' });
   const cookie = callback.headers.get('set-cookie');
   const payload = JSON.parse(Buffer.from(cookie.split('=')[1].split('.')[0], 'base64url').toString('utf8'));
   return { cookie, csrf: payload.csrf };
@@ -104,7 +104,7 @@ test('OAuth callback stays on HearthBound after an unsafe returnTo is supplied',
   try {
     const login = await fetch(`${base}/auth/discord?returnTo=${encodeURIComponent('//outside.example/steal')}`, { redirect: 'manual' });
     const state = new URL(login.headers.get('location')).searchParams.get('state');
-    const callback = await fetch(`${base}/auth/callback?code=test&state=${state}`, { redirect: 'manual' });
+    const callback = await fetch(`${base}/auth/callback?code=test&state=${state}`, { headers: { cookie: login.headers.get('set-cookie').split(';')[0] }, redirect: 'manual' });
     assert.equal(callback.status, 302);
     assert.equal(callback.headers.get('location'), '/admin');
   } finally { await new Promise(resolve => server.close(resolve)); }
@@ -123,7 +123,7 @@ test('web export sends the guild JSON snapshot as a download', async () => {
   try {
     const login = await fetch(`${base}/auth/discord`, { redirect: 'manual' });
     const state = new URL(login.headers.get('location')).searchParams.get('state');
-    const callback = await fetch(`${base}/auth/callback?code=test&state=${state}`, { redirect: 'manual' });
+    const callback = await fetch(`${base}/auth/callback?code=test&state=${state}`, { headers: { cookie: login.headers.get('set-cookie').split(';')[0] }, redirect: 'manual' });
     const response = await fetch(`${base}/admin/export`, { headers: { cookie: callback.headers.get('set-cookie') }, redirect: 'manual' });
     assert.equal(response.status, 200);
     assert.equal(response.headers.get('content-type'), 'application/json; charset=utf-8');
@@ -136,7 +136,7 @@ test('HTTPS OAuth configuration marks the session cookie Secure', async () => {
   try {
     const login = await fetch(`${base}/auth/discord`, { redirect: 'manual' });
     const state = new URL(login.headers.get('location')).searchParams.get('state');
-    const callback = await fetch(`${base}/auth/callback?code=test&state=${state}`, { redirect: 'manual' });
+    const callback = await fetch(`${base}/auth/callback?code=test&state=${state}`, { headers: { cookie: login.headers.get('set-cookie').split(';')[0] }, redirect: 'manual' });
     assert.match(callback.headers.get('set-cookie'), /Secure/);
   } finally { await new Promise(resolve => server.close(resolve)); }
 });
@@ -156,7 +156,7 @@ test('web requests recheck current guild roles instead of trusting the login sna
   try {
     const login = await fetch(`${base}/auth/discord`, { redirect: 'manual' });
     const state = new URL(login.headers.get('location')).searchParams.get('state');
-    const callback = await fetch(`${base}/auth/callback?code=test&state=${state}`, { redirect: 'manual' });
+    const callback = await fetch(`${base}/auth/callback?code=test&state=${state}`, { headers: { cookie: login.headers.get('set-cookie').split(';')[0] }, redirect: 'manual' });
     const response = await fetch(`${base}/admin`, { headers: { cookie: callback.headers.get('set-cookie') }, redirect: 'manual' });
     assert.equal(response.status, 403);
   } finally { await new Promise(resolve => server.close(resolve)); }
@@ -540,4 +540,41 @@ test('administration known-total lists provide page jumps and clamp stale page l
     const reports=await fetch(`${base}/admin/reports`,{headers});assert.match(await reports.text(),/Jump to page/);
     const clamped=await fetch(`${base}/admin/reports?page=99&status=resolved`,{headers,redirect:'manual'});assert.equal(clamped.status,302);assert.equal(clamped.headers.get('location'),'/admin/reports?page=2&status=resolved');
   }finally{await new Promise(resolve=>server.close(resolve));}
+});
+
+test('OAuth callback requires the cookie from the browser that started sign-in', async () => {
+  const { server, base } = await running();
+  try {
+    const login = await fetch(`${base}/auth/discord`, { redirect: 'manual' });
+    const state = new URL(login.headers.get('location')).searchParams.get('state');
+    const bindingCookie = login.headers.get('set-cookie');
+    assert.match(bindingCookie, /^hearthbound_oauth=[A-Za-z0-9_-]{32,};/);
+    assert.match(bindingCookie, /HttpOnly/);
+    assert.match(bindingCookie, /SameSite=Lax/);
+    assert.match(bindingCookie, /Path=\/auth/);
+
+    // A state replayed from a browser that never started the sign-in is refused and no session is issued.
+    const replay = await fetch(`${base}/auth/callback?code=test&state=${state}`, { redirect: 'manual' });
+    assert.equal(replay.status, 400);
+    assert.equal(replay.headers.get('set-cookie'), null);
+
+    // The refused attempt spends the state, so the genuine browser must start over.
+    const spent = await fetch(`${base}/auth/callback?code=test&state=${state}`, { headers: { cookie: bindingCookie.split(';')[0] }, redirect: 'manual' });
+    assert.equal(spent.status, 400);
+
+    // A different browser's binding cookie does not unlock someone else's state.
+    const victim = await fetch(`${base}/auth/discord`, { redirect: 'manual' });
+    const attacker = await fetch(`${base}/auth/discord`, { redirect: 'manual' });
+    const victimState = new URL(victim.headers.get('location')).searchParams.get('state');
+    const crossed = await fetch(`${base}/auth/callback?code=test&state=${victimState}`, { headers: { cookie: attacker.headers.get('set-cookie').split(';')[0] }, redirect: 'manual' });
+    assert.equal(crossed.status, 400);
+  } finally { await new Promise(resolve => server.close(resolve)); }
+});
+
+test('OAuth binding cookie is Secure when the redirect URI is HTTPS', async () => {
+  const { server, base } = await running({ config: { oauth: { clientId: 'client', clientSecret: 'secret', redirectUri: 'https://admin.example.test/auth/callback' } } });
+  try {
+    const login = await fetch(`${base}/auth/discord`, { redirect: 'manual' });
+    assert.match(login.headers.get('set-cookie'), /Secure/);
+  } finally { await new Promise(resolve => server.close(resolve)); }
 });

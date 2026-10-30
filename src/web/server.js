@@ -15,7 +15,7 @@ import {renderWorkspace,csrfField} from './workspace-render.js';
 import {ESO_SERVERS} from '../utils/eso-server.js';
 import {handleWorkspaceRoute} from './workspace-routes.js';
 import http from 'node:http';
-import { buildDiscordAuthorizeUrl, consumeOAuthState, createOAuthState, exchangeDiscordCode } from './oauth.js';
+import { buildDiscordAuthorizeUrl, consumeOAuthState, createOAuthState, exchangeDiscordCode, OAUTH_BINDING_COOKIE, STATE_TTL_MS } from './oauth.js';
 import { createSession, readSession, sessionLifetimeSeconds } from './session.js';
 import { csrfMatches } from './session.js';
 import { page, escape } from './render.js';
@@ -25,6 +25,7 @@ const cookieValue = (request, name) => String(request.headers.cookie || '').spli
 const send = (response, status, body, headers = {}) => { response.writeHead(status, { 'content-type': 'text/html; charset=utf-8', 'referrer-policy':'no-referrer', 'cache-control':'private, no-store', ...headers }); response.end(body); };
 const redirect = (response, location, headers = {}) => { response.writeHead(302, { location, ...headers }); response.end(); };
 const sessionCookie = (value, secure = false, lifetimeSeconds = sessionLifetimeSeconds(), issuedAt = Date.now()) => `addressbook_session=${value}; HttpOnly; SameSite=Lax;${secure ? ' Secure;' : ''} Path=/; Max-Age=${lifetimeSeconds}; Expires=${new Date(Number(issuedAt) + lifetimeSeconds * 1000).toUTCString()}`;
+const oauthBindingCookie = (value, secure = false, maxAgeSeconds = STATE_TTL_MS / 1000) => `${OAUTH_BINDING_COOKIE}=${value}; HttpOnly; SameSite=Lax;${secure ? ' Secure;' : ''} Path=/auth; Max-Age=${maxAgeSeconds}`;
 const pendingPage = value => Math.min(1000000, Math.max(1, Math.floor(Number(value) || 1)));
 const readBody = (request,limit=8192) => new Promise((resolve, reject) => {
   let data = '';
@@ -103,11 +104,12 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
       return send(response,200,welcomePage(cfg.oauth,readSession(cookieValue(request, 'addressbook_session'), now(), cfg.sessionSecret)));
     }
     if (url.pathname === '/auth/discord') {
-      const { state } = createOAuthState(url.searchParams.get('returnTo') || '/admin', now(), cfg.sessionSecret);
-      return redirect(response, buildDiscordAuthorizeUrl(state, cfg.oauth));
+      const { state, binding } = createOAuthState(url.searchParams.get('returnTo') || '/admin', now(), cfg.sessionSecret);
+      return redirect(response, buildDiscordAuthorizeUrl(state, cfg.oauth), { 'set-cookie': oauthBindingCookie(binding, String(cfg.oauth.redirectUri || '').startsWith('https://')) });
     }
     if (url.pathname === '/auth/callback') {
-      const returnTo = consumeOAuthState(url.searchParams.get('state'), now(), cfg.sessionSecret);
+      const secure = String(cfg.oauth.redirectUri || '').startsWith('https://');
+      const returnTo = consumeOAuthState(url.searchParams.get('state'), now(), cfg.sessionSecret, cookieValue(request, OAUTH_BINDING_COOKIE));
       if(!returnTo)return send(response,400,loginRecoveryPage('expired'));
       if(url.searchParams.get('error')==='access_denied')return send(response,200,loginRecoveryPage('cancelled',returnTo));
       if(url.searchParams.has('error')||!url.searchParams.get('code'))return send(response,400,loginRecoveryPage('incomplete',returnTo));
@@ -115,7 +117,6 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
         const tokens = await exchangeDiscordCode(url.searchParams.get('code'), cfg.oauth, fetchImpl);
         const identity = await identityResolver(tokens);
         const cookie = createSession(identity, now(), cfg.sessionSecret, cfg.lifetimeSeconds);
-        const secure = String(cfg.oauth.redirectUri || '').startsWith('https://');
         return redirect(response, returnTo, { 'set-cookie': sessionCookie(cookie, secure, cfg.lifetimeSeconds, now()) });
       } catch { return send(response,502,loginRecoveryPage('unavailable',returnTo)); }
     }
