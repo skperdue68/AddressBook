@@ -16,7 +16,7 @@ import {ESO_SERVERS} from '../utils/eso-server.js';
 import {handleWorkspaceRoute} from './workspace-routes.js';
 import http from 'node:http';
 import { buildDiscordAuthorizeUrl, consumeOAuthState, createOAuthState, exchangeDiscordCode } from './oauth.js';
-import { createSession, readSession, sessionLifetimeSeconds } from './session.js';
+import { createSession, newSessionId, readSessionDetails, sessionLifetimeSeconds } from './session.js';
 import { csrfMatches } from './session.js';
 import { page, escape } from './render.js';
 import {welcomePage,guildPickerPage} from './public-pages.js';
@@ -36,7 +36,7 @@ const readBody = (request,limit=8192) => new Promise((resolve, reject) => {
   request.on('error', reject);
 });
 
-export function createWebAdminServer({ service, workspace = null, config = {}, resolveOAuthIdentity, resolveGuildMembership, fetchImpl = fetch, now = () => Date.now() } = {}) {
+export function createWebAdminServer({ service, workspace = null, config = {}, resolveOAuthIdentity, resolveGuildMembership, fetchImpl = fetch, now = () => Date.now(), sessionRevocations = null } = {}) {
   if (!service) throw new Error('WebAdminService is required.');
   const cfg = { lifetimeSeconds:sessionLifetimeSeconds({WEB_SESSION_DAYS:config.sessionDays??process.env.WEB_SESSION_DAYS}), sessionSecret: config.sessionSecret || process.env.WEB_SESSION_SECRET, oauth: config.oauth || { clientId: process.env.DISCORD_OAUTH_CLIENT_ID || process.env.DISCORD_CLIENT_ID, clientSecret: process.env.DISCORD_OAUTH_CLIENT_SECRET, redirectUri: process.env.DISCORD_OAUTH_REDIRECT_URI } };
   // Strict-Transport-Security is only sent when the portal is configured for HTTPS.
@@ -61,8 +61,31 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
     return workspace.policy.server.claimFirstAdmin({guildId,userId,setupAuthority:current.setupAuthority===true});
   };
 
+  // The signed-in member for this request, or null. A cookie that has been signed out, here or
+  // everywhere, no longer counts. If revocations cannot be checked, the safe answer is signed out.
+  async function activeSession(request) {
+    const details = readSessionDetails(cookieValue(request, 'addressbook_session'), now(), cfg.sessionSecret);
+    if (!details) return null;
+    if (sessionRevocations) {
+      try {
+        if (await sessionRevocations.isRevoked({ sessionId: details.user.sid, userId: details.user.id, issuedAt: details.issuedAt })) return null;
+      } catch (error) {
+        console.error('HearthBound could not check sign-in revocations; treating the request as signed out:', error);
+        return null;
+      }
+    }
+    return details.user;
+  }
+
+  async function revokeCurrentSession(request) {
+    const details = readSessionDetails(cookieValue(request, 'addressbook_session'), now(), cfg.sessionSecret);
+    if (!sessionRevocations || !details?.user.sid) return;
+    try { await sessionRevocations.revokeSession(details.user.sid, now() + cfg.lifetimeSeconds * 1000); }
+    catch (error) { console.error('HearthBound could not record the sign-out; the cookie was still cleared in this browser:', error); }
+  }
+
   async function sessionContext(request, url, inferred=null) {
-    const session = readSession(cookieValue(request, 'addressbook_session'), now(), cfg.sessionSecret);
+    const session = await activeSession(request);
     if (!session) return null;
     const guilds = Array.isArray(session.guilds) ? session.guilds : [];
     const choices = [],requestedEnvironment=inferred?.eso_server||url.searchParams.get('esoServer');
@@ -105,7 +128,7 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
     if(['/privacy','/terms'].includes(url.pathname)){if(!['GET','HEAD'].includes(request.method))return send(response,405,'Method not allowed',{allow:'GET, HEAD'});return send(response,200,request.method==='HEAD'?'':legalPage(url.pathname));}
     if(url.pathname==='/'){
       if(!['GET','HEAD'].includes(request.method))return send(response,405,'Method not allowed',{allow:'GET, HEAD'});
-      return send(response,200,welcomePage(cfg.oauth,readSession(cookieValue(request, 'addressbook_session'), now(), cfg.sessionSecret)));
+      return send(response,200,welcomePage(cfg.oauth,await activeSession(request)));
     }
     if (url.pathname === '/auth/discord') {
       const { state } = createOAuthState(url.searchParams.get('returnTo') || '/admin', now(), cfg.sessionSecret);
@@ -119,7 +142,7 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
       try {
         const tokens = await exchangeDiscordCode(url.searchParams.get('code'), cfg.oauth, fetchImpl);
         const identity = await identityResolver(tokens);
-        const cookie = createSession(identity, now(), cfg.sessionSecret, cfg.lifetimeSeconds);
+        const cookie = createSession({ ...identity, sid: newSessionId() }, now(), cfg.sessionSecret, cfg.lifetimeSeconds);
         const secure = String(cfg.oauth.redirectUri || '').startsWith('https://');
         return redirect(response, returnTo, { 'set-cookie': sessionCookie(cookie, secure, cfg.lifetimeSeconds, now()) });
       } catch { return send(response,502,loginRecoveryPage('unavailable',returnTo)); }
@@ -128,9 +151,24 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
       // Browsers label requests started by other sites. Ignore those so a third-party page cannot sign members out.
       const site = request.headers['sec-fetch-site'];
       if (site && !['same-origin', 'none'].includes(site)) return redirect(response, '/');
+      // Cancel this login on the server too, so a copy of its cookie stops working.
+      await revokeCurrentSession(request);
       return redirect(response, '/', { 'set-cookie': 'addressbook_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0' });
     }
-    const signedIn=readSession(cookieValue(request,'addressbook_session'),now(),cfg.sessionSecret);
+    if (url.pathname === '/auth/logout-all') {
+      const current = await activeSession(request);
+      if (!current) return redirect(response, '/');
+      if (!sessionRevocations) return send(response, 501, page('Sign out everywhere', '<p>Signing out of every device is not available on this installation.</p>'));
+      if (request.method === 'POST') {
+        const form = await readBody(request);
+        if (!csrfMatches(current.csrf, form.get('csrf'))) return send(response, 400, loginRecoveryPage('expired', '/app'));
+        await sessionRevocations.revokeAllForUser(current.id, now());
+        return redirect(response, '/', { 'set-cookie': 'addressbook_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0' });
+      }
+      if (!['GET', 'HEAD'].includes(request.method)) return send(response, 405, 'Method not allowed', { allow: 'GET, HEAD, POST' });
+      return send(response, 200, page('Sign out everywhere', `<p>This signs you out of HearthBound in every browser and on every device where you are signed in, including this one. You can sign in again with Discord at any time.</p><form method="post" action="/auth/logout-all"><input type="hidden" name="csrf" value="${escape(current.csrf)}"><button class="primary" type="submit">Sign out of all devices</button> <a href="/app">Cancel</a></form>`));
+    }
+    const signedIn=await activeSession(request);
     if(workspace&&url.pathname==='/app/access-preview'){
       if(!signedIn)return redirect(response,'/auth/discord?returnTo=%2Fapp');
       if(request.method!=='POST')return send(response,405,'Use the account menu to change preview access.',{allow:'POST'});

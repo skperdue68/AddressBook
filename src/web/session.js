@@ -28,7 +28,8 @@ export function createSession(user, now = Date.now(), secret = process.env.WEB_S
   return `${payload}.${sign(payload, secret)}`;
 }
 
-export function readSession(cookie, now = Date.now(), secret = process.env.WEB_SESSION_SECRET) {
+// Verifies and decodes a session cookie, returning everything stored in it (including iat and exp).
+function decodeSession(cookie, now, secret) {
   if (!cookie || !secret) return null;
   const [payload, signature, extra] = String(cookie).split('.');
   if (extra !== undefined || String(cookie).length > 65536) return null;
@@ -40,7 +41,25 @@ export function readSession(cookie, now = Date.now(), secret = process.env.WEB_S
     const json = payload.startsWith('z') ? inflateRawSync(Buffer.from(payload.slice(1), 'base64url'), {maxOutputLength:262144}).toString('utf8') : unb64(payload);
     const value = JSON.parse(json);
     if (!Number.isFinite(Number(value.exp)) || Number(value.exp) <= Number(now)) return null;
-    const { iat, exp, ...user } = value;
-    return user;
+    return value;
   } catch { return null; }
 }
+
+export function readSession(cookie, now = Date.now(), secret = process.env.WEB_SESSION_SECRET) {
+  const value = decodeSession(cookie, now, secret);
+  if (!value) return null;
+  const { iat, exp, ...user } = value;
+  return user;
+}
+
+// Like readSession, but also reports when the cookie was issued and when it expires,
+// which the server needs to check it against server-side revocations.
+export function readSessionDetails(cookie, now = Date.now(), secret = process.env.WEB_SESSION_SECRET) {
+  const value = decodeSession(cookie, now, secret);
+  if (!value) return null;
+  const { iat, exp, ...user } = value;
+  return { user, issuedAt: Number(iat), expiresAt: Number(exp) };
+}
+
+// A random identifier carried by every browser login, so one login can be revoked on its own.
+export const newSessionId = () => crypto.randomBytes(16).toString('base64url');
