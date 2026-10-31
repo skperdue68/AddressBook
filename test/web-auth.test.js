@@ -1,7 +1,7 @@
 import './web-login-recovery.test.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildDiscordAuthorizeUrl, consumeOAuthState, createOAuthState, exchangeDiscordCode } from '../src/web/oauth.js';
+import { OAUTH_STATE_MAX_PENDING, OAUTH_STATE_TTL_MS, buildDiscordAuthorizeUrl, consumeOAuthState, createOAuthState, exchangeDiscordCode, oauthBindingCookie, pendingOAuthStateCount } from '../src/web/oauth.js';
 import { createSession, csrfMatches, readSession } from '../src/web/session.js';
 
 test('OAuth state is one-use and expires', () => {
@@ -49,4 +49,35 @@ test('Discord code exchange uses the OAuth token endpoint', async () => {
   const result = await exchangeDiscordCode('code', { clientId: 'client', clientSecret: 'secret', redirectUri: 'https://example.test/callback' }, async (url, options) => { calls.push({ url, options }); return { ok: true, json: async () => ({ access_token: 'token' }) }; });
   assert.equal(result.access_token, 'token');
   assert.equal(calls[0].url, 'https://discord.com/api/oauth2/token');
+});
+
+test('expired sign-ins are swept and pending sign-ins are capped', () => {
+  const start = 5_000_000;
+  for (let i = 0; i < OAUTH_STATE_MAX_PENDING + 50; i++) createOAuthState('/admin', start, 'cap-secret');
+  assert.ok(pendingOAuthStateCount() <= OAUTH_STATE_MAX_PENDING, 'pending sign-ins must stay under the cap');
+  // A later attempt, after everything has expired, clears the expired entries first.
+  createOAuthState('/admin', start + OAUTH_STATE_TTL_MS + 1, 'cap-secret');
+  assert.equal(pendingOAuthStateCount(), 1);
+});
+
+test('the oldest pending sign-in is evicted first when the cap is reached', () => {
+  const now = 9_000_000;
+  const first = createOAuthState('/admin', now, 'evict-secret');
+  for (let i = 0; i < OAUTH_STATE_MAX_PENDING; i++) createOAuthState('/admin', now, 'evict-secret');
+  assert.equal(consumeOAuthState(first.state, now, 'evict-secret'), null, 'the oldest state was evicted');
+  const newest = createOAuthState('/admin', now, 'evict-secret');
+  assert.equal(consumeOAuthState(newest.state, now, 'evict-secret'), '/admin');
+});
+
+test('a bound sign-in only completes in the browser that started it', () => {
+  const now = 20_000_000;
+  const a = createOAuthState('/admin', now, 'bind-secret', { bind: true });
+  assert.ok(a.binding && a.binding.length >= 32, 'a random browser token is issued');
+  assert.equal(consumeOAuthState(a.state, now, 'bind-secret'), null, 'no cookie is rejected');
+  const b = createOAuthState('/admin', now, 'bind-secret', { bind: true });
+  assert.equal(consumeOAuthState(b.state, now, 'bind-secret', 'someone-elses-token'), null, 'another browser token is rejected');
+  const c = createOAuthState('/app/houses', now, 'bind-secret', { bind: true });
+  assert.equal(consumeOAuthState(c.state, now, 'bind-secret', c.binding), '/app/houses', 'the same browser succeeds');
+  assert.equal(consumeOAuthState(c.state, now, 'bind-secret', c.binding), null, 'and only once');
+  assert.match(oauthBindingCookie('abc', true), /^hearthbound_oauth=abc; HttpOnly; SameSite=Lax; Secure; Path=\/auth; Max-Age=600$/);
 });
