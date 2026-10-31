@@ -1,4 +1,5 @@
 import {DiscordWorkspace} from './web/discord-workspace.js';
+import {errorReference,GENERIC_ERROR_MESSAGE,publicErrorMessage} from './utils/public-error.js';
 import {UsageActivityService} from './services/usage-activity-service.js';
 import {WebWorkspaceService} from './services/web-workspace-service.js';
 import {resolveCurrentGuildMembership} from './web/guild-membership.js';
@@ -71,10 +72,11 @@ client.on(Events.InteractionCreate,async i=>{
     if(i.isStringSelectMenu() || i.isRoleSelectMenu() || i.isChannelSelectMenu()) return await handlers.select(i);
     if(i.isModalSubmit()) return await handlers.modal(i);
   }catch(err){
-    console.error(err);
+    const reference=errorReference();
+    console.error(`HearthBound interaction error ${reference}:`,err);
     const message=/database|connect|pool|socket|ECONN/i.test(String(err?.message||''))
       ?'HearthBound cannot reach its database right now. Please try again shortly.'
-      :`Error: ${err.message}`;
+      :`Error: ${publicErrorMessage(err)}${publicErrorMessage(err)===GENERIC_ERROR_MESSAGE?` (reference ${reference})`:''}`;
     const payload={content:message,flags:MessageFlags.Ephemeral};
     if(i.replied||i.deferred) await i.followUp(payload).catch(()=>{});
     else await i.reply(payload).catch(()=>{});

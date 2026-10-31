@@ -20,9 +20,11 @@ import { createSession, readSession, sessionLifetimeSeconds } from './session.js
 import { csrfMatches } from './session.js';
 import { page, escape } from './render.js';
 import {welcomePage,guildPickerPage} from './public-pages.js';
+import {HSTS_HEADERS,SECURITY_HEADERS} from './security-headers.js';
+import {errorReference,publicErrorMessage} from '../utils/public-error.js';
 
 const cookieValue = (request, name) => String(request.headers.cookie || '').split(';').map(item => item.trim()).find(item => item.startsWith(`${name}=`))?.slice(name.length + 1) || null;
-const send = (response, status, body, headers = {}) => { response.writeHead(status, { 'content-type': 'text/html; charset=utf-8', 'referrer-policy':'no-referrer', 'cache-control':'private, no-store', ...headers }); response.end(body); };
+const baseSend = (response, status, body, headers = {}) => { response.writeHead(status, { 'content-type': 'text/html; charset=utf-8', 'referrer-policy':'no-referrer', 'cache-control':'private, no-store', ...SECURITY_HEADERS, ...headers }); response.end(body); };
 const redirect = (response, location, headers = {}) => { response.writeHead(302, { location, ...headers }); response.end(); };
 const sessionCookie = (value, secure = false, lifetimeSeconds = sessionLifetimeSeconds(), issuedAt = Date.now()) => `addressbook_session=${value}; HttpOnly; SameSite=Lax;${secure ? ' Secure;' : ''} Path=/; Max-Age=${lifetimeSeconds}; Expires=${new Date(Number(issuedAt) + lifetimeSeconds * 1000).toUTCString()}`;
 const pendingPage = value => Math.min(1000000, Math.max(1, Math.floor(Number(value) || 1)));
@@ -37,6 +39,9 @@ const readBody = (request,limit=8192) => new Promise((resolve, reject) => {
 export function createWebAdminServer({ service, workspace = null, config = {}, resolveOAuthIdentity, resolveGuildMembership, fetchImpl = fetch, now = () => Date.now() } = {}) {
   if (!service) throw new Error('WebAdminService is required.');
   const cfg = { lifetimeSeconds:sessionLifetimeSeconds({WEB_SESSION_DAYS:config.sessionDays??process.env.WEB_SESSION_DAYS}), sessionSecret: config.sessionSecret || process.env.WEB_SESSION_SECRET, oauth: config.oauth || { clientId: process.env.DISCORD_OAUTH_CLIENT_ID || process.env.DISCORD_CLIENT_ID, clientSecret: process.env.DISCORD_OAUTH_CLIENT_SECRET, redirectUri: process.env.DISCORD_OAUTH_REDIRECT_URI } };
+  // Strict-Transport-Security is only sent when the portal is configured for HTTPS.
+  const hsts = String(cfg.oauth?.redirectUri || '').startsWith('https://') ? HSTS_HEADERS : {};
+  const send = (response, status, body, headers = {}) => baseSend(response, status, body, { ...hsts, ...headers });
   const identityResolver = resolveOAuthIdentity || (async tokens => {
     const response = await fetchImpl('https://discord.com/api/users/@me', { headers: { authorization: `Bearer ${tokens.access_token}` } });
     if (!response.ok) throw new Error('Discord identity lookup failed.');
@@ -119,7 +124,12 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
         return redirect(response, returnTo, { 'set-cookie': sessionCookie(cookie, secure, cfg.lifetimeSeconds, now()) });
       } catch { return send(response,502,loginRecoveryPage('unavailable',returnTo)); }
     }
-    if (url.pathname === '/auth/logout') return redirect(response, '/', { 'set-cookie': 'addressbook_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0' });
+    if (url.pathname === '/auth/logout') {
+      // Browsers label requests started by other sites. Ignore those so a third-party page cannot sign members out.
+      const site = request.headers['sec-fetch-site'];
+      if (site && !['same-origin', 'none'].includes(site)) return redirect(response, '/');
+      return redirect(response, '/', { 'set-cookie': 'addressbook_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0' });
+    }
     const signedIn=readSession(cookieValue(request,'addressbook_session'),now(),cfg.sessionSecret);
     if(workspace&&url.pathname==='/app/access-preview'){
       if(!signedIn)return redirect(response,'/auth/discord?returnTo=%2Fapp');
@@ -263,7 +273,7 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
     if (url.pathname === '/admin/audit.csv') {
       if (request.method !== 'GET') return send(response, 405, page('Method not allowed', '<p>Audit downloads require GET.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }), { allow: 'GET' });
       const csv = await service.exportAudit({ ...common, action: String(url.searchParams.get('action') || '').trim() || null, entityType: String(url.searchParams.get('entityType') || '').trim() || null, target: String(url.searchParams.get('target') || '').trim() || null });
-      response.writeHead(200, { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="hearthbound-audit-${String(guild.id).replace(/[^a-zA-Z0-9_-]/g, '')}.csv"` });
+      response.writeHead(200, { 'content-type': 'text/csv; charset=utf-8', 'x-content-type-options': 'nosniff', 'content-disposition': `attachment; filename="hearthbound-audit-${String(guild.id).replace(/[^a-zA-Z0-9_-]/g, '')}.csv"` });
       return response.end(csv);
     }
     if (url.pathname === '/admin/audit') {
@@ -347,10 +357,18 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
         return send(response, 200, page('Export Data', body, session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }));
       }
       const json = await service.exportGuild(common);
-      response.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'content-disposition': `attachment; filename="hearthbound-${guild.id}-${esoServer}.json"` });
+      response.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'x-content-type-options': 'nosniff', 'content-disposition': `attachment; filename="hearthbound-${guild.id}-${esoServer}.json"` });
       return response.end(json);
     }
     return send(response, 404, page('Not found', '<p>That administration page does not exist.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }));
   }
-  return http.createServer((request, response) => { route(request, response).catch(error => send(response, 500, page('Administration error', `<p>${escape(error.message)}</p>`))); });
+  return http.createServer((request, response) => {
+    route(request, response).catch(error => {
+      // Log the real error with a reference and show only a safe message to the person.
+      const reference = errorReference();
+      console.error(`HearthBound web error ${reference}:`, error);
+      if (response.headersSent) return response.end();
+      send(response, 500, page('Administration error', `<p>${escape(publicErrorMessage(error))}</p><p>Reference: <code>${reference}</code></p>`));
+    });
+  });
 }
