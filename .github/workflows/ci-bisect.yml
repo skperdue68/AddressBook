@@ -1,0 +1,26 @@
+name: CI bisect (temporary)
+on:
+  push:
+    branches: ['ci-bisect/**']
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Run tests and report failures as an annotation
+        run: |
+          set +e
+          node --test --test-concurrency=4 "test/*.test.js" > tests.out 2>&1
+          echo "exit code $?"
+          grep -E "^# (tests|pass|fail)" tests.out
+          grep -B3 -A16 -E "^\s*not ok" tests.out | head -c 40000 > failing.txt
+          if [ -s failing.txt ]; then
+            msg=$(sed ':a;N;$!ba;s/%/%25/g;s/\r//g;s/\n/%0A/g' failing.txt)
+            echo "::error title=Failing tests::${msg}"
+          fi
+          exit 0
