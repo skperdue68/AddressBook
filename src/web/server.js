@@ -195,65 +195,68 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
     if(workspace&&context.memberContext){const tourImage=await tourCoverRoute({request,response,url,workspace,context:context.memberContext,session,send,redirect,readBody});if(tourImage!==null)return tourImage;const gallery=await houseGalleryRoute({request,response,url,workspace,context:context.memberContext,session,send,redirect,readBody});if(gallery!==null)return gallery;}
     if(workspace&&(url.pathname==='/'||url.pathname==='/app'||url.pathname.startsWith('/app/'))){return handleWorkspaceRoute({request,response,url,session,context:context.memberContext,workspace,serverContexts:context.availableContexts||[],memberLookup,claimFirstAdmin,readBody,send,redirect});}
     const common = { guildId: guild.id, esoServer };
+    const actor = { id: session.id, globalName: session.global_name || session.username, displayName: session.display_name || session.username };
+    const adminPage = (title, body) => page(title, body, session, { guildId: guild.id, guildName: guild.name, esoServer, path: url.pathname }, { moderation: true });
+    // Reads a moderation form posted to this route. It must be a POST with a valid CSRF token and the expected
+    // confirmation value. Otherwise the error response is sent here and `form` is null, so callers just return.
+    const readModerationForm = async (confirm, { postOnly, unreadable, invalid }) => {
+      if (request.method !== 'POST') { send(response, 405, adminPage('Method not allowed', `<p>${postOnly}</p>`), { allow: 'POST' }); return { form: null }; }
+      let form;
+      try { form = await readBody(request); } catch { send(response, 400, adminPage('Invalid request', `<p>${unreadable}</p>`)); return { form: null }; }
+      if (!csrfMatches(session.csrf, form.get('csrf')) || form.get('confirm') !== confirm) { send(response, 400, adminPage('Invalid confirmation', `<p>${invalid}</p>`)); return { form: null }; }
+      return { form };
+    };
     const reportMutation = /^\/admin\/reports\/(\d+)\/(review|resolve|dismiss)$/.exec(url.pathname);
     if (reportMutation) {
-      if (request.method !== 'POST') return send(response, 405, page('Method not allowed', '<p>Report moderation actions require a POST form.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }), { allow: 'POST' });
-      let form;
-      try { form = await readBody(request); } catch { return send(response, 400, page('Invalid request', '<p>The report moderation form could not be read.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true })); }
       const action = reportMutation[2];
-      if (!csrfMatches(session.csrf, form.get('csrf')) || form.get('confirm') !== action) return send(response, 400, page('Invalid confirmation', '<p>This report moderation form is invalid or expired. Return to Problem Reports and try again.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }));
+      const { form } = await readModerationForm(action, { postOnly: 'Report moderation actions require a POST form.', unreadable: 'The report moderation form could not be read.', invalid: 'This report moderation form is invalid or expired. Return to Problem Reports and try again.' });
+      if (!form) return;
       const returnPage = pendingPage(form.get('page'));
       const returnPath = `/admin/reports${returnPage > 1 ? `?page=${returnPage}` : ''}`;
       try {
-        await service.moderateReport({ id: reportMutation[1], action, ...common, actor: { id: session.id, globalName: session.global_name || session.username, displayName: session.display_name || session.username } });
+        await service.moderateReport({ id: reportMutation[1], action, ...common, actor });
         return redirect(response, `${returnPath}${returnPage > 1 ? '&' : '?'}status=${action === 'review' ? 'reviewing' : action === 'dismiss' ? 'dismissed' : 'resolved'}`);
       } catch {
-        return send(response, 409, page('Report action not completed', `<p>That housing report is no longer available for this action.</p><p><a href="${returnPath}">Return to Problem Reports</a></p>`, session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }));
+        return send(response, 409, adminPage('Report action not completed', `<p>That housing report is no longer available for this action.</p><p><a href="${returnPath}">Return to Problem Reports</a></p>`));
       }
     }
     const mutation = /^\/admin\/pending\/(\d+)\/(approve|deny)$/.exec(url.pathname);
     if (mutation) {
-      if (request.method !== 'POST') return send(response, 405, page('Method not allowed', '<p>Moderation actions require a POST form.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }), { allow: 'POST' });
-      let form;
-      try { form = await readBody(request); } catch { return send(response, 400, page('Invalid request', '<p>The moderation form could not be read.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true })); }
       const action = mutation[2];
-      if (!csrfMatches(session.csrf, form.get('csrf')) || form.get('confirm') !== action) return send(response, 400, page('Invalid confirmation', '<p>This moderation form is invalid or expired. Return to Pending Review and try again.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }));
+      const { form } = await readModerationForm(action, { postOnly: 'Moderation actions require a POST form.', unreadable: 'The moderation form could not be read.', invalid: 'This moderation form is invalid or expired. Return to Pending Review and try again.' });
+      if (!form) return;
       const returnPage = pendingPage(form.get('page'));
       const returnPath = `/admin/pending${returnPage > 1 ? `?page=${returnPage}` : ''}`;
       try {
-        await service.reviewPending({ id: mutation[1], action, ...common, actor: { id: session.id, globalName: session.global_name || session.username, displayName: session.display_name || session.username } });
+        await service.reviewPending({ id: mutation[1], action, ...common, actor });
         return redirect(response, `${returnPath}${returnPage > 1 ? '&' : '?'}status=${action === 'approve' ? 'approved' : 'denied'}`);
       } catch (error) {
         const message = /already reviewed|not available/i.test(String(error?.message || '')) ? 'That pending house was already reviewed or is not available in this queue.' : 'The moderation action could not be completed.';
-        return send(response, 409, page('Review not completed', `<p>${escape(message)}</p><p><a href="${returnPath}">Return to Pending Review</a></p>`, session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }));
+        return send(response, 409, adminPage('Review not completed', `<p>${escape(message)}</p><p><a href="${returnPath}">Return to Pending Review</a></p>`));
       }
     }
     const verification = /^\/admin\/maintenance\/verify\/(\d+)$/.exec(url.pathname);
     if (verification) {
-      if (request.method !== 'POST') return send(response, 405, page('Method not allowed', '<p>Maintenance actions require a POST form.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }), { allow: 'POST' });
-      let form;
-      try { form = await readBody(request); } catch { return send(response, 400, page('Invalid request', '<p>The maintenance form could not be read.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true })); }
-      if (!csrfMatches(session.csrf, form.get('csrf')) || form.get('confirm') !== 'verify') return send(response, 400, page('Invalid confirmation', '<p>This maintenance form is invalid or expired. Return to Maintenance and try again.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }));
+      const { form } = await readModerationForm('verify', { postOnly: 'Maintenance actions require a POST form.', unreadable: 'The maintenance form could not be read.', invalid: 'This maintenance form is invalid or expired. Return to Maintenance and try again.' });
+      if (!form) return;
       try {
-        await service.verifyHouse({ houseId: verification[1], ...common, actor: { id: session.id, globalName: session.global_name || session.username, displayName: session.display_name || session.username } });
+        await service.verifyHouse({ houseId: verification[1], ...common, actor });
         return redirect(response, '/admin/maintenance?status=verified');
       } catch (error) {
         const message = /not available/i.test(String(error?.message || '')) ? 'That house is not available in this guild and environment.' : 'The maintenance action could not be completed.';
-        return send(response, 409, page('Verification not completed', `<p>${escape(message)}</p><p><a href="/admin/maintenance">Return to Maintenance</a></p>`, session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }));
+        return send(response, 409, adminPage('Verification not completed', `<p>${escape(message)}</p><p><a href="/admin/maintenance">Return to Maintenance</a></p>`));
       }
     }
     const duplicateMerge = /^\/admin\/maintenance\/merge\/(\d+)\/(\d+)$/.exec(url.pathname);
     if (duplicateMerge) {
-      if (request.method !== 'POST') return send(response, 405, page('Method not allowed', '<p>Duplicate merges require a POST form.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }), { allow: 'POST' });
-      let form;
-      try { form = await readBody(request); } catch { return send(response, 400, page('Invalid request', '<p>The duplicate merge form could not be read.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true })); }
-      if (!csrfMatches(session.csrf, form.get('csrf')) || form.get('confirm') !== 'merge') return send(response, 400, page('Invalid confirmation', '<p>This duplicate merge form is invalid or expired. Return to Maintenance and try again.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }));
+      const { form } = await readModerationForm('merge', { postOnly: 'Duplicate merges require a POST form.', unreadable: 'The duplicate merge form could not be read.', invalid: 'This duplicate merge form is invalid or expired. Return to Maintenance and try again.' });
+      if (!form) return;
       try {
-        await service.mergeDuplicate({ keepId: duplicateMerge[1], removeId: duplicateMerge[2], ...common, actor: { id: session.id, globalName: session.global_name || session.username, displayName: session.display_name || session.username } });
+        await service.mergeDuplicate({ keepId: duplicateMerge[1], removeId: duplicateMerge[2], ...common, actor });
         return redirect(response, '/admin/maintenance?status=merged');
       } catch (error) {
         const message = /not available|active|duplicate/i.test(String(error?.message || '')) ? 'Those entries are no longer eligible exact-context duplicates.' : 'The duplicate merge could not be completed.';
-        return send(response, 409, page('Merge not completed', `<p>${escape(message)}</p><p><a href="/admin/maintenance">Return to Maintenance</a></p>`, session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }));
+        return send(response, 409, adminPage('Merge not completed', `<p>${escape(message)}</p><p><a href="/admin/maintenance">Return to Maintenance</a></p>`));
       }
     }
     if (url.pathname === '/admin') {
@@ -304,7 +307,7 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
     }
     if (url.pathname === '/admin/reports') {
       const requestedPage = pendingPage(url.searchParams.get('page'));
-      const result = await service.listReports({ ...common, actor: { id: session.id, globalName: session.global_name || session.username, displayName: session.display_name || session.username }, page: requestedPage, pageSize: 25 });
+      const result = await service.listReports({ ...common, actor, page: requestedPage, pageSize: 25 });
       const currentPage = Math.max(1, Number(result.page || requestedPage));
       const totalPages = Math.max(1, Math.ceil(Number(result.total || 0) / Math.max(1, Number(result.pageSize || 25))));
       const status = url.searchParams.get('status');
