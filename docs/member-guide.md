@@ -166,7 +166,7 @@ On a phone, use **Menu** beside the HearthBound logo to open the full navigation
 
 Use **Open Web Portal** on the Discord main menu or in Support & Access, or visit your server's configured portal URL. Sign in with Discord and choose a server. The header shows the selected server and ESO environment. **Your Access** lists every applicable role: Member, Server Administrator with server name, Global Administrator with environment, and Bot Owner. Both `/hearth` and the `/housing` compatibility alias open the same Discord menu.
 
-The portal remembers sign-in for 30 days by default. Sign Out clears this browser's login; membership and permissions are still checked on protected requests. Administrators can configure `WEB_SESSION_DAYS`. A browser that clears cookies or uses private browsing may require another sign-in.
+The portal remembers sign-in for 30 days by default. Sign Out ends this browser's login; **Sign out everywhere** (in the same account menu) ends every login you have, on all your devices, after you confirm. Membership and permissions are still checked on protected requests. Administrators can configure `WEB_SESSION_DAYS`. A browser that clears cookies or uses private browsing may require another sign-in.
 
 Open the circular Discord avatar in the header for your name, username, selected server/environment and current access, plus shortcuts to My Address Book, Change server, Support & Access, the Word guide and Sign out. Initials appear if an avatar is unavailable. Existing sessions can sign out and back in to refresh profile information. The menu works with Enter or Space, Tab through its links, and Escape to close and return focus to the avatar.
 
