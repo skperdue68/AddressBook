@@ -15,14 +15,17 @@ import {renderWorkspace,csrfField} from './workspace-render.js';
 import {ESO_SERVERS} from '../utils/eso-server.js';
 import {handleWorkspaceRoute} from './workspace-routes.js';
 import http from 'node:http';
-import { buildDiscordAuthorizeUrl, consumeOAuthState, createOAuthState, exchangeDiscordCode } from './oauth.js';
-import { createSession, readSession, sessionLifetimeSeconds } from './session.js';
+import { OAUTH_BINDING_COOKIE, buildDiscordAuthorizeUrl, consumeOAuthState, createOAuthState, exchangeDiscordCode, oauthBindingCookie } from './oauth.js';
+import { createSession, newSessionId, readSessionDetails, sessionLifetimeSeconds } from './session.js';
 import { csrfMatches } from './session.js';
 import { page, escape } from './render.js';
 import {welcomePage,guildPickerPage} from './public-pages.js';
+import {HSTS_HEADERS,SECURITY_HEADERS} from './security-headers.js';
+import {errorReference,publicErrorMessage} from '../utils/public-error.js';
+import { createWebRateLimiter, rateLimitConfig } from './rate-limit.js';
 
 const cookieValue = (request, name) => String(request.headers.cookie || '').split(';').map(item => item.trim()).find(item => item.startsWith(`${name}=`))?.slice(name.length + 1) || null;
-const send = (response, status, body, headers = {}) => { response.writeHead(status, { 'content-type': 'text/html; charset=utf-8', 'referrer-policy':'no-referrer', 'cache-control':'private, no-store', ...headers }); response.end(body); };
+const baseSend = (response, status, body, headers = {}) => { response.writeHead(status, { 'content-type': 'text/html; charset=utf-8', 'referrer-policy':'no-referrer', 'cache-control':'private, no-store', ...SECURITY_HEADERS, ...headers }); response.end(body); };
 const redirect = (response, location, headers = {}) => { response.writeHead(302, { location, ...headers }); response.end(); };
 const sessionCookie = (value, secure = false, lifetimeSeconds = sessionLifetimeSeconds(), issuedAt = Date.now()) => `addressbook_session=${value}; HttpOnly; SameSite=Lax;${secure ? ' Secure;' : ''} Path=/; Max-Age=${lifetimeSeconds}; Expires=${new Date(Number(issuedAt) + lifetimeSeconds * 1000).toUTCString()}`;
 const pendingPage = value => Math.min(1000000, Math.max(1, Math.floor(Number(value) || 1)));
@@ -34,9 +37,14 @@ const readBody = (request,limit=8192) => new Promise((resolve, reject) => {
   request.on('error', reject);
 });
 
-export function createWebAdminServer({ service, workspace = null, config = {}, resolveOAuthIdentity, resolveGuildMembership, fetchImpl = fetch, now = () => Date.now() } = {}) {
+export function createWebAdminServer({ service, workspace = null, config = {}, resolveOAuthIdentity, resolveGuildMembership, fetchImpl = fetch, now = () => Date.now(), sessionRevocations = null } = {}) {
   if (!service) throw new Error('WebAdminService is required.');
   const cfg = { lifetimeSeconds:sessionLifetimeSeconds({WEB_SESSION_DAYS:config.sessionDays??process.env.WEB_SESSION_DAYS}), sessionSecret: config.sessionSecret || process.env.WEB_SESSION_SECRET, oauth: config.oauth || { clientId: process.env.DISCORD_OAUTH_CLIENT_ID || process.env.DISCORD_CLIENT_ID, clientSecret: process.env.DISCORD_OAUTH_CLIENT_SECRET, redirectUri: process.env.DISCORD_OAUTH_REDIRECT_URI } };
+  // Strict-Transport-Security is only sent when the portal is configured for HTTPS.
+  const hsts = String(cfg.oauth?.redirectUri || '').startsWith('https://') ? HSTS_HEADERS : {};
+  const send = (response, status, body, headers = {}) => baseSend(response, status, body, { ...hsts, ...headers });
+  // Per-client request limits (see rate-limit.js). Settings come from WEB_RATE_LIMIT_* and WEB_TRUST_PROXY unless supplied in config.
+  const rateLimiter = createWebRateLimiter(config.rateLimits || rateLimitConfig(process.env), config.rateLimitClock);
   const identityResolver = resolveOAuthIdentity || (async tokens => {
     const response = await fetchImpl('https://discord.com/api/users/@me', { headers: { authorization: `Bearer ${tokens.access_token}` } });
     if (!response.ok) throw new Error('Discord identity lookup failed.');
@@ -56,8 +64,31 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
     return workspace.policy.server.claimFirstAdmin({guildId,userId,setupAuthority:current.setupAuthority===true});
   };
 
+  // The signed-in member for this request, or null. A cookie that has been signed out, here or
+  // everywhere, no longer counts. If revocations cannot be checked, the safe answer is signed out.
+  async function activeSession(request) {
+    const details = readSessionDetails(cookieValue(request, 'addressbook_session'), now(), cfg.sessionSecret);
+    if (!details) return null;
+    if (sessionRevocations) {
+      try {
+        if (await sessionRevocations.isRevoked({ sessionId: details.user.sid, userId: details.user.id, issuedAt: details.issuedAt })) return null;
+      } catch (error) {
+        console.error('HearthBound could not check sign-in revocations; treating the request as signed out:', error);
+        return null;
+      }
+    }
+    return details.user;
+  }
+
+  async function revokeCurrentSession(request) {
+    const details = readSessionDetails(cookieValue(request, 'addressbook_session'), now(), cfg.sessionSecret);
+    if (!sessionRevocations || !details?.user.sid) return;
+    try { await sessionRevocations.revokeSession(details.user.sid, now() + cfg.lifetimeSeconds * 1000); }
+    catch (error) { console.error('HearthBound could not record the sign-out; the cookie was still cleared in this browser:', error); }
+  }
+
   async function sessionContext(request, url, inferred=null) {
-    const session = readSession(cookieValue(request, 'addressbook_session'), now(), cfg.sessionSecret);
+    const session = await activeSession(request);
     if (!session) return null;
     const guilds = Array.isArray(session.guilds) ? session.guilds : [];
     const choices = [],requestedEnvironment=inferred?.eso_server||url.searchParams.get('esoServer');
@@ -93,6 +124,8 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
 
   async function route(request, response) {
     const url = new URL(request.url, 'http://localhost');
+    const waitSeconds = rateLimiter.check(request, url.pathname);
+    if (waitSeconds !== null) return send(response, 429, page('Too many requests', '<p>You are sending requests faster than HearthBound allows. Please wait a moment and try again.</p>'), { 'retry-after': String(waitSeconds) });
     if(['/assets/workspace.css','/assets/public-pages.css','/assets/hearthbound-preview.png','/assets/hearthbound-banner.webp','/assets/hearthbound-landscape.webp','/assets/tour-editor.js','/assets/tour-cover-upload.js','/assets/hearthbound-logo.png','/assets/account-menu.css','/assets/account-menu.js','/assets/web-actions.js','/assets/interface.js','/assets/house-gallery.js','/assets/catalog-editor.js'].includes(url.pathname)){
       if(request.method!=='GET')return send(response,405,'Method not allowed',{allow:'GET'});
       const asset=url.pathname.split('/').pop();return send(response,200,await readFile(new URL(`./assets/${asset}`,import.meta.url)),{'content-type':asset.endsWith('.png')?'image/png':asset.endsWith('.webp')?'image/webp':asset.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8','x-content-type-options':'nosniff'});
@@ -100,27 +133,48 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
     if(['/privacy','/terms'].includes(url.pathname)){if(!['GET','HEAD'].includes(request.method))return send(response,405,'Method not allowed',{allow:'GET, HEAD'});return send(response,200,request.method==='HEAD'?'':legalPage(url.pathname));}
     if(url.pathname==='/'){
       if(!['GET','HEAD'].includes(request.method))return send(response,405,'Method not allowed',{allow:'GET, HEAD'});
-      return send(response,200,welcomePage(cfg.oauth,readSession(cookieValue(request, 'addressbook_session'), now(), cfg.sessionSecret)));
+      return send(response,200,welcomePage(cfg.oauth,await activeSession(request)));
     }
     if (url.pathname === '/auth/discord') {
-      const { state } = createOAuthState(url.searchParams.get('returnTo') || '/admin', now(), cfg.sessionSecret);
-      return redirect(response, buildDiscordAuthorizeUrl(state, cfg.oauth));
+      // The binding cookie ties this sign-in to the browser that started it (login-CSRF protection).
+      const { state, binding } = createOAuthState(url.searchParams.get('returnTo') || '/admin', now(), cfg.sessionSecret, { bind: true });
+      return redirect(response, buildDiscordAuthorizeUrl(state, cfg.oauth), { 'set-cookie': oauthBindingCookie(binding, String(cfg.oauth.redirectUri || '').startsWith('https://')) });
     }
     if (url.pathname === '/auth/callback') {
-      const returnTo = consumeOAuthState(url.searchParams.get('state'), now(), cfg.sessionSecret);
+      const secure = String(cfg.oauth.redirectUri || '').startsWith('https://');
+      const returnTo = consumeOAuthState(url.searchParams.get('state'), now(), cfg.sessionSecret, cookieValue(request, OAUTH_BINDING_COOKIE));
       if(!returnTo)return send(response,400,loginRecoveryPage('expired'));
       if(url.searchParams.get('error')==='access_denied')return send(response,200,loginRecoveryPage('cancelled',returnTo));
       if(url.searchParams.has('error')||!url.searchParams.get('code'))return send(response,400,loginRecoveryPage('incomplete',returnTo));
       try {
         const tokens = await exchangeDiscordCode(url.searchParams.get('code'), cfg.oauth, fetchImpl);
         const identity = await identityResolver(tokens);
-        const cookie = createSession(identity, now(), cfg.sessionSecret, cfg.lifetimeSeconds);
-        const secure = String(cfg.oauth.redirectUri || '').startsWith('https://');
+        const cookie = createSession({ ...identity, sid: newSessionId() }, now(), cfg.sessionSecret, cfg.lifetimeSeconds);
         return redirect(response, returnTo, { 'set-cookie': sessionCookie(cookie, secure, cfg.lifetimeSeconds, now()) });
       } catch { return send(response,502,loginRecoveryPage('unavailable',returnTo)); }
     }
-    if (url.pathname === '/auth/logout') return redirect(response, '/', { 'set-cookie': 'addressbook_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0' });
-    const signedIn=readSession(cookieValue(request,'addressbook_session'),now(),cfg.sessionSecret);
+    if (url.pathname === '/auth/logout') {
+      // Browsers label requests started by other sites. Ignore those so a third-party page cannot sign members out.
+      const site = request.headers['sec-fetch-site'];
+      if (site && !['same-origin', 'none'].includes(site)) return redirect(response, '/');
+      // Cancel this login on the server too, so a copy of its cookie stops working.
+      await revokeCurrentSession(request);
+      return redirect(response, '/', { 'set-cookie': 'addressbook_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0' });
+    }
+    if (url.pathname === '/auth/logout-all') {
+      const current = await activeSession(request);
+      if (!current) return redirect(response, '/');
+      if (!sessionRevocations) return send(response, 501, page('Sign out everywhere', '<p>Signing out of every device is not available on this installation.</p>'));
+      if (request.method === 'POST') {
+        const form = await readBody(request);
+        if (!csrfMatches(current.csrf, form.get('csrf'))) return send(response, 400, loginRecoveryPage('expired', '/app'));
+        await sessionRevocations.revokeAllForUser(current.id, now());
+        return redirect(response, '/', { 'set-cookie': 'addressbook_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0' });
+      }
+      if (!['GET', 'HEAD'].includes(request.method)) return send(response, 405, 'Method not allowed', { allow: 'GET, HEAD, POST' });
+      return send(response, 200, page('Sign out everywhere', `<p>This signs you out of HearthBound in every browser and on every device where you are signed in, including this one. You can sign in again with Discord at any time.</p><form method="post" action="/auth/logout-all"><input type="hidden" name="csrf" value="${escape(current.csrf)}"><button class="primary" type="submit">Sign out of all devices</button> <a href="/app">Cancel</a></form>`));
+    }
+    const signedIn=await activeSession(request);
     if(workspace&&url.pathname==='/app/access-preview'){
       if(!signedIn)return redirect(response,'/auth/discord?returnTo=%2Fapp');
       if(request.method!=='POST')return send(response,405,'Use the account menu to change preview access.',{allow:'POST'});
@@ -195,65 +249,68 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
     if(workspace&&context.memberContext){const tourImage=await tourCoverRoute({request,response,url,workspace,context:context.memberContext,session,send,redirect,readBody});if(tourImage!==null)return tourImage;const gallery=await houseGalleryRoute({request,response,url,workspace,context:context.memberContext,session,send,redirect,readBody});if(gallery!==null)return gallery;}
     if(workspace&&(url.pathname==='/'||url.pathname==='/app'||url.pathname.startsWith('/app/'))){return handleWorkspaceRoute({request,response,url,session,context:context.memberContext,workspace,serverContexts:context.availableContexts||[],memberLookup,claimFirstAdmin,readBody,send,redirect});}
     const common = { guildId: guild.id, esoServer };
+    const actor = { id: session.id, globalName: session.global_name || session.username, displayName: session.display_name || session.username };
+    const adminPage = (title, body) => page(title, body, session, { guildId: guild.id, guildName: guild.name, esoServer, path: url.pathname }, { moderation: true });
+    // Reads a moderation form posted to this route. It must be a POST with a valid CSRF token and the expected
+    // confirmation value. Otherwise the error response is sent here and `form` is null, so callers just return.
+    const readModerationForm = async (confirm, { postOnly, unreadable, invalid }) => {
+      if (request.method !== 'POST') { send(response, 405, adminPage('Method not allowed', `<p>${postOnly}</p>`), { allow: 'POST' }); return { form: null }; }
+      let form;
+      try { form = await readBody(request); } catch { send(response, 400, adminPage('Invalid request', `<p>${unreadable}</p>`)); return { form: null }; }
+      if (!csrfMatches(session.csrf, form.get('csrf')) || form.get('confirm') !== confirm) { send(response, 400, adminPage('Invalid confirmation', `<p>${invalid}</p>`)); return { form: null }; }
+      return { form };
+    };
     const reportMutation = /^\/admin\/reports\/(\d+)\/(review|resolve|dismiss)$/.exec(url.pathname);
     if (reportMutation) {
-      if (request.method !== 'POST') return send(response, 405, page('Method not allowed', '<p>Report moderation actions require a POST form.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }), { allow: 'POST' });
-      let form;
-      try { form = await readBody(request); } catch { return send(response, 400, page('Invalid request', '<p>The report moderation form could not be read.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true })); }
       const action = reportMutation[2];
-      if (!csrfMatches(session.csrf, form.get('csrf')) || form.get('confirm') !== action) return send(response, 400, page('Invalid confirmation', '<p>This report moderation form is invalid or expired. Return to Problem Reports and try again.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }));
+      const { form } = await readModerationForm(action, { postOnly: 'Report moderation actions require a POST form.', unreadable: 'The report moderation form could not be read.', invalid: 'This report moderation form is invalid or expired. Return to Problem Reports and try again.' });
+      if (!form) return;
       const returnPage = pendingPage(form.get('page'));
       const returnPath = `/admin/reports${returnPage > 1 ? `?page=${returnPage}` : ''}`;
       try {
-        await service.moderateReport({ id: reportMutation[1], action, ...common, actor: { id: session.id, globalName: session.global_name || session.username, displayName: session.display_name || session.username } });
+        await service.moderateReport({ id: reportMutation[1], action, ...common, actor });
         return redirect(response, `${returnPath}${returnPage > 1 ? '&' : '?'}status=${action === 'review' ? 'reviewing' : action === 'dismiss' ? 'dismissed' : 'resolved'}`);
       } catch {
-        return send(response, 409, page('Report action not completed', `<p>That housing report is no longer available for this action.</p><p><a href="${returnPath}">Return to Problem Reports</a></p>`, session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }));
+        return send(response, 409, adminPage('Report action not completed', `<p>That housing report is no longer available for this action.</p><p><a href="${returnPath}">Return to Problem Reports</a></p>`));
       }
     }
     const mutation = /^\/admin\/pending\/(\d+)\/(approve|deny)$/.exec(url.pathname);
     if (mutation) {
-      if (request.method !== 'POST') return send(response, 405, page('Method not allowed', '<p>Moderation actions require a POST form.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }), { allow: 'POST' });
-      let form;
-      try { form = await readBody(request); } catch { return send(response, 400, page('Invalid request', '<p>The moderation form could not be read.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true })); }
       const action = mutation[2];
-      if (!csrfMatches(session.csrf, form.get('csrf')) || form.get('confirm') !== action) return send(response, 400, page('Invalid confirmation', '<p>This moderation form is invalid or expired. Return to Pending Review and try again.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }));
+      const { form } = await readModerationForm(action, { postOnly: 'Moderation actions require a POST form.', unreadable: 'The moderation form could not be read.', invalid: 'This moderation form is invalid or expired. Return to Pending Review and try again.' });
+      if (!form) return;
       const returnPage = pendingPage(form.get('page'));
       const returnPath = `/admin/pending${returnPage > 1 ? `?page=${returnPage}` : ''}`;
       try {
-        await service.reviewPending({ id: mutation[1], action, ...common, actor: { id: session.id, globalName: session.global_name || session.username, displayName: session.display_name || session.username } });
+        await service.reviewPending({ id: mutation[1], action, ...common, actor });
         return redirect(response, `${returnPath}${returnPage > 1 ? '&' : '?'}status=${action === 'approve' ? 'approved' : 'denied'}`);
       } catch (error) {
         const message = /already reviewed|not available/i.test(String(error?.message || '')) ? 'That pending house was already reviewed or is not available in this queue.' : 'The moderation action could not be completed.';
-        return send(response, 409, page('Review not completed', `<p>${escape(message)}</p><p><a href="${returnPath}">Return to Pending Review</a></p>`, session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }));
+        return send(response, 409, adminPage('Review not completed', `<p>${escape(message)}</p><p><a href="${returnPath}">Return to Pending Review</a></p>`));
       }
     }
     const verification = /^\/admin\/maintenance\/verify\/(\d+)$/.exec(url.pathname);
     if (verification) {
-      if (request.method !== 'POST') return send(response, 405, page('Method not allowed', '<p>Maintenance actions require a POST form.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }), { allow: 'POST' });
-      let form;
-      try { form = await readBody(request); } catch { return send(response, 400, page('Invalid request', '<p>The maintenance form could not be read.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true })); }
-      if (!csrfMatches(session.csrf, form.get('csrf')) || form.get('confirm') !== 'verify') return send(response, 400, page('Invalid confirmation', '<p>This maintenance form is invalid or expired. Return to Maintenance and try again.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }));
+      const { form } = await readModerationForm('verify', { postOnly: 'Maintenance actions require a POST form.', unreadable: 'The maintenance form could not be read.', invalid: 'This maintenance form is invalid or expired. Return to Maintenance and try again.' });
+      if (!form) return;
       try {
-        await service.verifyHouse({ houseId: verification[1], ...common, actor: { id: session.id, globalName: session.global_name || session.username, displayName: session.display_name || session.username } });
+        await service.verifyHouse({ houseId: verification[1], ...common, actor });
         return redirect(response, '/admin/maintenance?status=verified');
       } catch (error) {
         const message = /not available/i.test(String(error?.message || '')) ? 'That house is not available in this guild and environment.' : 'The maintenance action could not be completed.';
-        return send(response, 409, page('Verification not completed', `<p>${escape(message)}</p><p><a href="/admin/maintenance">Return to Maintenance</a></p>`, session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }));
+        return send(response, 409, adminPage('Verification not completed', `<p>${escape(message)}</p><p><a href="/admin/maintenance">Return to Maintenance</a></p>`));
       }
     }
     const duplicateMerge = /^\/admin\/maintenance\/merge\/(\d+)\/(\d+)$/.exec(url.pathname);
     if (duplicateMerge) {
-      if (request.method !== 'POST') return send(response, 405, page('Method not allowed', '<p>Duplicate merges require a POST form.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }), { allow: 'POST' });
-      let form;
-      try { form = await readBody(request); } catch { return send(response, 400, page('Invalid request', '<p>The duplicate merge form could not be read.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true })); }
-      if (!csrfMatches(session.csrf, form.get('csrf')) || form.get('confirm') !== 'merge') return send(response, 400, page('Invalid confirmation', '<p>This duplicate merge form is invalid or expired. Return to Maintenance and try again.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }));
+      const { form } = await readModerationForm('merge', { postOnly: 'Duplicate merges require a POST form.', unreadable: 'The duplicate merge form could not be read.', invalid: 'This duplicate merge form is invalid or expired. Return to Maintenance and try again.' });
+      if (!form) return;
       try {
-        await service.mergeDuplicate({ keepId: duplicateMerge[1], removeId: duplicateMerge[2], ...common, actor: { id: session.id, globalName: session.global_name || session.username, displayName: session.display_name || session.username } });
+        await service.mergeDuplicate({ keepId: duplicateMerge[1], removeId: duplicateMerge[2], ...common, actor });
         return redirect(response, '/admin/maintenance?status=merged');
       } catch (error) {
         const message = /not available|active|duplicate/i.test(String(error?.message || '')) ? 'Those entries are no longer eligible exact-context duplicates.' : 'The duplicate merge could not be completed.';
-        return send(response, 409, page('Merge not completed', `<p>${escape(message)}</p><p><a href="/admin/maintenance">Return to Maintenance</a></p>`, session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }, { moderation: true }));
+        return send(response, 409, adminPage('Merge not completed', `<p>${escape(message)}</p><p><a href="/admin/maintenance">Return to Maintenance</a></p>`));
       }
     }
     if (url.pathname === '/admin') {
@@ -263,7 +320,7 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
     if (url.pathname === '/admin/audit.csv') {
       if (request.method !== 'GET') return send(response, 405, page('Method not allowed', '<p>Audit downloads require GET.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }), { allow: 'GET' });
       const csv = await service.exportAudit({ ...common, action: String(url.searchParams.get('action') || '').trim() || null, entityType: String(url.searchParams.get('entityType') || '').trim() || null, target: String(url.searchParams.get('target') || '').trim() || null });
-      response.writeHead(200, { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="hearthbound-audit-${String(guild.id).replace(/[^a-zA-Z0-9_-]/g, '')}.csv"` });
+      response.writeHead(200, { 'content-type': 'text/csv; charset=utf-8', 'x-content-type-options': 'nosniff', 'content-disposition': `attachment; filename="hearthbound-audit-${String(guild.id).replace(/[^a-zA-Z0-9_-]/g, '')}.csv"` });
       return response.end(csv);
     }
     if (url.pathname === '/admin/audit') {
@@ -304,7 +361,7 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
     }
     if (url.pathname === '/admin/reports') {
       const requestedPage = pendingPage(url.searchParams.get('page'));
-      const result = await service.listReports({ ...common, actor: { id: session.id, globalName: session.global_name || session.username, displayName: session.display_name || session.username }, page: requestedPage, pageSize: 25 });
+      const result = await service.listReports({ ...common, actor, page: requestedPage, pageSize: 25 });
       const currentPage = Math.max(1, Number(result.page || requestedPage));
       const totalPages = Math.max(1, Math.ceil(Number(result.total || 0) / Math.max(1, Number(result.pageSize || 25))));
       const status = url.searchParams.get('status');
@@ -347,10 +404,18 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
         return send(response, 200, page('Export Data', body, session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }));
       }
       const json = await service.exportGuild(common);
-      response.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'content-disposition': `attachment; filename="hearthbound-${guild.id}-${esoServer}.json"` });
+      response.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'x-content-type-options': 'nosniff', 'content-disposition': `attachment; filename="hearthbound-${guild.id}-${esoServer}.json"` });
       return response.end(json);
     }
     return send(response, 404, page('Not found', '<p>That administration page does not exist.</p>', session, { guildId: guild.id, guildName: guild.name, esoServer, path:url.pathname }));
   }
-  return http.createServer((request, response) => { route(request, response).catch(error => send(response, 500, page('Administration error', `<p>${escape(error.message)}</p>`))); });
+  return http.createServer((request, response) => {
+    route(request, response).catch(error => {
+      // Log the real error with a reference and show only a safe message to the person.
+      const reference = errorReference();
+      console.error(`HearthBound web error ${reference}:`, error);
+      if (response.headersSent) return response.end();
+      send(response, 500, page('Administration error', `<p>${escape(publicErrorMessage(error))}</p><p>Reference: <code>${reference}</code></p>`));
+    });
+  });
 }

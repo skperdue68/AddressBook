@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createWebAdminServer } from '../src/web/server.js';
+// A browser returns the sign-in binding cookie set by /auth/discord when Discord redirects back.
+const bindingCookie = response => response.headers.getSetCookie().map(value => value.split(';')[0]).join('; ');
 
 async function running(options = {}) {
   const server = createWebAdminServer({
@@ -81,11 +83,38 @@ test('a revoked selected guild never silently switches administration to another
 async function loggedIn(base) {
   const login = await fetch(`${base}/auth/discord`, { redirect: 'manual' });
   const state = new URL(login.headers.get('location')).searchParams.get('state');
-  const callback = await fetch(`${base}/auth/callback?code=test&state=${state}`, { redirect: 'manual' });
+  const callback = await fetch(`${base}/auth/callback?code=test&state=${state}`, { redirect: 'manual', headers: { cookie: bindingCookie(login) } });
   const cookie = callback.headers.get('set-cookie');
   const payload = JSON.parse(Buffer.from(cookie.split('=')[1].split('.')[0], 'base64url').toString('utf8'));
   return { cookie, csrf: payload.csrf };
 }
+
+test('sign-in only completes in the browser that started it', async () => {
+  const { server, base } = await running();
+  try {
+    const login = await fetch(`${base}/auth/discord`, { redirect: 'manual' });
+    const state = new URL(login.headers.get('location')).searchParams.get('state');
+    const setCookie = login.headers.getSetCookie().join('\n');
+    assert.match(setCookie, /hearthbound_oauth=[\w-]{32,}; HttpOnly; SameSite=Lax; Path=\/auth; Max-Age=600/);
+    // An attacker's sign-in link opened in a victim's browser has no matching cookie.
+    const victim = await fetch(`${base}/auth/callback?code=test&state=${state}`, { redirect: 'manual' });
+    assert.equal(victim.status, 400);
+    assert.equal(victim.headers.get('set-cookie'), null, 'no session is issued');
+    // The state was consumed by the failed attempt, so the real browser can no longer reuse it either.
+    const replay = await fetch(`${base}/auth/callback?code=test&state=${state}`, { redirect: 'manual', headers: { cookie: bindingCookie(login) } });
+    assert.equal(replay.status, 400);
+    // A wrong cookie value is rejected, the right one succeeds.
+    const second = await fetch(`${base}/auth/discord`, { redirect: 'manual' });
+    const secondState = new URL(second.headers.get('location')).searchParams.get('state');
+    const wrong = await fetch(`${base}/auth/callback?code=test&state=${secondState}`, { redirect: 'manual', headers: { cookie: 'hearthbound_oauth=not-the-token' } });
+    assert.equal(wrong.status, 400);
+    const third = await fetch(`${base}/auth/discord`, { redirect: 'manual' });
+    const thirdState = new URL(third.headers.get('location')).searchParams.get('state');
+    const ok = await fetch(`${base}/auth/callback?code=test&state=${thirdState}`, { redirect: 'manual', headers: { cookie: bindingCookie(third) } });
+    assert.equal(ok.status, 302);
+    assert.match(ok.headers.get('set-cookie'), /^addressbook_session=/);
+  } finally { await new Promise(resolve => server.close(resolve)); }
+});
 
 test('unauthenticated admin request redirects to Discord OAuth', async () => {
   const { server, base } = await running();
@@ -104,7 +133,7 @@ test('OAuth callback stays on HearthBound after an unsafe returnTo is supplied',
   try {
     const login = await fetch(`${base}/auth/discord?returnTo=${encodeURIComponent('//outside.example/steal')}`, { redirect: 'manual' });
     const state = new URL(login.headers.get('location')).searchParams.get('state');
-    const callback = await fetch(`${base}/auth/callback?code=test&state=${state}`, { redirect: 'manual' });
+    const callback = await fetch(`${base}/auth/callback?code=test&state=${state}`, { redirect: 'manual', headers: { cookie: bindingCookie(login) } });
     assert.equal(callback.status, 302);
     assert.equal(callback.headers.get('location'), '/admin');
   } finally { await new Promise(resolve => server.close(resolve)); }
@@ -123,7 +152,7 @@ test('web export sends the guild JSON snapshot as a download', async () => {
   try {
     const login = await fetch(`${base}/auth/discord`, { redirect: 'manual' });
     const state = new URL(login.headers.get('location')).searchParams.get('state');
-    const callback = await fetch(`${base}/auth/callback?code=test&state=${state}`, { redirect: 'manual' });
+    const callback = await fetch(`${base}/auth/callback?code=test&state=${state}`, { redirect: 'manual', headers: { cookie: bindingCookie(login) } });
     const response = await fetch(`${base}/admin/export`, { headers: { cookie: callback.headers.get('set-cookie') }, redirect: 'manual' });
     assert.equal(response.status, 200);
     assert.equal(response.headers.get('content-type'), 'application/json; charset=utf-8');
@@ -136,7 +165,7 @@ test('HTTPS OAuth configuration marks the session cookie Secure', async () => {
   try {
     const login = await fetch(`${base}/auth/discord`, { redirect: 'manual' });
     const state = new URL(login.headers.get('location')).searchParams.get('state');
-    const callback = await fetch(`${base}/auth/callback?code=test&state=${state}`, { redirect: 'manual' });
+    const callback = await fetch(`${base}/auth/callback?code=test&state=${state}`, { redirect: 'manual', headers: { cookie: bindingCookie(login) } });
     assert.match(callback.headers.get('set-cookie'), /Secure/);
   } finally { await new Promise(resolve => server.close(resolve)); }
 });
@@ -156,7 +185,7 @@ test('web requests recheck current guild roles instead of trusting the login sna
   try {
     const login = await fetch(`${base}/auth/discord`, { redirect: 'manual' });
     const state = new URL(login.headers.get('location')).searchParams.get('state');
-    const callback = await fetch(`${base}/auth/callback?code=test&state=${state}`, { redirect: 'manual' });
+    const callback = await fetch(`${base}/auth/callback?code=test&state=${state}`, { redirect: 'manual', headers: { cookie: bindingCookie(login) } });
     const response = await fetch(`${base}/admin`, { headers: { cookie: callback.headers.get('set-cookie') }, redirect: 'manual' });
     assert.equal(response.status, 403);
   } finally { await new Promise(resolve => server.close(resolve)); }
@@ -540,4 +569,68 @@ test('administration known-total lists provide page jumps and clamp stale page l
     const reports=await fetch(`${base}/admin/reports`,{headers});assert.match(await reports.text(),/Jump to page/);
     const clamped=await fetch(`${base}/admin/reports?page=99&status=resolved`,{headers,redirect:'manual'});assert.equal(clamped.status,302);assert.equal(clamped.headers.get('location'),'/admin/reports?page=2&status=resolved');
   }finally{await new Promise(resolve=>server.close(resolve));}
+});
+
+test('pages carry security headers, and HSTS only over HTTPS', async () => {
+  const plain = await running();
+  try {
+    const response = await fetch(`${plain.base}/privacy`);
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get('content-security-policy'), /frame-ancestors 'none'/);
+    assert.equal(response.headers.get('x-frame-options'), 'DENY');
+    assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+    assert.equal(response.headers.get('strict-transport-security'), null);
+    const asset = await fetch(`${plain.base}/assets/workspace.css`);
+    assert.equal(asset.headers.get('x-content-type-options'), 'nosniff');
+  } finally { await new Promise(resolve => plain.server.close(resolve)); }
+  const secure = await running({ config: { oauth: { clientId: 'client', clientSecret: 'secret', redirectUri: 'https://admin.example.test/auth/callback' } } });
+  try {
+    const response = await fetch(`${secure.base}/privacy`);
+    assert.match(response.headers.get('strict-transport-security'), /max-age=\d+/);
+    assert.match(response.headers.get('content-security-policy'), /default-src 'self'/);
+  } finally { await new Promise(resolve => secure.server.close(resolve)); }
+});
+
+test('administration downloads are not sniffable', async () => {
+  const { server, base } = await running();
+  try {
+    const { cookie } = await loggedIn(base);
+    const response = await fetch(`${base}/admin/export`, { headers: { cookie }, redirect: 'manual' });
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+  } finally { await new Promise(resolve => server.close(resolve)); }
+});
+
+test('sign-out ignores requests that another website started', async () => {
+  const { server, base } = await running();
+  try {
+    for (const site of ['cross-site', 'same-site']) {
+      const response = await fetch(`${base}/auth/logout`, { headers: { 'sec-fetch-site': site }, redirect: 'manual' });
+      assert.equal(response.status, 302);
+      assert.equal(response.headers.get('location'), '/');
+      assert.equal(response.headers.get('set-cookie'), null, site);
+    }
+    for (const headers of [{ 'sec-fetch-site': 'same-origin' }, { 'sec-fetch-site': 'none' }, {}]) {
+      const response = await fetch(`${base}/auth/logout`, { headers, redirect: 'manual' });
+      assert.match(response.headers.get('set-cookie'), /Max-Age=0/);
+    }
+  } finally { await new Promise(resolve => server.close(resolve)); }
+});
+
+test('unexpected errors show a reference instead of internal details', async () => {
+  const service = { authorizeGuild: () => ({ allowed: true }), overview: async () => { throw new Error("SQLITE_ERROR: no such table: secrets at /app/src/db/database.js:42:7"); } };
+  const { server, base } = await running({ service });
+  const original = console.error;
+  const logged = [];
+  console.error = (...args) => logged.push(args.map(String).join(' '));
+  try {
+    const { cookie } = await loggedIn(base);
+    const response = await fetch(`${base}/admin`, { headers: { cookie }, redirect: 'manual' });
+    assert.equal(response.status, 500);
+    const html = await response.text();
+    assert.doesNotMatch(html, /SQLITE|no such table|\/app\/src/);
+    const reference = /Reference: <code>([a-f0-9]{8})<\/code>/.exec(html)?.[1];
+    assert.ok(reference, 'the page shows a reference code');
+    assert.ok(logged.some(line => line.includes(reference) && line.includes('web error')), 'the real error is logged with the same reference');
+  } finally { console.error = original; await new Promise(resolve => server.close(resolve)); }
 });

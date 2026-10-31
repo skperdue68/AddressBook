@@ -1,5 +1,7 @@
 import {DiscordWorkspace} from './web/discord-workspace.js';
+import {errorReference,GENERIC_ERROR_MESSAGE,publicErrorMessage} from './utils/public-error.js';
 import {UsageActivityService} from './services/usage-activity-service.js';
+import {SessionRevocationService} from './services/session-revocation-service.js';
 import {WebWorkspaceService} from './services/web-workspace-service.js';
 import {resolveCurrentGuildMembership} from './web/guild-membership.js';
 import 'dotenv/config';
@@ -37,6 +39,9 @@ const webConfig=webAdminConfig();
 const webAdmin=webConfig.enabled?new WebAdminService(db):null;
 let webServer=null;
 const usage=new UsageActivityService(db,{isGuildActive:id=>client.guilds.cache.has(String(id))});
+const sessionRevocations=new SessionRevocationService(db);
+await sessionRevocations.ensureSchema();
+const revocationCleanup=setInterval(()=>sessionRevocations.purgeExpired().catch(()=>console.error('Sign-in revocation cleanup failed.')),3600000);revocationCleanup.unref();
 const usageCleanup=setInterval(()=>usage.purgeExpired().catch(()=>console.error('Usage history cleanup failed.')),3600000);usageCleanup.unref();
 
 client.once(Events.ClientReady,async c=>{
@@ -45,7 +50,7 @@ client.once(Events.ClientReady,async c=>{
   await usage.purgeExpired().catch(()=>console.error('Usage history cleanup failed.'));
   if(webAdmin){
     const workspace=Object.assign(new WebWorkspaceService(db),{usage,discord:new DiscordWorkspace(c),invalidateSettings:guildId=>{webAdmin.guilds.invalidate(guildId);handlers.invalidateSettings(guildId);}});
-    webServer=createWebAdminServer({service:webAdmin,workspace,config:webConfig,resolveOAuthIdentity:async tokens=>{
+    webServer=createWebAdminServer({service:webAdmin,workspace,sessionRevocations,config:webConfig,resolveOAuthIdentity:async tokens=>{
       const response=await fetch('https://discord.com/api/users/@me',{headers:{authorization:`Bearer ${tokens.access_token}`}});
       if(!response.ok)throw new Error('Discord identity lookup failed.');
       const user=await response.json(),guilds=[];
@@ -71,10 +76,11 @@ client.on(Events.InteractionCreate,async i=>{
     if(i.isStringSelectMenu() || i.isRoleSelectMenu() || i.isChannelSelectMenu()) return await handlers.select(i);
     if(i.isModalSubmit()) return await handlers.modal(i);
   }catch(err){
-    console.error(err);
+    const reference=errorReference();
+    console.error(`HearthBound interaction error ${reference}:`,err);
     const message=/database|connect|pool|socket|ECONN/i.test(String(err?.message||''))
       ?'HearthBound cannot reach its database right now. Please try again shortly.'
-      :`Error: ${err.message}`;
+      :`Error: ${publicErrorMessage(err)}${publicErrorMessage(err)===GENERIC_ERROR_MESSAGE?` (reference ${reference})`:''}`;
     const payload={content:message,flags:MessageFlags.Ephemeral};
     if(i.replied||i.deferred) await i.followUp(payload).catch(()=>{});
     else await i.reply(payload).catch(()=>{});
@@ -87,6 +93,7 @@ async function shutdown(){
   shuttingDown=true;
   worker.stop();
   clearInterval(usageCleanup);
+  clearInterval(revocationCleanup);
   if(webServer)await new Promise(resolve=>webServer.close(()=>resolve()));
   client.destroy();
   await closeDatabase(db).catch(()=>{});
