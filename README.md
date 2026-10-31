@@ -58,7 +58,7 @@ For Docker, configure `.env`, then run:
 docker compose up -d --build
 ```
 
-Compose persists SQLite data under `./data`. MariaDB is not bundled. See the [administration guide](docs/administration.md) for web console access with Docker.
+Compose persists SQLite data under `./data`. The container runs the bot as the unprivileged `node` user: on start, the entrypoint hands the data directories (including any custom `HOUSE_IMAGE_DIR`, `TOUR_COVER_DIR` or SQLite folder) to that user and then drops root, so upgrading an existing install needs no manual `chown`. A health check reports the container healthy once the web portal answers; it always passes when the web interface is disabled. MariaDB is not bundled. See the [administration guide](docs/administration.md) for web console access with Docker.
 
 Upgrading an existing installation? Back up your application, `.env`, and database first. See the [v1.0.62 Linux/production upgrade instructions](docs/upgrade-v1.0.62.md).
 

@@ -2,6 +2,9 @@ services:
   addressbook:
     build: .
     restart: unless-stopped
+    # Prevent the app, or anything it runs, from gaining extra privileges.
+    security_opt:
+      - no-new-privileges:true
     env_file: .env
     environment:
       WEB_ADMIN_HOST: 0.0.0.0
