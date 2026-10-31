@@ -20,6 +20,7 @@ import { createSession, readSession, sessionLifetimeSeconds } from './session.js
 import { csrfMatches } from './session.js';
 import { page, escape } from './render.js';
 import {welcomePage,guildPickerPage} from './public-pages.js';
+import { createWebRateLimiter, rateLimitConfig } from './rate-limit.js';
 
 const cookieValue = (request, name) => String(request.headers.cookie || '').split(';').map(item => item.trim()).find(item => item.startsWith(`${name}=`))?.slice(name.length + 1) || null;
 const send = (response, status, body, headers = {}) => { response.writeHead(status, { 'content-type': 'text/html; charset=utf-8', 'referrer-policy':'no-referrer', 'cache-control':'private, no-store', ...headers }); response.end(body); };
@@ -37,6 +38,8 @@ const readBody = (request,limit=8192) => new Promise((resolve, reject) => {
 export function createWebAdminServer({ service, workspace = null, config = {}, resolveOAuthIdentity, resolveGuildMembership, fetchImpl = fetch, now = () => Date.now() } = {}) {
   if (!service) throw new Error('WebAdminService is required.');
   const cfg = { lifetimeSeconds:sessionLifetimeSeconds({WEB_SESSION_DAYS:config.sessionDays??process.env.WEB_SESSION_DAYS}), sessionSecret: config.sessionSecret || process.env.WEB_SESSION_SECRET, oauth: config.oauth || { clientId: process.env.DISCORD_OAUTH_CLIENT_ID || process.env.DISCORD_CLIENT_ID, clientSecret: process.env.DISCORD_OAUTH_CLIENT_SECRET, redirectUri: process.env.DISCORD_OAUTH_REDIRECT_URI } };
+  // Per-client request limits (see rate-limit.js). Settings come from WEB_RATE_LIMIT_* and WEB_TRUST_PROXY unless supplied in config.
+  const rateLimiter = createWebRateLimiter(config.rateLimits || rateLimitConfig(process.env), config.rateLimitClock);
   const identityResolver = resolveOAuthIdentity || (async tokens => {
     const response = await fetchImpl('https://discord.com/api/users/@me', { headers: { authorization: `Bearer ${tokens.access_token}` } });
     if (!response.ok) throw new Error('Discord identity lookup failed.');
@@ -93,6 +96,8 @@ export function createWebAdminServer({ service, workspace = null, config = {}, r
 
   async function route(request, response) {
     const url = new URL(request.url, 'http://localhost');
+    const waitSeconds = rateLimiter.check(request, url.pathname);
+    if (waitSeconds !== null) return send(response, 429, page('Too many requests', '<p>You are sending requests faster than HearthBound allows. Please wait a moment and try again.</p>'), { 'retry-after': String(waitSeconds) });
     if(['/assets/workspace.css','/assets/public-pages.css','/assets/hearthbound-preview.png','/assets/hearthbound-banner.webp','/assets/hearthbound-landscape.webp','/assets/tour-editor.js','/assets/tour-cover-upload.js','/assets/hearthbound-logo.png','/assets/account-menu.css','/assets/account-menu.js','/assets/web-actions.js','/assets/interface.js','/assets/house-gallery.js','/assets/catalog-editor.js'].includes(url.pathname)){
       if(request.method!=='GET')return send(response,405,'Method not allowed',{allow:'GET'});
       const asset=url.pathname.split('/').pop();return send(response,200,await readFile(new URL(`./assets/${asset}`,import.meta.url)),{'content-type':asset.endsWith('.png')?'image/png':asset.endsWith('.webp')?'image/webp':asset.endsWith('.css')?'text/css; charset=utf-8':'text/javascript; charset=utf-8','x-content-type-options':'nosniff'});
